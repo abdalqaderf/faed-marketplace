@@ -16,5 +16,13 @@ public interface IApplicationDbContext
 
     DbSet<AdminActionLog> AdminActionLogs { get; }
 
+    DbSet<Category> Categories { get; }
+
+    DbSet<ConditionGrade> ConditionGrades { get; }
+
+    DbSet<DiscountReason> DiscountReasons { get; }
+
+    DbSet<Brand> Brands { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

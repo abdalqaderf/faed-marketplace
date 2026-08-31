@@ -81,8 +81,11 @@ app.MapControllerRoute(
 app.MapRazorPages()
    .WithStaticAssets();
 
-// Seed the fixed Identity roles (idempotent), plus an optional development admin.
+// Seed the fixed Identity roles and the catalog reference data (both idempotent), plus an
+// optional development admin. Migrations must already be applied — the app does not migrate
+// on startup (docs/20-DEVELOPMENT-WORKFLOW.md "Database workflow").
 await IdentityDataSeeder.SeedRolesAsync(app.Services);
+await CatalogDataSeeder.SeedAsync(app.Services);
 if (app.Environment.IsDevelopment())
 {
     await IdentityDataSeeder.SeedDevelopmentAdminAsync(app.Services);

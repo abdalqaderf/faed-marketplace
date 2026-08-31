@@ -24,6 +24,10 @@ Fashion Overstock
     └── Non-sensitive Accessories
 ```
 
+> Reference seed (TASK-003) creates only `Fashion Overstock` and the three launch
+> categories. The lower-level categories above are dev/demo data seeded in a later task
+> (open question 4).
+
 ### Condition grades
 - A — New / Complete
 - B — New / Packaging Imperfection
@@ -38,6 +42,7 @@ Fashion Overstock
 - Packaging Damage
 - Cosmetic Defect
 - Missing Non-Essential Item
+- Other Approved Reason
 
 ---
 

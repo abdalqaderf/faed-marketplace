@@ -19,6 +19,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
 
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<ConditionGrade> ConditionGrades => Set<ConditionGrade>();
+
+    public DbSet<DiscountReason> DiscountReasons => Set<DiscountReason>();
+
+    public DbSet<Brand> Brands => Set<Brand>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

@@ -8,10 +8,12 @@ These are intentionally unresolved or configurable. The coding agent must not si
 3. Exact retention policy for rejected verification documents.
 
 ## Before Phase 3
-4. Final lower-level fashion taxonomy.
-5. Whether Brand is required or optional by category.
+4. Final lower-level fashion taxonomy. (TASK-003 default: seed root + three launch
+   categories only; deeper taxonomy deferred.)
+5. Whether Brand is required or optional by category. (TASK-003 default: optional everywhere.)
 6. Whether a merchant can create its own brand name or only choose admin-controlled brands.
-7. Exact reference-price evidence requirements.
+   (TASK-003 default: admin-controlled only.)
+7. Exact reference-price evidence requirements. (Deferred to TASK-004.)
 
 ## Before Phase 5
 8. Default B2C reservation duration.

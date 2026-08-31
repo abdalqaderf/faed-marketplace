@@ -1,5 +1,17 @@
 # Project Status
 
+## Task status
+
+| Task | Phase | Status |
+|---|---|---|
+| TASK-001 — Foundation | 0 | Completed |
+| TASK-002 — Merchant Verification | 1 | Completed |
+| TASK-003 — Catalog Foundations | 2 | Completed |
+| TASK-004 — Listings, Variants, Inventory and Moderation | 3 | Not started |
+
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-004 until
+explicitly requested.
+
 ## Current state
 
 **Architecture restructure complete — single-project organized MVC.**
@@ -12,6 +24,15 @@ changed — only namespaces and file locations moved (`Faed.Domain.* → Faed.We
 `Faed.Application.* → Faed.Web.Services.*`, `Faed.Infrastructure.Persistence.* →
 Faed.Web.Data.*`). See `docs/adr/0006-SINGLE-PROJECT-MVC.md`. `Faed.Domain`,
 `Faed.Application` and `Faed.Infrastructure` were removed from the solution and repository.
+
+**Phase 2 — Catalog Foundations complete (TASK-003).**
+
+DB-driven taxonomy and disclosure reference data: hierarchical `Category`, the
+`ConditionGrade` and `DiscountReason` reference tables, an optional admin-controlled
+`Brand`, and an idempotent runtime `CatalogDataSeeder` that seeds condition grades A–D,
+the eight PRD-approved discount reasons, and the launch taxonomy
+(`Fashion Overstock` → Clothing, Shoes, Bags & Accessories). No catalog UI — full admin
+catalog management is deferred to TASK-010.
 
 **Phase 1 — Roles and Merchant Verification complete (TASK-002).**
 
@@ -57,9 +78,46 @@ implemented.
 
 ## Active task
 
-None. TASK-002 is closed.
+None. TASK-003 is closed.
 
-Next: `tasks/TASK-003-CATALOG.md` (do not start until explicitly requested).
+Next: `tasks/TASK-004-LISTINGS-AND-INVENTORY.md` (do not start until explicitly requested).
+
+## TASK-003 — Catalog Foundations
+
+### Behaviour implemented
+
+- `Category` — self-referencing hierarchy (`ParentCategoryId`, `Name`, `Slug`, `SortOrder`,
+  `IsActive`). Globally unique `Slug`; `OnDelete(Restrict)` so a populated branch is never
+  cascade-removed. The sector is a data row, not an enum — future sectors are added as data
+  (AGENTS.md §3, docs/14-FUTURE-EXPANSION.md).
+- `ConditionGrade` — DB reference table (not an enum, docs/19 "Enums vs tables"), unique
+  `Code`. Seeded A–D only; there is no Grade E in the schema or seed.
+- `DiscountReason` — DB reference table, unique `Code`, optional `Description`. Kept
+  independent of `ConditionGrade` — no FK or navigation between them
+  (docs/adr/0003-CONDITION-VS-DISCOUNT-REASON.md).
+- `Brand` — optional, admin-controlled only (no merchant-authored brands), unique `Slug`.
+  Table created; no brands seeded (docs/13-OPEN-QUESTIONS.md items 5–6).
+- `CatalogDataSeeder` (`Data/Seed`) — runtime idempotent seeder invoked from `Program.cs`
+  after `IdentityDataSeeder`, in every environment. Matches each row on its natural key
+  (`Code` / `Slug`), case-insensitively to match SQL Server's default collation, and
+  inserts only when missing — so re-running never duplicates and never overwrites a later
+  admin edit, even one that changed a key's casing. Schema must already be applied — the
+  app does not migrate on startup.
+- `IApplicationDbContext` extended with the four catalog `DbSet`s for later use-case
+  services (TASK-004+).
+
+### Decisions recorded (docs/13-OPEN-QUESTIONS.md)
+
+- Item 4 (taxonomy depth): seed root + three launch categories only; deeper taxonomy
+  deferred. The lower-level tree in docs/12-SEED-DATA.md is dev/demo data for a later task.
+- Items 5–6 (Brand): optional everywhere, admin-controlled only.
+- docs/12-SEED-DATA.md updated to list all eight discount reasons (adds
+  `Other Approved Reason`) and to note the deferred sub-categories.
+
+### Not implemented (correctly deferred)
+
+Catalog admin UI / CRUD (TASK-010), listings, options, variants, reference-price evidence
+(TASK-004), brand seed data.
 
 ## TASK-002 — Merchant Verification
 
@@ -134,7 +192,8 @@ Faed.slnx
 src/
 └── Faed.Web/
     ├── Models/
-    │   ├── Entities/       # MerchantProfile, MerchantVerificationDocument, AdminActionLog
+    │   ├── Entities/       # MerchantProfile, MerchantVerificationDocument, AdminActionLog,
+    │   │                   # Category, ConditionGrade, DiscountReason, Brand
     │   ├── Enums/          # MerchantVerificationStatus, *DocumentType, AdminActionType
     │   ├── Identity/       # ApplicationUser, FaedRoles
     │   └── DomainException.cs
@@ -142,7 +201,7 @@ src/
     │   ├── ApplicationDbContext.cs   # + IApplicationDbContext, shared with Identity
     │   ├── Configurations/           # IEntityTypeConfiguration<T> for each entity
     │   ├── Migrations/               # EF Core migrations
-    │   └── Seed/IdentityDataSeeder.cs
+    │   └── Seed/           # IdentityDataSeeder, CatalogDataSeeder (both idempotent)
     ├── Services/
     │   ├── Abstractions/   # IApplicationDbContext, IFileStorage, IUserRoleService, IClock
     │   ├── Common/Result.cs
@@ -170,6 +229,11 @@ projects and no project-reference layering.
 - `20260831174908_InitialIdentity` (`src/Faed.Web/Data/Migrations`) — ASP.NET Core Identity
   schema for `ApplicationUser` (adds `CreatedAtUtc` default `SYSUTCDATETIME()`, `IsActive`
   default `true`). Replaces the Visual Studio template's `00000000000000_CreateIdentitySchema`.
+- `20260831205644_AddCatalog` (`src/Faed.Web/Data/Migrations`) — `Categories` (unique
+  `Slug`, self-referencing FK `OnDelete(Restrict)`, index on `(ParentCategoryId, SortOrder)`),
+  `ConditionGrades` (unique `Code`), `DiscountReasons` (unique `Code`), `Brands` (unique
+  `Slug`). All Guid keys `ValueGeneratedNever`. `has-pending-model-changes` reports clean
+  after build.
 - `AddMerchantVerification` (`src/Faed.Web/Data/Migrations`) — `MerchantProfiles` (unique
   `UserId`, unique `PublicSlug`, indexed `VerificationStatus`; enum stored as text;
   `rowversion` concurrency token; restricted delete from `AspNetUsers`),
@@ -252,6 +316,34 @@ projects and no project-reference layering.
 | Unauthorized document request fails | `VerificationDocument_Buyer_IsForbidden` |
 | Audit entry is persisted | `Approve_*_WritesAudit`, `OpenVerificationDocument_*_AuditsAccess` |
 | Relevant tests pass | full suite green |
+
+## Current validation (TASK-003)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — 72 passed (43 unit, 29 integration), 0 failed, 0 skipped
+  (SQL Server LocalDB reachable). New coverage: catalog entity invariants; EF model shape
+  (condition/discount-reason independence, self-referencing `Category`, unique
+  slug/code indexes); startup seeds A–D + eight reasons + launch taxonomy; no Grade E;
+  seeder is idempotent on re-run and when an existing slug differs only by casing; a second
+  root `Category` persists to SQL Server with no schema change; DB-level unique-slug
+  enforcement for `Category` and `Brand`.
+- `dotnet ef database update` — `AddCatalog` applies from the existing schema;
+  `dotnet ef migrations has-pending-model-changes` reports no drift (after build).
+- App runs (Development); Home and `/Identity/Account/Login` return 200; `CatalogDataSeeder`
+  populates `ConditionGrades` (4), `DiscountReasons` (8) and `Categories` (4) and is a no-op
+  on subsequent starts.
+
+### Exit-criteria coverage (tasks/TASK-003)
+
+| Exit criterion | Covered by |
+|---|---|
+| Migration applies from an empty database | `SqlServerPersistenceTests` (all migrations), `dotnet ef database update` |
+| Seed runs repeatedly without duplication | `CatalogSeedTests.Seed_RunAgain_AddsNoDuplicateRows`, `Seed_IsIdempotent_WhenAnExistingSlugDiffersOnlyByCasing` |
+| A second root category can be added by data alone | `CatalogSeedTests.SecondRootCategory_CanBeAddedByDataAlone_WithNoSchemaChange` |
+| Condition and discount reason separate; Grade E absent | `CatalogModelTests.ConditionGrade_And_DiscountReason_AreIndependent`, `CatalogSeedTests.ConditionGrades_DoNotIncludeGradeE` |
+| No catalog/condition/reason values hard-coded in code or views | reference tables + `CatalogDataSeeder`; no views added |
+| Catalog unit/integration tests pass | full suite green |
+| `dotnet build` succeeds; `PROJECT_STATUS.md` updated | this document |
 
 ## Validation (TASK-001)
 
