@@ -1,0 +1,125 @@
+@model MerchantReviewDetail
+@{
+    ViewData["Title"] = $"Review — {Model.BusinessName}";
+    var isPending = Model.Status == MerchantVerificationStatus.PendingReview;
+    var isApproved = Model.Status == MerchantVerificationStatus.Approved;
+    var isSuspended = Model.Status == MerchantVerificationStatus.Suspended;
+    var submittedText = Model.SubmittedAtUtc is { } submitted ? AmmanTime.FormatDateTime(submitted) : "—";
+    var reviewedText = Model.ReviewedAtUtc is { } reviewed ? AmmanTime.FormatDateTime(reviewed) : null;
+}
+
+<div class="faed-page">
+    <nav class="faed-subnav" aria-label="Admin sections">
+        <a asp-area="Admin" asp-controller="MerchantVerification" asp-action="Index">Merchant verification</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">@Model.BusinessName</h1>
+            <p class="faed-page__subtitle">Storefront address: /store/@Model.PublicSlug</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@MerchantStatusDisplay.BadgeClass(Model.Status)">@MerchantStatusDisplay.Label(Model.Status)</span>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Application</h2>
+        <dl class="faed-details">
+            <dt>Contact email</dt>
+            <dd>@(string.IsNullOrEmpty(Model.ContactEmail) ? "—" : Model.ContactEmail)</dd>
+            <dt>Contact phone</dt>
+            <dd>@(string.IsNullOrEmpty(Model.ContactPhone) ? "—" : Model.ContactPhone)</dd>
+            <dt>Created</dt>
+            <dd>@AmmanTime.FormatDateTime(Model.CreatedAtUtc)</dd>
+            <dt>Submitted</dt>
+            <dd>@submittedText</dd>
+            @if (reviewedText is not null)
+            {
+                <dt>Last decision</dt>
+                <dd>@reviewedText by @Model.ReviewedByAdminId</dd>
+            }
+            @if (!string.IsNullOrEmpty(Model.RejectionReason))
+            {
+                <dt>Recorded reason</dt>
+                <dd>@Model.RejectionReason</dd>
+            }
+        </dl>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Verification documents</h2>
+        <p class="faed-panel__hint">
+            Private files. Each download is recorded in the admin audit log and is served as an
+            attachment, never rendered in the browser.
+        </p>
+        @if (Model.Documents.Count == 0)
+        {
+            <div class="faed-empty">
+                <div class="faed-empty__title">No documents</div>
+                <div>This application has no attached documents.</div>
+            </div>
+        }
+        else
+        {
+            <ul class="faed-doclist">
+                @foreach (var doc in Model.Documents)
+                {
+                    <li>
+                        <span class="faed-doclist__name">@MerchantStatusDisplay.DocumentTypeLabel(doc.DocumentType)</span>
+                        <span class="faed-doclist__meta">@doc.OriginalFileName · @(doc.SizeBytes / 1024) KB · @AmmanTime.FormatDate(doc.UploadedAtUtc)</span>
+                        <a class="faed-doclist__spacer faed-btn faed-btn--ghost faed-btn--sm"
+                           asp-action="Document" asp-route-id="@doc.Id" rel="noopener">Download</a>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @if (isPending)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Decision</h2>
+            <div class="d-flex flex-wrap gap-4">
+                <form asp-action="Approve" method="post">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="faed-btn faed-btn--primary">Approve merchant</button>
+                </form>
+                <form asp-action="Reject" method="post" class="flex-grow-1" style="min-width: 18rem;">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="reject-reason">Rejection reason</label>
+                        <input class="faed-input" id="reject-reason" name="reason" required maxlength="1000"
+                               placeholder="Explain what the merchant must fix" />
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--danger">Reject application</button>
+                </form>
+            </div>
+        </div>
+    }
+    else if (isApproved)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Suspend merchant</h2>
+            <p class="faed-panel__hint">A suspended merchant cannot list or sell until reinstated.</p>
+            <form asp-action="Suspend" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="faed-field">
+                    <label class="faed-field__label" for="suspend-reason">Suspension reason</label>
+                    <input class="faed-input" id="suspend-reason" name="reason" required maxlength="1000" />
+                </div>
+                <button type="submit" class="faed-btn faed-btn--danger">Suspend</button>
+            </form>
+        </div>
+    }
+    else if (isSuspended)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Reinstate merchant</h2>
+            <form asp-action="Reinstate" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="faed-btn faed-btn--primary">Reinstate merchant</button>
+            </form>
+        </div>
+    }
+</div>

@@ -1,0 +1,78 @@
+@model MerchantQueuePageModel
+@{
+    ViewData["Title"] = "Merchant verification queue";
+
+    (MerchantQueueFilter value, string label)[] tabs =
+    {
+        (MerchantQueueFilter.PendingReview, "Pending review"),
+        (MerchantQueueFilter.Approved, "Approved"),
+        (MerchantQueueFilter.Rejected, "Rejected"),
+        (MerchantQueueFilter.Suspended, "Suspended"),
+        (MerchantQueueFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Admin sections">
+        <a class="is-active" asp-area="Admin" asp-controller="MerchantVerification" asp-action="Index">Merchant verification</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Merchant verification</h1>
+            <p class="faed-page__subtitle">Review merchant applications and decide whether a business may sell on Faed.</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="faed-badge faed-badge--pending">@Model.PendingCount awaiting review</span>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter applications">
+        @foreach (var tab in tabs)
+        {
+            <a asp-action="Index" asp-route-filter="@tab.value"
+               class="@(Model.Filter == tab.value ? "is-active" : null)">@tab.label</a>
+        }
+    </nav>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="faed-panel">
+            <div class="faed-empty">
+                <div class="faed-empty__title">Nothing here</div>
+                <div>No merchant applications match this filter.</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Business</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Documents</th>
+                        <th scope="col">Submitted</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.BusinessName</td>
+                            <td><span class="@MerchantStatusDisplay.BadgeClass(item.Status)">@MerchantStatusDisplay.Label(item.Status)</span></td>
+                            <td>@item.ActiveDocumentCount</td>
+                            <td>@(item.SubmittedAtUtc is { } s ? AmmanTime.FormatDate(s) : "—")</td>
+                            <td>
+                                <a class="faed-btn faed-btn--ghost faed-btn--sm"
+                                   asp-action="Details" asp-route-id="@item.Id">Review</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

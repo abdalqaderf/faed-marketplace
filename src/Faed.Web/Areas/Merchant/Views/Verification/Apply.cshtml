@@ -1,0 +1,51 @@
+@model MerchantApplicationFormModel
+@{
+    ViewData["Title"] = "Business details";
+}
+
+<div class="faed-page">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Business details</h1>
+            <p class="faed-page__subtitle">Tell us about the business that will be selling on Faed.</p>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <form asp-action="Apply" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="BusinessName"></label>
+                <input class="faed-input" asp-for="BusinessName" autocomplete="organization" />
+                <span class="faed-field__error" asp-validation-for="BusinessName"></span>
+            </div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="ContactEmail"></label>
+                <input class="faed-input" asp-for="ContactEmail" autocomplete="email" />
+                <span class="faed-field__hint">Used by Faed administrators to reach you about verification.</span>
+                <span class="faed-field__error" asp-validation-for="ContactEmail"></span>
+            </div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="ContactPhone"></label>
+                <input class="faed-input" asp-for="ContactPhone" autocomplete="tel" />
+                <span class="faed-field__error" asp-validation-for="ContactPhone"></span>
+            </div>
+
+            <div class="faed-page__actions">
+                <button type="submit" class="faed-btn faed-btn--primary">Save details</button>
+                <a class="faed-btn faed-btn--ghost" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

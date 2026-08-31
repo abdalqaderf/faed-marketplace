@@ -1,0 +1,169 @@
+@model MerchantVerificationPageModel
+@inject Microsoft.Extensions.Options.IOptions<MerchantVerificationOptions> VerificationOptions
+@{
+    ViewData["Title"] = "Merchant verification";
+    var app = Model.Application;
+    var docTypes = Enum.GetValues<MerchantVerificationDocumentType>();
+    var maxMb = VerificationDocumentValidator.MaxMegabytes(VerificationOptions.Value);
+}
+
+<div class="faed-page">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a class="is-active" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Merchant verification</h1>
+            <p class="faed-page__subtitle">
+                Faed only lists inventory from verified businesses. Complete your application and an
+                administrator will review it before you can create listings.
+            </p>
+        </div>
+        @if (app is not null)
+        {
+            <div class="faed-page__actions">
+                <span class="@MerchantStatusDisplay.BadgeClass(app.Status)">@MerchantStatusDisplay.Label(app.Status)</span>
+            </div>
+        }
+    </div>
+
+    @if (app is null)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Start your application</h2>
+            <p class="faed-panel__hint">You will need your business details and a verification document (PDF, JPG or PNG).</p>
+            <ol class="faed-steps">
+                <li>Enter your business details</li>
+                <li>Attach at least one verification document</li>
+                <li>Submit for admin review</li>
+            </ol>
+            <a class="faed-btn faed-btn--primary" asp-action="Apply">Enter business details</a>
+        </div>
+    }
+    else
+    {
+        @if (app.Status == MerchantVerificationStatus.Approved)
+        {
+            <div class="faed-alert faed-alert--success" role="status">
+                Your business is verified. You can create listings once the catalog and listing tools are available.
+            </div>
+        }
+        else if (app.Status == MerchantVerificationStatus.PendingReview)
+        {
+            <div class="faed-alert faed-alert--info" role="status">
+                Your application was submitted on @(app.SubmittedAtUtc is { } s ? AmmanTime.FormatDate(s) : "—") and is awaiting review.
+                You cannot edit it while it is being reviewed.
+            </div>
+        }
+        else if (app.Status == MerchantVerificationStatus.Rejected)
+        {
+            <div class="faed-alert faed-alert--error" role="alert">
+                <strong>Application rejected.</strong>
+                <div>Reason: @app.RejectionReason</div>
+                <div>Update your details or documents below and resubmit.</div>
+            </div>
+        }
+        else if (app.Status == MerchantVerificationStatus.Suspended)
+        {
+            <div class="faed-alert faed-alert--error" role="alert">
+                <strong>Your merchant account is suspended.</strong>
+                <div>Reason: @app.RejectionReason</div>
+                <div>Contact Faed support to resolve this.</div>
+            </div>
+        }
+
+        <div class="faed-panel">
+            <div class="faed-panel__header">
+                <h2 class="faed-panel__title">Business details</h2>
+                @if (app.IsEditable)
+                {
+                    <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Apply">Edit</a>
+                }
+            </div>
+            <dl class="faed-details">
+                <dt>Business name</dt>
+                <dd>@app.BusinessName</dd>
+                <dt>Storefront address</dt>
+                <dd>/store/@app.PublicSlug</dd>
+                <dt>Contact email</dt>
+                <dd>@(string.IsNullOrEmpty(app.ContactEmail) ? "—" : app.ContactEmail)</dd>
+                <dt>Contact phone</dt>
+                <dd>@(string.IsNullOrEmpty(app.ContactPhone) ? "—" : app.ContactPhone)</dd>
+            </dl>
+        </div>
+
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Verification documents</h2>
+            <p class="faed-panel__hint">
+                These files are private. They are visible only to Faed administrators and are never shown publicly.
+            </p>
+
+            @if (app.Documents.Count == 0)
+            {
+                <div class="faed-empty">
+                    <div class="faed-empty__title">No documents attached</div>
+                    <div>Attach at least one document before submitting.</div>
+                </div>
+            }
+            else
+            {
+                <ul class="faed-doclist">
+                    @foreach (var doc in app.Documents)
+                    {
+                        <li>
+                            <span class="faed-doclist__name">@MerchantStatusDisplay.DocumentTypeLabel(doc.DocumentType)</span>
+                            <span class="faed-doclist__meta">@doc.OriginalFileName · @(doc.SizeBytes / 1024) KB · @AmmanTime.FormatDate(doc.UploadedAtUtc)</span>
+                            @if (app.IsEditable)
+                            {
+                                <form class="faed-doclist__spacer" asp-action="RemoveDocument" method="post"
+                                      onsubmit="return confirm('Remove this document?');">
+                                    <input type="hidden" name="id" value="@doc.Id" />
+                                    <button type="submit" class="faed-btn faed-btn--danger faed-btn--sm">Remove</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (app.IsEditable)
+            {
+                <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="mt-3">
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="DocumentType">Document type</label>
+                        <select class="faed-select" id="DocumentType" name="DocumentType">
+                            @foreach (var type in docTypes)
+                            {
+                                <option value="@type">@MerchantStatusDisplay.DocumentTypeLabel(type)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="File">File</label>
+                        <input class="faed-input" type="file" id="File" name="File" accept=".pdf,.jpg,.jpeg,.png" required />
+                        <span class="faed-field__hint">PDF, JPG or PNG up to @maxMb MB.</span>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--ghost">Attach document</button>
+                </form>
+            }
+        </div>
+
+        @if (app.IsEditable)
+        {
+            <div class="faed-panel">
+                <h2 class="faed-panel__title">Submit for review</h2>
+                <p class="faed-panel__hint">
+                    Once submitted you cannot edit the application until an administrator makes a decision.
+                </p>
+                <form asp-action="Submit" method="post">
+                    <button type="submit" class="faed-btn faed-btn--primary">Submit application</button>
+                    @if (app.Documents.Count == 0)
+                    {
+                        <p class="faed-field__hint">You must attach at least one document before your application can be submitted.</p>
+                    }
+                </form>
+            </div>
+        }
+    }
+</div>

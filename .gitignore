@@ -59,6 +59,7 @@ Thumbs.db
 ## Uploaded/local private files
 uploads/
 private-storage/
+App_Data/
 
 ## Local packaging / historical source material
 reference/

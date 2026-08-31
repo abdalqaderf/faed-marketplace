@@ -1,3 +1,5 @@
+using Faed.Application.Abstractions;
+using Faed.Domain.Entities;
 using Faed.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +11,14 @@ namespace Faed.Infrastructure.Persistence;
 /// Identity shares this context. Marketplace aggregates are added in later phases.
 /// </summary>
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : IdentityDbContext<ApplicationUser>(options)
+    : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext
 {
+    public DbSet<MerchantProfile> MerchantProfiles => Set<MerchantProfile>();
+
+    public DbSet<MerchantVerificationDocument> MerchantVerificationDocuments => Set<MerchantVerificationDocument>();
+
+    public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
