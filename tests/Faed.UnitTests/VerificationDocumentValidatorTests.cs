@@ -1,6 +1,6 @@
 using System.Text;
-using Faed.Application.Merchants;
-using Faed.Domain.Enums;
+using Faed.Web.Services.Merchants;
+using Faed.Web.Models.Enums;
 
 namespace Faed.UnitTests;
 

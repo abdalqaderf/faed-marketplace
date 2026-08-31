@@ -8,16 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Single-project organized MVC: entities, EF Core, services, migrations and the
+         web host all live in this one project (docs/06-ARCHITECTURE.md). -->
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.11" />
-    <!-- EF Core design-time only, so `dotnet ef` can use Faed.Web as the startup project.
-         The provider (SqlServer) and migrations live in Faed.Infrastructure. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Faed.Application\Faed.Application.csproj" />
-    <ProjectReference Include="..\Faed.Infrastructure\Faed.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

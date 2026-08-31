@@ -1,5 +1,5 @@
-using Faed.Domain.Identity;
-using Faed.Infrastructure.Time;
+using Faed.Web.Models.Identity;
+using Faed.Web.Services;
 
 namespace Faed.UnitTests;
 

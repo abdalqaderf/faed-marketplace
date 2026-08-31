@@ -1,6 +1,6 @@
-using Faed.Domain.Entities;
-using Faed.Domain.Enums;
-using Faed.Domain.Exceptions;
+using Faed.Web.Models.Entities;
+using Faed.Web.Models.Enums;
+using Faed.Web.Models;
 
 namespace Faed.UnitTests;
 

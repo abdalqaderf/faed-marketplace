@@ -7,8 +7,8 @@ Build in order. Each phase has an exit gate.
 ## Phase 0 — Foundation
 
 Create:
-- solution/projects;
-- project references;
+- the solution with `src/Faed.Web` as its only production project;
+- `Faed.UnitTests` and `Faed.IntegrationTests`, each referencing `Faed.Web` directly;
 - configuration;
 - MVC web app;
 - Bootstrap base layout;

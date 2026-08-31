@@ -11,27 +11,68 @@ public static class TestSqlServer
 {
     private const string BaseConnectionEnvVar = "Faed_TEST_CONNECTION";
 
+    public const string PersistenceDatabaseName = "Faed_IntegrationTests";
+
+    public const string WebDatabaseName = "Faed_WebTests";
+
+    private static readonly HashSet<string> AllowedDatabaseNames =
+        new(StringComparer.Ordinal) { PersistenceDatabaseName, WebDatabaseName };
+
     private const string DefaultLocalDbConnection =
-        "Server=(localdb)\\MSSQLLocalDB;Database=Faed_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true";
+        $"Server=(localdb)\\MSSQLLocalDB;Database={PersistenceDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true";
 
     public static bool WasExplicitlyConfigured =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(BaseConnectionEnvVar));
 
-    /// <summary>A connection string for <paramref name="databaseName"/> (must read as a test DB).</summary>
+    /// <summary>
+    /// Builds a connection string for one of the hard-coded disposable databases. Any
+    /// catalog in <c>Faed_TEST_CONNECTION</c> is deliberately replaced, so an application
+    /// or production database cannot be selected through configuration.
+    /// </summary>
     public static string ConnectionStringFor(string databaseName)
     {
-        if (!databaseName.Contains("test", StringComparison.OrdinalIgnoreCase))
+        if (!AllowedDatabaseNames.Contains(databaseName))
         {
-            throw new ArgumentException("Test database names must contain 'test'.", nameof(databaseName));
+            throw new ArgumentException(
+                $"'{databaseName}' is not an allowed disposable Faed test database.",
+                nameof(databaseName));
         }
 
         var configured = Environment.GetEnvironmentVariable(BaseConnectionEnvVar);
         var baseConnection = string.IsNullOrWhiteSpace(configured) ? DefaultLocalDbConnection : configured;
 
-        return new SqlConnectionStringBuilder(baseConnection)
+        var connectionString = new SqlConnectionStringBuilder(baseConnection)
         {
             InitialCatalog = databaseName,
         }.ConnectionString;
+
+        AssertSafeTestDatabase(connectionString, databaseName);
+        return connectionString;
+    }
+
+    /// <summary>Defense-in-depth guard to call immediately before create/drop operations.</summary>
+    public static void AssertSafeTestDatabase(string connectionString, string expectedDatabaseName)
+    {
+        if (!AllowedDatabaseNames.Contains(expectedDatabaseName))
+        {
+            throw new InvalidOperationException(
+                $"'{expectedDatabaseName}' is not an allowed disposable Faed test database.");
+        }
+
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        if (!string.IsNullOrWhiteSpace(builder.AttachDBFilename))
+        {
+            throw new InvalidOperationException(
+                "Refusing destructive database operation against an attached database file.");
+        }
+
+        var actualDatabaseName = builder.InitialCatalog;
+        if (!string.Equals(actualDatabaseName, expectedDatabaseName, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Refusing destructive database operation: expected '{expectedDatabaseName}', " +
+                $"but the connection targets '{actualDatabaseName}'.");
+        }
     }
 
     public static async Task<bool> IsReachableAsync(string connectionString)

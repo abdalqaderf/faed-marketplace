@@ -125,7 +125,7 @@ The final Faed architecture requires:
 - EF Core;
 - SQL Server;
 - SQL Server LocalDB for local Windows development where appropriate;
-- migrations owned by Infrastructure after the foundation refactor;
+- one application `DbContext` and migrations under `src/Faed.Web/Data`;
 - no secrets committed.
 
 If the template generated SQLite or another provider, do **not** call the baseline "wrong" merely because the template chose it.
@@ -222,9 +222,6 @@ The target solution is:
 Faed.sln / Faed.slnx
 
 src/
-├── Faed.Domain/
-├── Faed.Application/
-├── Faed.Infrastructure/
 └── Faed.Web/
 
 tests/
@@ -232,28 +229,14 @@ tests/
 └── Faed.IntegrationTests/
 ```
 
-Create only the missing projects.
+Create only the missing test projects. `Faed.Web` is the only production project.
 
-Configure references exactly as documented:
+All production code belongs inside `src/Faed.Web`, organized into `Models`, `Data`,
+`Services`, `Controllers`, `Areas`, `ViewModels`, and `Authorization` as documented in
+`docs/06-ARCHITECTURE.md`. Do not create `Faed.Domain`, `Faed.Application`, or
+`Faed.Infrastructure` projects.
 
-```text
-Domain
-↑
-Application
-↑
-Infrastructure
-
-Web → Application + Infrastructure
-```
-
-More precisely:
-
-- `Faed.Domain`: no project dependency;
-- `Faed.Application` → `Faed.Domain`;
-- `Faed.Infrastructure` → `Faed.Application` + `Faed.Domain`;
-- `Faed.Web` → `Faed.Application` + `Faed.Infrastructure`.
-
-Tests reference only what they genuinely test.
+Both test projects reference `Faed.Web` directly.
 
 ---
 
@@ -286,12 +269,12 @@ The final foundation must use:
 
 - EF Core;
 - SQL Server;
-- one application DbContext in Infrastructure;
+- one application DbContext in `src/Faed.Web/Data`;
 - Identity sharing that DbContext where practical;
-- migrations in Infrastructure;
+- migrations in `src/Faed.Web/Data/Migrations`;
 - no committed credentials.
 
-If moving the Visual Studio-generated DbContext from Web to Infrastructure:
+If reorganizing the Visual Studio-generated DbContext inside `Faed.Web`:
 
 1. preserve Identity behavior;
 2. update namespace/project references deliberately;

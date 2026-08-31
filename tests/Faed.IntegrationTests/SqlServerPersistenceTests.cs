@@ -1,5 +1,5 @@
-using Faed.Infrastructure.Persistence;
-using Microsoft.Data.SqlClient;
+using Faed.Web.Data;
+using Faed.IntegrationTests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -14,46 +14,27 @@ namespace Faed.IntegrationTests;
 ///
 /// This test CREATES and DROPS its target database, so it uses its own
 /// <c>Faed_TEST_CONNECTION</c> environment variable (never the application's
-/// <c>ConnectionStrings__DefaultConnection</c>) and refuses to run unless the database
-/// name identifies it as a disposable test database. When that variable is not set it
-/// falls back to a local SQL Server LocalDB test database; if that is unreachable the
+/// <c>ConnectionStrings__DefaultConnection</c>). Its catalog is always replaced with the
+/// hard-coded <c>Faed_IntegrationTests</c> catalog before any create/drop operation. When
+/// that variable is not set the test falls back to LocalDB; if that is unreachable the
 /// test is skipped. When the variable IS set, an unreachable server fails the test.
 /// </summary>
 public class SqlServerPersistenceTests
 {
-    private const string TestConnectionEnvVar = "Faed_TEST_CONNECTION";
-
-    private const string DefaultLocalDbConnection =
-        "Server=(localdb)\\MSSQLLocalDB;Database=Faed_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true";
-
     [SkippableFact]
     public async Task Migrations_ApplyFromEmptyDatabase_AndIdentitySchemaIsQueryable()
     {
-        var configured = Environment.GetEnvironmentVariable(TestConnectionEnvVar);
-        var wasExplicitlyConfigured = !string.IsNullOrWhiteSpace(configured);
-        var connectionString = wasExplicitlyConfigured ? configured! : DefaultLocalDbConnection;
+        var wasExplicitlyConfigured = TestSqlServer.WasExplicitlyConfigured;
+        var connectionString = TestSqlServer.ConnectionStringFor(TestSqlServer.PersistenceDatabaseName);
+        TestSqlServer.AssertSafeTestDatabase(connectionString, TestSqlServer.PersistenceDatabaseName);
 
-        var databaseName = new SqlConnectionStringBuilder(connectionString).InitialCatalog;
-        Assert.False(
-            string.IsNullOrWhiteSpace(databaseName),
-            $"{TestConnectionEnvVar} must specify a database (Initial Catalog).");
-
-        // Hard guard: this test drops the target database. Never touch anything that is
-        // not obviously a throwaway test database.
-        if (!databaseName.Contains("test", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Refusing to run the destructive persistence test against database '{databaseName}'. " +
-                $"Point {TestConnectionEnvVar} at a database whose name contains 'test'.");
-        }
-
-        if (!await SqlServerIsReachableAsync(connectionString))
+        if (!await TestSqlServer.IsReachableAsync(connectionString))
         {
             // No explicit test database configured => environment simply lacks SQL Server.
             Skip.If(!wasExplicitlyConfigured, "No local SQL Server instance reachable for integration testing.");
 
             // An explicitly configured SQL Server that cannot be reached is a real failure.
-            Assert.Fail($"{TestConnectionEnvVar} is set but its SQL Server is not reachable.");
+            Assert.Fail("Faed_TEST_CONNECTION is set but its SQL Server is not reachable.");
         }
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -73,6 +54,7 @@ public class SqlServerPersistenceTests
         try
         {
             // Start from a genuinely empty database.
+            TestSqlServer.AssertSafeTestDatabase(connectionString, TestSqlServer.PersistenceDatabaseName);
             await context.Database.EnsureDeletedAsync();
             await context.Database.MigrateAsync();
 
@@ -84,31 +66,30 @@ public class SqlServerPersistenceTests
         }
         finally
         {
+            TestSqlServer.AssertSafeTestDatabase(connectionString, TestSqlServer.PersistenceDatabaseName);
             await context.Database.EnsureDeletedAsync();
         }
     }
 
-    private static async Task<bool> SqlServerIsReachableAsync(string connectionString)
+    [Theory]
+    [InlineData("Production_test")]
+    [InlineData("Faed")]
+    [InlineData("")]
+    public void ConnectionStringFor_RejectsEveryDatabaseOutsideTheExplicitAllowList(string databaseName)
     {
-        try
-        {
-            var builder = new SqlConnectionStringBuilder(connectionString)
-            {
-                InitialCatalog = "master",
-                ConnectTimeout = 5,
-            };
+        Assert.Throws<ArgumentException>(() => TestSqlServer.ConnectionStringFor(databaseName));
+    }
 
-            await using var connection = new SqlConnection(builder.ConnectionString);
-            await connection.OpenAsync();
-            return true;
-        }
-        catch (SqlException)
-        {
-            return false;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
+    [Fact]
+    public void DestructiveGuard_RejectsMismatchedCatalogAndAttachedDatabaseFiles()
+    {
+        Assert.Throws<InvalidOperationException>(() => TestSqlServer.AssertSafeTestDatabase(
+            "Server=(localdb)\\MSSQLLocalDB;Database=Faed;Trusted_Connection=True",
+            TestSqlServer.PersistenceDatabaseName));
+
+        Assert.Throws<InvalidOperationException>(() => TestSqlServer.AssertSafeTestDatabase(
+            $"Server=(localdb)\\MSSQLLocalDB;Database={TestSqlServer.PersistenceDatabaseName};" +
+            "AttachDbFilename=production.mdf;Trusted_Connection=True",
+            TestSqlServer.PersistenceDatabaseName));
     }
 }

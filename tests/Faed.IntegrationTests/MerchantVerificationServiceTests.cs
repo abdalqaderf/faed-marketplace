@@ -1,10 +1,9 @@
 using System.Text;
-using Faed.Application.Common;
-using Faed.Application.Merchants;
-using Faed.Domain.Enums;
-using Faed.Domain.Identity;
-using Faed.Infrastructure.Identity;
-using Faed.Infrastructure.Persistence;
+using Faed.Web.Services.Common;
+using Faed.Web.Services.Merchants;
+using Faed.Web.Models.Enums;
+using Faed.Web.Models.Identity;
+using Faed.Web.Data;
 using Faed.IntegrationTests.Support;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

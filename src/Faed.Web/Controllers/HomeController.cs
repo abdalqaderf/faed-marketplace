@@ -1,4 +1,4 @@
-using Faed.Web.Models;
+using Faed.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 

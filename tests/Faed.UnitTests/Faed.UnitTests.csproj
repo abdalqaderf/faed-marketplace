@@ -19,9 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Faed.Domain\Faed.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Faed.Application\Faed.Application.csproj" />
-    <ProjectReference Include="..\..\src\Faed.Infrastructure\Faed.Infrastructure.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\Faed.Web\Faed.Web.csproj" />
   </ItemGroup>
 
 </Project>

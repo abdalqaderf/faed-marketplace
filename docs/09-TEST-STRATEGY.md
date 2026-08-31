@@ -37,6 +37,11 @@ Do not claim concurrency is verified using:
 
 A SQL Server test database, LocalDB, CI SQL Server service, or Testcontainers-style SQL Server environment is acceptable.
 
+Any test that creates or drops a database must use a dedicated test connection setting,
+override the catalog with an explicitly allow-listed test database name, and revalidate the
+target immediately before the destructive operation. It must never read the application's
+normal connection string.
+
 ---
 
 ## 3. Must-have tests by domain

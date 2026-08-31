@@ -2,6 +2,17 @@
 
 ## Current state
 
+**Architecture restructure complete — single-project organized MVC.**
+
+The former four-project solution (`Faed.Domain` + `Faed.Application` + `Faed.Infrastructure`
++ `Faed.Web`) was consolidated into a single `src/Faed.Web` project organized by folder
+(`Models/{Entities,Enums,Identity}`, `Data/{Configurations,Migrations,Seed}`, `Services`,
+`Areas`, `ViewModels`, `Authorization`). No behavior, schema, migration IDs or tests
+changed — only namespaces and file locations moved (`Faed.Domain.* → Faed.Web.Models.*`,
+`Faed.Application.* → Faed.Web.Services.*`, `Faed.Infrastructure.Persistence.* →
+Faed.Web.Data.*`). See `docs/adr/0006-SINGLE-PROJECT-MVC.md`. `Faed.Domain`,
+`Faed.Application` and `Faed.Infrastructure` were removed from the solution and repository.
+
 **Phase 1 — Roles and Merchant Verification complete (TASK-002).**
 
 Merchant application, private verification document handling, admin approval/rejection/
@@ -10,8 +21,8 @@ policies are implemented on top of the TASK-001 foundation.
 
 **Phase 0 — Foundation complete (TASK-001).**
 
-The Visual Studio-generated `Faed.Web` baseline was audited and adopted. The clean modular
-monolith solution structure has been completed around it.
+The Visual Studio-generated `Faed.Web` baseline was audited and adopted, then the solution
+foundation was completed around it.
 
 ### Phase 0 baseline audit — result: `PASS`
 
@@ -34,9 +45,13 @@ the expected TASK-001 Phase 2–3 foundation work, not corrections to a defectiv
 
 ### Post-audit foundation work (TASK-001 Phases 2–5)
 
-EF/Identity moved from `Faed.Web` into `Faed.Infrastructure`; user type extended to
-`ApplicationUser` (`CreatedAtUtc`, `IsActive`); roles enabled and seeded idempotently;
-template migration regenerated in Infrastructure as `InitialIdentity`; `IClock` added;
+> History note: TASK-001/002 used a four-project split; that structure was later
+> consolidated into the single `src/Faed.Web` project (see "Current state" and
+> `docs/adr/0006-SINGLE-PROJECT-MVC.md`). Paths below reflect the original layout.
+
+EF/Identity moved out of the generated `Faed.Web` root into a persistence layer; user type
+extended to `ApplicationUser` (`CreatedAtUtc`, `IsActive`); roles enabled and seeded
+idempotently; template migration regenerated as `InitialIdentity`; `IClock` added;
 unit + SQL Server integration test projects added. No product/marketplace features were
 implemented.
 
@@ -64,12 +79,13 @@ Next: `tasks/TASK-003-CATALOG.md` (do not start until explicitly requested).
   private directory outside `wwwroot` (`{ContentRoot}/App_Data/private-storage` by
   default), generates the object key server-side, validates keys on read against path
   traversal.
-- Application layer: `IMerchantVerificationService` with use-case methods, a `Result`
+- Service layer: `IMerchantVerificationService` with use-case methods, a `Result`
   pattern (Validation / NotFound / Forbidden / Conflict), server-side upload validation
   (size, content type, extension), and `IApplicationDbContext` as the persistence seam
   (not a generic repository).
 - Authorization policies `ApprovedMerchant` (DB-checked verification state, not a role)
-  and `AdminOnly`, plus policy/role name constants in `Faed.Domain`.
+  and `AdminOnly`, plus policy name constants (`Authorization/FaedPolicies`) and role name
+  constants (`Models/Identity/FaedRoles`).
 - Merchant self-service UI (`/Merchant/Verification`) and admin queue/detail/decision UI
   (`/Admin/MerchantVerification`) using a new Faed design-token CSS layer.
 - The `Merchant` role is granted on approval for nav/UI convenience; selling capability
@@ -116,49 +132,63 @@ belong to fulfilment phases and were not modelled.
 ```text
 Faed.slnx
 src/
-├── Faed.Domain/          # FaedRoles, FaedPolicies, Entities (MerchantProfile,
-│                         # MerchantVerificationDocument, AdminActionLog), Enums, DomainException
-├── Faed.Application/     # Abstractions (IApplicationDbContext, IFileStorage, IUserRoleService,
-│                         # IClock), Common/Result, Merchants/* (IMerchantVerificationService),
-│                         # DependencyInjection
-├── Faed.Infrastructure/  # ApplicationDbContext (+ IApplicationDbContext), EF configurations,
-│                         # Storage/LocalFileStorage, Identity role/admin seeder + UserRoleService,
-│                         # SystemClock, EF migrations, DI composition
-└── Faed.Web/             # MVC + Identity UI; Areas/Merchant + Areas/Admin, Authorization
-│                         # (ApprovedMerchant handler), Rendering helpers, wwwroot/css/faed.css
+└── Faed.Web/
+    ├── Models/
+    │   ├── Entities/       # MerchantProfile, MerchantVerificationDocument, AdminActionLog
+    │   ├── Enums/          # MerchantVerificationStatus, *DocumentType, AdminActionType
+    │   ├── Identity/       # ApplicationUser, FaedRoles
+    │   └── DomainException.cs
+    ├── Data/
+    │   ├── ApplicationDbContext.cs   # + IApplicationDbContext, shared with Identity
+    │   ├── Configurations/           # IEntityTypeConfiguration<T> for each entity
+    │   ├── Migrations/               # EF Core migrations
+    │   └── Seed/IdentityDataSeeder.cs
+    ├── Services/
+    │   ├── Abstractions/   # IApplicationDbContext, IFileStorage, IUserRoleService, IClock
+    │   ├── Common/Result.cs
+    │   ├── Merchants/      # IMerchantVerificationService + implementation, models, validator, slug
+    │   ├── Storage/        # LocalFileStorage
+    │   ├── UserRoleService.cs
+    │   └── SystemClock.cs
+    ├── Authorization/      # FaedPolicies, ApprovedMerchant handler, ClaimsPrincipal ext.
+    ├── Areas/{Admin,Merchant,Identity}/
+    ├── ViewModels/         # ErrorViewModel (area-local view models under each Area/ViewModels)
+    ├── Rendering/          # AmmanTime, MerchantStatusDisplay (view-only helpers)
+    ├── DependencyInjection.cs   # AddFaedPlatform composition helper
+    └── Program.cs
 tests/
 ├── Faed.UnitTests/         # MerchantProfile state machine, upload validator, slug, foundation
 └── Faed.IntegrationTests/  # SQL Server persistence; merchant-verification service + MVC
                             # authorization (WebApplicationFactory + test auth scheme)
 ```
 
-Dependencies: Domain ← Application ← Infrastructure; Web → Application + Infrastructure.
-`Faed.Application` now references `Microsoft.EntityFrameworkCore` (for the DbSet-typed
-`IApplicationDbContext` seam) but no database provider.
+Both test projects reference `src/Faed.Web` directly. There are no other production
+projects and no project-reference layering.
 
 ## Migrations
 
-- `20260831174908_InitialIdentity` (Faed.Infrastructure) — ASP.NET Core Identity schema
-  for `ApplicationUser` (adds `CreatedAtUtc` default `SYSUTCDATETIME()`, `IsActive` default
-  `true`). Replaces the Visual Studio template's `00000000000000_CreateIdentitySchema`.
-- `AddMerchantVerification` (Faed.Infrastructure) — `MerchantProfiles` (unique `UserId`,
-  unique `PublicSlug`, indexed `VerificationStatus`; enum stored as text; `rowversion`
-  concurrency token; restricted delete from `AspNetUsers`), `MerchantVerificationDocuments`
-  (cascade from profile), `AdminActionLogs`. All Guid keys are `ValueGeneratedNever`
-  (assigned by the domain constructor). `dotnet ef migrations has-pending-model-changes`
-  reports clean.
+- `20260831174908_InitialIdentity` (`src/Faed.Web/Data/Migrations`) — ASP.NET Core Identity
+  schema for `ApplicationUser` (adds `CreatedAtUtc` default `SYSUTCDATETIME()`, `IsActive`
+  default `true`). Replaces the Visual Studio template's `00000000000000_CreateIdentitySchema`.
+- `AddMerchantVerification` (`src/Faed.Web/Data/Migrations`) — `MerchantProfiles` (unique
+  `UserId`, unique `PublicSlug`, indexed `VerificationStatus`; enum stored as text;
+  `rowversion` concurrency token; restricted delete from `AspNetUsers`),
+  `MerchantVerificationDocuments` (cascade from profile), `AdminActionLogs`. All Guid keys
+  are `ValueGeneratedNever` (assigned by the entity constructor). Migration IDs are
+  unchanged by the restructure; `dotnet ef migrations has-pending-model-changes` reports
+  clean.
 
 ## Persistence
 
-- One application `DbContext` (`ApplicationDbContext`) in `Faed.Infrastructure`, shared
-  with Identity and exposed to the application layer through `IApplicationDbContext`.
+- One application `DbContext` (`ApplicationDbContext`) in `src/Faed.Web/Data`, shared
+  with Identity and exposed to services through `IApplicationDbContext`.
 - SQL Server; local development uses LocalDB database `Faed` (non-secret connection
   string in `appsettings.json`).
 - EF Core `rowversion` concurrency is introduced with the inventory model in a later task.
 
 ## Private file storage
 
-- `IFileStorage` (Application) with `LocalFileStorage` (Infrastructure) for development.
+- `IFileStorage` (`Services/Abstractions`) with `LocalFileStorage` (`Services/Storage`) for development.
 - Root defaults to `{ContentRoot}/App_Data/private-storage` (gitignored) or
   `FileStorage:LocalRootPath` when set; startup fails if the resolved root is inside the
   web root. Object keys are server-generated and validated against traversal on read.
@@ -192,13 +222,15 @@ Dependencies: Domain ← Application ← Infrastructure; Web → Application + I
 - no used goods
 - no Grade E
 
-## Validation (TASK-002)
+## Current validation (TASK-002 + single-project architecture audit)
 
 - `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
-- `dotnet test Faed.slnx` — 47 passed (30 unit, 17 integration), 0 failed. Integration
-  tests run against LocalDB test databases (`Faed_IntegrationTests`, `Faed_WebTests`)
-  which they create and drop; they skip when no SQL Server is reachable and never touch
-  the app connection string. Coverage includes byte-signature rejection of renamed
+- `dotnet test Faed.slnx` — 52 passed (30 unit, 22 integration), 0 failed. Integration
+  tests run against allow-listed LocalDB test databases (`Faed_IntegrationTests`,
+  `Faed_WebTests`) which they create and drop; they skip when no SQL Server is reachable,
+  override any configured catalog, and never touch the app connection string. Coverage
+  includes Home/Login/Register availability, seeded roles, destructive database guards,
+  byte-signature rejection of renamed
   uploads, competing-admin concurrency conflict, over-length reason rejection, and a
   non-admin POST to every decision action (Approve/Reject/Suspend/Reinstate) returning
   403 through the real MVC pipeline with no state or audit change.

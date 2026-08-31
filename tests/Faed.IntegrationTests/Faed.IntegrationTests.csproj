@@ -22,9 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Faed.Web\Faed.Web.csproj" />
-    <ProjectReference Include="..\..\src\Faed.Infrastructure\Faed.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Faed.Application\Faed.Application.csproj" />
-    <ProjectReference Include="..\..\src\Faed.Domain\Faed.Domain.csproj" />
   </ItemGroup>
 
 </Project>

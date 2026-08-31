@@ -28,7 +28,8 @@ Faed is not a general classifieds platform. Its product identity is built around
 - Entity Framework Core + SQL Server
 - ASP.NET Core Identity
 - Razor Views + Bootstrap 5 + JavaScript
-- Modular monolith / clean project boundaries
+- Single-project organized MVC: all app code in `src/Faed.Web`
+  (`Models`, `Data`, `Services`, `Areas`, `ViewModels`) — see `docs/adr/0006-SINGLE-PROJECT-MVC.md`
 - SQL Server `rowversion` for stock concurrency
 
 ## Local development
@@ -41,11 +42,9 @@ Visual Studio or the standalone SqlLocalDB installer).
 dotnet build Faed.slnx
 
 # create / update the local database
-# (migrations live in Faed.Infrastructure; the connection string is resolved from the
-#  Faed.Web startup project, i.e. appsettings + user secrets + environment variables)
-dotnet ef database update \
-  --project src/Faed.Infrastructure \
-  --startup-project src/Faed.Web
+# (migrations live in src/Faed.Web/Data/Migrations; the connection string is resolved
+#  from appsettings + user secrets + environment variables)
+dotnet ef database update --project src/Faed.Web
 
 # run the web app
 dotnet run --project src/Faed.Web
@@ -62,9 +61,11 @@ the app and the `dotnet ef` command above honour the override because they share
 `Faed.Web` configuration. The Identity roles (`Buyer`, `Merchant`, `Admin`) are seeded
 automatically and idempotently on startup.
 
-The SQL Server integration test creates and drops its own database. It uses a separate
-`Faed_TEST_CONNECTION` environment variable (default: LocalDB `Faed_IntegrationTests`) and
-never the application connection string.
+The SQL Server integration tests create and drop only the explicitly allow-listed databases
+`Faed_IntegrationTests` and `Faed_WebTests`. They use a separate `Faed_TEST_CONNECTION`
+environment variable for the server/credentials (default: LocalDB), replace any configured
+catalog with one of those fixed test catalogs, and never read the application connection
+string.
 
 ## Read before coding
 

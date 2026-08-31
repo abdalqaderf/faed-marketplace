@@ -11,6 +11,23 @@ Before doing any work:
 
 Do not treat this file as a separate product specification.
 
+## Architecture
+
+Faed uses a **single-project organized ASP.NET Core MVC** architecture. All production
+application code lives inside `src/Faed.Web`:
+
+- `Models/Entities` for persisted entities, `Models/Enums` for enums
+- `Data` for EF Core, `DbContext`, configurations, migrations, and seed data
+- `Services` for business logic (may use `ApplicationDbContext` directly)
+- `Controllers` for public MVC endpoints
+- `Areas/Admin`, `Areas/Merchant`, `Areas/Buyer` for role-specific functionality
+- `ViewModels` for UI/input models
+
+Do not create separate Domain, Application, or Infrastructure projects. Do not introduce
+Repository Pattern, UnitOfWork, CQRS, or MediatR unless a future requirement explicitly
+justifies it. Controllers must remain thin. See `AGENTS.md` section 5 and
+`docs/adr/0006-SINGLE-PROJECT-MVC.md`.
+
 
 ## Project skills
 

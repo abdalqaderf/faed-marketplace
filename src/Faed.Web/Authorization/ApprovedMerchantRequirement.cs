@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Faed.Application.Merchants;
+using Faed.Web.Services.Merchants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Faed.Web.Authorization;

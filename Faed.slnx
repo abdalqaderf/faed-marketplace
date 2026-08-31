@@ -1,8 +1,5 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Faed.Domain/Faed.Domain.csproj" />
-    <Project Path="src/Faed.Application/Faed.Application.csproj" />
-    <Project Path="src/Faed.Infrastructure/Faed.Infrastructure.csproj" />
     <Project Path="src/Faed.Web/Faed.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

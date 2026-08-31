@@ -39,7 +39,12 @@ If the baseline is fundamentally correct but needs a safe architectural correcti
 
 Execute **TASK-001 only**.
 
-Preserve working generated MVC/Identity behavior while completing the documented clean modular monolith structure around the existing Web project.
+Preserve working generated MVC/Identity behavior while completing the documented solution
+foundation.
+
+> Note: Faed now uses a **single-project organized ASP.NET Core MVC** architecture — all
+> code lives in `src/Faed.Web` and there are no separate Domain/Application/Infrastructure
+> projects. See `AGENTS.md` section 5 and `docs/adr/0006-SINGLE-PROJECT-MVC.md`.
 
 ## Required completion response
 

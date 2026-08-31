@@ -2,6 +2,29 @@
 
 These conventions exist to keep agent-generated code consistent.
 
+## Project organization
+
+Faed uses a single-project organized ASP.NET Core MVC architecture. All production
+application code lives inside `src/Faed.Web` (see `docs/adr/0006-SINGLE-PROJECT-MVC.md`).
+Do not create separate Domain, Application, or Infrastructure projects.
+
+- `Models/Entities` — persisted entities. `Models/Enums` — enums. `Models/Identity` —
+  `ApplicationUser` and role name constants.
+- `Data` — EF Core: `ApplicationDbContext`, `Configurations/`, `Migrations/`, `Seed/`.
+- `Services` — business logic; use-case-oriented methods; may use `ApplicationDbContext`
+  directly. `Services/Abstractions` holds interfaces for external services.
+- `Controllers` — public MVC endpoints. `Areas/Admin`, `Areas/Merchant`, `Areas/Buyer` —
+  role-specific functionality.
+- `ViewModels` (and per-area `ViewModels/` folders) — UI/input models. Keep entities
+  separate from ViewModels.
+- `Authorization` — policy name constants and authorization handlers.
+
+Namespaces mirror the folder path (`Faed.Web.Models.Entities`, `Faed.Web.Services.Merchants`,
+`Faed.Web.Data`, …).
+
+Do not introduce Repository Pattern, UnitOfWork, CQRS, or MediatR unless a future
+requirement explicitly justifies it.
+
 ## C#
 
 - File-scoped namespaces.

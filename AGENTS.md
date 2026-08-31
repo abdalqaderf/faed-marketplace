@@ -137,43 +137,60 @@ Use:
 - email provider behind an interface
 - `Git` / `GitHub`
 
-Architecture: **pragmatic clean modular monolith**, not microservices.
+Architecture: **single-project organized ASP.NET Core MVC**, not microservices and not
+a multi-project Domain/Application/Infrastructure split (see `docs/adr/0006-SINGLE-PROJECT-MVC.md`).
+
+Faed uses a single-project organized ASP.NET Core MVC architecture.
+
+All production application code lives inside `src/Faed.Web`.
+
+Do not create separate Domain, Application, or Infrastructure projects.
+
+Use:
+- `Models/Entities` for persisted entities
+- `Models/Enums` for enums
+- `Data` for EF Core, `DbContext`, configurations, migrations, and seed data
+- `Services` for business logic
+- `Controllers` for public MVC endpoints
+- `Areas/Admin`, `Areas/Merchant`, and `Areas/Buyer` for role-specific functionality
+- `ViewModels` for UI/input models
 
 Target solution structure:
 
 ```text
-Faed.sln
+Faed.slnx
 src/
-  Faed.Domain/
-  Faed.Application/
-  Faed.Infrastructure/
   Faed.Web/
+    Areas/{Admin,Merchant,Buyer,Identity}/
+    Controllers/
+    Models/{Entities,Enums,Identity}/
+    ViewModels/
+    Data/{ApplicationDbContext.cs,Configurations/,Migrations/,Seed/}
+    Services/
+    Authorization/
+    Views/
+    wwwroot/
 tests/
   Faed.UnitTests/
   Faed.IntegrationTests/
 ```
 
-Dependency direction:
+The tests reference `Faed.Web` directly.
 
-```text
-Domain          -> no project dependency
-Application     -> Domain
-Infrastructure  -> Application + Domain
-Web             -> Application + Infrastructure
-Tests           -> projects under test
-```
+Use one EF Core application `DbContext`. Migrations live in `src/Faed.Web/Data/Migrations`.
 
-Use one EF Core application `DbContext`.
+Controllers must remain thin. Services may use `ApplicationDbContext` directly.
 
 Do not introduce:
 - microservices;
+- Repository Pattern / generic repository abstractions;
+- UnitOfWork;
 - MediatR;
-- generic repository abstractions;
+- CQRS infrastructure;
 - event buses;
 - Redis;
 - Elasticsearch;
-- CQRS infrastructure;
-unless an actual requirement appears.
+unless a future requirement explicitly justifies it.
 
 ---
 
@@ -182,7 +199,7 @@ unless an actual requirement appears.
 - Nullable reference types enabled.
 - Async I/O throughout.
 - Thin controllers.
-- Business logic in application/domain services.
+- Business logic in `Services` (not in controllers or Razor views).
 - Razor views receive ViewModels, never EF entities directly.
 - Use `decimal`, never floating point, for money.
 - Configure money columns as `decimal(18,3)`.

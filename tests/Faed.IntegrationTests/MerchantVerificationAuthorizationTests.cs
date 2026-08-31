@@ -1,11 +1,10 @@
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using Faed.Application.Merchants;
-using Faed.Domain.Enums;
-using Faed.Domain.Identity;
-using Faed.Infrastructure.Identity;
-using Faed.Infrastructure.Persistence;
+using Faed.Web.Services.Merchants;
+using Faed.Web.Models.Enums;
+using Faed.Web.Models.Identity;
+using Faed.Web.Data;
 using Faed.IntegrationTests.Support;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -25,6 +24,24 @@ public sealed class MerchantVerificationAuthorizationTests(FaedWebApplicationFac
     {
         AllowAutoRedirect = false,
     });
+
+    [SkippableFact]
+    public async Task Foundation_HomeIdentityPagesAndSeededRoles_RemainAvailable()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        var client = CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Identity/Account/Login")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Identity/Account/Register")).StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        foreach (var role in FaedRoles.All)
+        {
+            Assert.True(await roles.RoleExistsAsync(role), $"Expected seeded Identity role '{role}'.");
+        }
+    }
 
     [SkippableFact]
     public async Task AdminQueue_Anonymous_IsChallenged()

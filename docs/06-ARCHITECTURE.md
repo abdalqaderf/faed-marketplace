@@ -2,95 +2,85 @@
 
 ## 1. Style
 
-Use a **pragmatic clean modular monolith**.
+Use a **single-project organized ASP.NET Core MVC** application with a service layer,
+EF Core, Areas and ViewModels.
+
+Faed uses a single-project organized ASP.NET Core MVC architecture. All production
+application code lives inside `src/Faed.Web`. Do not create separate Domain, Application,
+or Infrastructure projects (see `docs/adr/0006-SINGLE-PROJECT-MVC.md`).
 
 Why:
 - one deployable application is appropriate for MVP;
-- clear domain boundaries improve maintainability;
+- one project keeps navigation, refactoring and build simple;
+- folder boundaries (`Models`, `Data`, `Services`, `Areas`, `ViewModels`) keep the code
+  organized without cross-project ceremony;
 - portfolio/academic quality remains high;
-- avoids microservice complexity.
+- avoids microservice and multi-project complexity.
 
 ---
 
 ## 2. Solution structure
 
 ```text
-Faed.sln
+Faed.slnx
 
 src/
-├── Faed.Domain/
-│   ├── Entities/
-│   ├── Enums/
-│   ├── ValueObjects/
-│   └── Exceptions/
-│
-├── Faed.Application/
-│   ├── Abstractions/
-│   ├── Merchants/
-│   ├── Catalog/
-│   ├── Listings/
-│   ├── Inventory/
-│   ├── Orders/
-│   ├── B2B/
-│   ├── Reviews/
-│   ├── Disputes/
-│   └── Analytics/
-│
-├── Faed.Infrastructure/
-│   ├── Persistence/
-│   ├── Identity/
-│   ├── Storage/
-│   ├── Email/
-│   ├── BackgroundJobs/
-│   └── DependencyInjection.cs
-│
 └── Faed.Web/
-    ├── Controllers/
     ├── Areas/
-    │   ├── Buyer/
-    │   ├── Merchant/
-    │   └── Admin/
-    ├── ViewModels/
+    │   ├── Admin/          # admin-only screens (Controllers/, ViewModels/, Views/)
+    │   ├── Merchant/       # merchant-only screens
+    │   ├── Buyer/          # buyer-only screens
+    │   └── Identity/       # ASP.NET Core Identity UI
+    ├── Controllers/        # public MVC endpoints
+    ├── Models/
+    │   ├── Entities/       # persisted entities
+    │   ├── Enums/          # workflow/state enums
+    │   └── Identity/       # ApplicationUser, role name constants
+    ├── ViewModels/         # UI/input models (never EF entities)
+    ├── Data/
+    │   ├── ApplicationDbContext.cs
+    │   ├── Configurations/ # IEntityTypeConfiguration<T>
+    │   ├── Migrations/     # EF Core migrations
+    │   └── Seed/           # idempotent seed logic
+    ├── Services/           # business logic; may use ApplicationDbContext directly
+    │   ├── Abstractions/   # IFileStorage, IClock, IUserRoleService, IApplicationDbContext
+    │   └── Storage/        # IFileStorage implementations
+    ├── Authorization/      # policy names, authorization handlers
+    ├── Rendering/          # view-only display helpers
     ├── Views/
     ├── wwwroot/
+    ├── DependencyInjection.cs   # composition root helpers
     └── Program.cs
 
 tests/
-├── Faed.UnitTests/
-└── Faed.IntegrationTests/
+├── Faed.UnitTests/         # references Faed.Web
+└── Faed.IntegrationTests/  # references Faed.Web
 ```
 
-Use Areas to keep role-specific MVC screens organized.
+Use Areas to keep role-specific MVC screens organized. Role-specific functionality belongs
+in `Areas/Admin`, `Areas/Merchant`, and `Areas/Buyer`; public endpoints stay in
+`Controllers`.
 
 ---
 
-## 3. Dependency rules
+## 3. Layering rules
 
-`Domain`:
-- no EF;
-- no ASP.NET;
-- no Infrastructure dependency.
+There are no project references to enforce layering; keep the separation by folder and by
+discipline instead.
 
-`Application`:
-- use cases/business orchestration;
-- depends on Domain;
-- defines interfaces for external services.
-
-`Infrastructure`:
-- EF Core;
-- Identity;
-- SQL Server;
-- file storage;
-- email;
-- hosted/background services.
-
-`Web`:
-- MVC controllers;
-- ViewModels;
-- Razor views;
-- HTTP concerns;
-- authentication wiring;
-- dependency injection composition.
+- `Models/Entities` and `Models/Enums`: persisted state and workflow enums. No EF
+  attributes needed beyond what a plain POCO requires; mapping lives in
+  `Data/Configurations`.
+- `Data`: EF Core, `ApplicationDbContext`, entity configurations, migrations and seed
+  logic. Identity shares this `DbContext`.
+- `Services`: use-case-oriented business logic. Services may use `ApplicationDbContext`
+  directly (or the `IApplicationDbContext` seam) and depend on abstractions such as
+  `IFileStorage` / `IClock`.
+- `Controllers` / Areas: HTTP concerns only — validate input, call a service, translate the
+  result to a View/Redirect/Error. Keep controllers thin.
+- `ViewModels`: input models for POST and display models for views. Never render an EF
+  entity directly to Razor.
+- `Program.cs` / `DependencyInjection.cs`: composition root and HTTP pipeline.
 
 ---
 
@@ -108,11 +98,12 @@ Prefer purposeful application services/queries.
 
 ## 5. Persistence
 
-One application DbContext in Infrastructure.
+One application `DbContext` (`ApplicationDbContext`) in `src/Faed.Web/Data`.
 
-Identity may share the same DbContext if practical.
+Identity shares the same `DbContext`.
 
-Migrations live in Infrastructure.
+Migrations live in `src/Faed.Web/Data/Migrations`. Run `dotnet ef` with
+`--project src/Faed.Web` (it is both the migrations project and the startup project).
 
 Schema changes:
 - model + migration in same change;
@@ -149,13 +140,14 @@ Do not add distributed job infrastructure unless deployment requirements demand 
 
 ## 8. External services
 
-Define interfaces in Application, implement in Infrastructure:
+Define interfaces in `Services/Abstractions`, implement them in `Services` (for example
+`Services/Storage`):
 
 - `IFileStorage`
 - `IEmailSender`
 - `IClock` (recommended for testable expiry logic)
 
-Do not couple domain code to a specific cloud storage provider.
+Do not couple entities or services to a specific cloud storage provider.
 
 ---
 

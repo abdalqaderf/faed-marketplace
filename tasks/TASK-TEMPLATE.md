@@ -6,6 +6,12 @@ State one bounded implementation outcome.
 ## Read first
 List relevant specification/ADR files.
 
+## Architecture
+Single-project organized ASP.NET Core MVC — all code in `src/Faed.Web`
+(`Models/`, `Data/`, `Services/`, `Controllers/`, `Areas/`, `ViewModels/`).
+No Domain/Application/Infrastructure projects; no Repository/UnitOfWork/CQRS/MediatR.
+See `AGENTS.md` section 5 and `docs/adr/0006-SINGLE-PROJECT-MVC.md`.
+
 ## In scope
 - ...
 

@@ -1,5 +1,5 @@
-using Faed.Application.Abstractions;
-using Faed.Infrastructure.Persistence;
+using Faed.Web.Services.Abstractions;
+using Faed.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,7 +19,7 @@ namespace Faed.IntegrationTests.Support;
 /// </summary>
 public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private const string DatabaseName = "Faed_WebTests";
+    private const string DatabaseName = TestSqlServer.WebDatabaseName;
 
     public string ConnectionString { get; } = TestSqlServer.ConnectionStringFor(DatabaseName);
 
@@ -47,6 +47,7 @@ public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, 
             .Options;
 
         await using var context = new ApplicationDbContext(options);
+        TestSqlServer.AssertSafeTestDatabase(ConnectionString, DatabaseName);
         await context.Database.EnsureDeletedAsync();
         await context.Database.MigrateAsync();
         DatabaseReady = true;
@@ -90,6 +91,7 @@ public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, 
     {
         if (disposing && DatabaseReady)
         {
+            TestSqlServer.AssertSafeTestDatabase(ConnectionString, DatabaseName);
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseSqlServer(ConnectionString)
                 .Options;

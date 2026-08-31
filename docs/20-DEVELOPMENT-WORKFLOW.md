@@ -28,11 +28,14 @@ Update `PROJECT_STATUS.md`:
 
 ## Database workflow
 
+All EF Core code (entities in `Models/`, `ApplicationDbContext`, configurations, migrations,
+seed) lives in `src/Faed.Web`. Run `dotnet ef` with `--project src/Faed.Web`.
+
 For every schema change:
-1. update entity/configuration;
-2. add migration;
+1. update entity/configuration (`Models/` + `Data/Configurations/`);
+2. add migration into `Data/Migrations/` (`dotnet ef migrations add <Name> --project src/Faed.Web`);
 3. inspect generated migration;
-4. apply to clean/dev database;
+4. apply to clean/dev database (`dotnet ef database update --project src/Faed.Web`);
 5. run relevant tests;
 6. never edit production schema manually without a migration.
 

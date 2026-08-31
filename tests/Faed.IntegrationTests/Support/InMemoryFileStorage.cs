@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Faed.Application.Abstractions;
+using Faed.Web.Services.Abstractions;
 
 namespace Faed.IntegrationTests.Support;
 

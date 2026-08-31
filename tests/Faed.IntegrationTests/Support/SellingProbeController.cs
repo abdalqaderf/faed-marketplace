@@ -1,4 +1,4 @@
-using Faed.Domain.Authorization;
+using Faed.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

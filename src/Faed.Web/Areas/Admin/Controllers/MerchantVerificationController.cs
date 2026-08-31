@@ -1,7 +1,6 @@
-using Faed.Application.Common;
-using Faed.Application.Merchants;
-using Faed.Domain.Authorization;
-using Faed.Web.Areas.Admin.Models;
+using Faed.Web.Services.Common;
+using Faed.Web.Services.Merchants;
+using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

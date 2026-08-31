@@ -1,4 +1,4 @@
-using Faed.Domain.Enums;
+using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Rendering;
 

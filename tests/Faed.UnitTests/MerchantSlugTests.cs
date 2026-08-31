@@ -1,4 +1,4 @@
-using Faed.Application.Merchants;
+using Faed.Web.Services.Merchants;
 
 namespace Faed.UnitTests;
 

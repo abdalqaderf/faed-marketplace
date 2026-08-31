@@ -1,11 +1,9 @@
-using Faed.Application;
-using Faed.Domain.Authorization;
-using Faed.Domain.Identity;
-using Faed.Infrastructure;
-using Faed.Infrastructure.Identity;
-using Faed.Infrastructure.Persistence;
-using Faed.Application.Merchants;
+using Faed.Web;
 using Faed.Web.Authorization;
+using Faed.Web.Data;
+using Faed.Web.Data.Seed;
+using Faed.Web.Models.Identity;
+using Faed.Web.Services.Merchants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -13,9 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Application use cases + persistence/supporting infrastructure.
-builder.Services.AddApplication(builder.Configuration);
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+// Business services, EF Core persistence and supporting infrastructure (single project).
+builder.Services.AddFaedPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Keep the multipart upload ceiling in step with the configured document size limit
