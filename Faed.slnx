@@ -1,3 +1,3 @@
 <Solution>
-  <Project Path="../Faed.Web/Faed.Web.csproj" />
+  <Project Path="src/Faed.Web/Faed.Web.csproj" />
 </Solution>
