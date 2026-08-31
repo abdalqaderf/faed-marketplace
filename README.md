@@ -31,6 +31,41 @@ Faed is not a general classifieds platform. Its product identity is built around
 - Modular monolith / clean project boundaries
 - SQL Server `rowversion` for stock concurrency
 
+## Local development
+
+Prerequisites: .NET 10 SDK and SQL Server LocalDB (`(localdb)\MSSQLLocalDB`, installed with
+Visual Studio or the standalone SqlLocalDB installer).
+
+```bash
+# restore + build the whole solution
+dotnet build Faed.slnx
+
+# create / update the local database
+# (migrations live in Faed.Infrastructure; the connection string is resolved from the
+#  Faed.Web startup project, i.e. appsettings + user secrets + environment variables)
+dotnet ef database update \
+  --project src/Faed.Infrastructure \
+  --startup-project src/Faed.Web
+
+# run the web app
+dotnet run --project src/Faed.Web
+
+# run all tests (unit + SQL Server integration)
+dotnet test Faed.slnx
+```
+
+The development connection string in `src/Faed.Web/appsettings.json` targets a local
+LocalDB database named `Faed` and contains no secrets. Override it with user secrets
+(`dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<value>"` in
+`src/Faed.Web`) or the `ConnectionStrings__DefaultConnection` environment variable — both
+the app and the `dotnet ef` command above honour the override because they share the
+`Faed.Web` configuration. The Identity roles (`Buyer`, `Merchant`, `Admin`) are seeded
+automatically and idempotently on startup.
+
+The SQL Server integration test creates and drops its own database. It uses a separate
+`Faed_TEST_CONNECTION` environment variable (default: LocalDB `Faed_IntegrationTests`) and
+never the application connection string.
+
 ## Read before coding
 
 1. `AGENTS.md` — engineering contract and precedence.

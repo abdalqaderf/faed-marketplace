@@ -1,17 +1,20 @@
-using Faed.Web.Data;
+using Faed.Infrastructure;
+using Faed.Infrastructure.Identity;
+using Faed.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// Persistence + supporting infrastructure (EF Core SQL Server, IClock).
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+// Identity: Individual Accounts baseline, extended to ApplicationUser and Faed roles.
+builder.Services
+    .AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -31,6 +34,7 @@ else
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -42,5 +46,8 @@ app.MapControllerRoute(
 
 app.MapRazorPages()
    .WithStaticAssets();
+
+// Seed the fixed Identity roles (idempotent).
+await IdentityDataSeeder.SeedRolesAsync(app.Services);
 
 app.Run();
