@@ -3,6 +3,7 @@ using Faed.Web.Models.Entities;
 using Faed.Web.Models.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Faed.Web.Data;
 
@@ -26,6 +27,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DiscountReason> DiscountReasons => Set<DiscountReason>();
 
     public DbSet<Brand> Brands => Set<Brand>();
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+        Database.BeginTransactionAsync(cancellationToken);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

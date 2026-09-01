@@ -5,6 +5,7 @@ using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models;
 using Faed.Web.Models.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,9 @@ public sealed class MerchantVerificationService(
 {
     private const string VerificationContainer = "merchant-verification";
     private const string MerchantProfileTargetType = nameof(MerchantProfile);
+    private const string MerchantProfilePublicSlugIndex = "IX_MerchantProfiles_PublicSlug";
+    private const string MerchantProfileUserIdIndex = "IX_MerchantProfiles_UserId";
+    private const int MaxCreateAttempts = 3;
 
     private readonly MerchantVerificationOptions _options = options.Value;
 
@@ -52,12 +56,16 @@ public sealed class MerchantVerificationService(
 
         if (profile is null)
         {
-            var slug = await GenerateUniqueSlugAsync(businessName, cancellationToken);
-            profile = new MerchantProfile(userId, businessName, slug, now);
-            profile.UpdateBusinessDetails(businessName, contactEmail, contactPhone, now);
-            db.MerchantProfiles.Add(profile);
+            return await CreateDraftAsync(
+                userId,
+                businessName,
+                contactEmail,
+                contactPhone,
+                now,
+                cancellationToken);
         }
-        else if (profile.IsEditable)
+
+        if (profile.IsEditable)
         {
             profile.UpdateBusinessDetails(businessName, contactEmail, contactPhone, now);
         }
@@ -67,8 +75,74 @@ public sealed class MerchantVerificationService(
                 $"This merchant application is {profile.VerificationStatus} and can no longer be edited.");
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<Guid>.Conflict("Your application changed in another tab. Reload it and try again.");
+        }
+
         return Result<Guid>.Success(profile.Id);
+    }
+
+    private async Task<Result<Guid>> CreateDraftAsync(
+        string userId,
+        string businessName,
+        string? contactEmail,
+        string? contactPhone,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= MaxCreateAttempts; attempt++)
+        {
+            var slug = await GenerateUniqueSlugAsync(businessName, cancellationToken);
+            var profile = new MerchantProfile(userId, businessName, slug, now);
+            profile.UpdateBusinessDetails(businessName, contactEmail, contactPhone, now);
+            db.MerchantProfiles.Add(profile);
+
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return Result<Guid>.Success(profile.Id);
+            }
+            catch (DbUpdateException ex) when (IsUniqueIndexViolation(ex, MerchantProfileUserIdIndex))
+            {
+                // A second request for this user's first application committed after the
+                // initial lookup. Remove our failed Added entity before checking the winner.
+                db.MerchantProfiles.Remove(profile);
+                var existing = await db.MerchantProfiles
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+
+                if (existing is null)
+                {
+                    // The named unique index could not have rejected this row without a
+                    // conflicting value. Preserve unexpected provider behaviour for diagnosis.
+                    throw;
+                }
+
+                return existing.IsEditable
+                    ? Result<Guid>.Conflict(
+                        "Your application was created in another tab. Reload it and try again.")
+                    : Result<Guid>.Conflict(
+                        $"This merchant application is {existing.VerificationStatus} and can no longer be edited.");
+            }
+            catch (DbUpdateException ex) when (IsUniqueIndexViolation(ex, MerchantProfilePublicSlugIndex))
+            {
+                // Slug availability is necessarily check-then-insert. Detach the failed row,
+                // regenerate against committed data, and retry within a small fixed budget.
+                db.MerchantProfiles.Remove(profile);
+                if (attempt == MaxCreateAttempts)
+                {
+                    return Result<Guid>.Conflict(
+                        "Another merchant claimed this public address while you were saving. Please try again.");
+                }
+            }
+        }
+
+        throw new InvalidOperationException("The merchant draft creation retry loop exited unexpectedly.");
     }
 
     public async Task<Result<Guid>> AddDocumentAsync(string userId, AddVerificationDocumentInput input, CancellationToken cancellationToken = default)
@@ -115,11 +189,11 @@ public sealed class MerchantVerificationService(
                 $"The file exceeds the {VerificationDocumentValidator.MaxMegabytes(_options)} MB limit.");
         }
 
-        var header = buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, VerificationDocumentValidator.SignatureProbeBytes));
-        var signature = VerificationDocumentValidator.ValidateSignature(header, input.ContentType);
-        if (signature.Failed)
+        var payload = buffer.GetBuffer().AsSpan(0, (int)buffer.Length);
+        var content = VerificationDocumentValidator.ValidatePayload(payload, input.ContentType);
+        if (content.Failed)
         {
-            return Result<Guid>.From(signature);
+            return Result<Guid>.From(content);
         }
 
         buffer.Position = 0;
@@ -174,7 +248,15 @@ public sealed class MerchantVerificationService(
             return Result.NotFound(ex.Message);
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Conflict("Your application changed in another tab. Reload it and try again.");
+        }
+
         return Result.Success();
     }
 
@@ -326,6 +408,13 @@ public sealed class MerchantVerificationService(
 
     public async Task<Result<StoredFileContent>> OpenVerificationDocumentAsync(string adminUserId, Guid documentId, CancellationToken cancellationToken = default)
     {
+        if (!await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
+        {
+            // Private verification documents are admin-only; never trust the caller alone
+            // (docs/08-SECURITY-AND-PRIVACY.md §2-3).
+            return Result<StoredFileContent>.Forbidden();
+        }
+
         var document = await db.MerchantVerificationDocuments
             .AsNoTracking()
             .SingleOrDefaultAsync(d => d.Id == documentId, cancellationToken);
@@ -364,8 +453,10 @@ public sealed class MerchantVerificationService(
         bool grantMerchantRole,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(adminUserId))
+        if (!await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
         {
+            // Defence in depth: the MVC route is already behind the AdminOnly policy, but the
+            // service contract must not trust its caller (docs/08-SECURITY-AND-PRIVACY.md §2).
             return Result.Forbidden();
         }
 
@@ -394,30 +485,32 @@ public sealed class MerchantVerificationService(
             notes,
             clock.UtcNow));
 
+        // The status change, its audit entry and the Merchant role grant either all commit
+        // or none do: a permanent role-sync failure must not leave an approved profile that
+        // can never be re-approved (AGENTS.md §7).
+        await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Another administrator decided this application first. Nothing was persisted,
-            // so the Merchant role grant below is also skipped.
-            return Result.Conflict(
-                "This application was updated by another administrator. Reload it and try again.");
-        }
 
-        if (grantMerchantRole)
-        {
-            try
+            if (grantMerchantRole)
             {
                 await userRoles.AddToRoleAsync(profile.UserId, FaedRoles.Merchant, cancellationToken);
             }
-            catch (Exception ex)
-            {
-                // The decision is already persisted and audited; a role-sync failure must
-                // not roll it back. The ApprovedMerchant policy checks status, not role.
-                logger.LogError(ex, "Failed to grant the Merchant role to user {UserId} after {Action}", profile.UserId, actionType);
-            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another administrator decided this application first. The transaction is rolled
+            // back on dispose, so nothing was persisted.
+            return Result.Conflict(
+                "This application was updated by another administrator. Reload it and try again.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to complete {Action} on merchant {MerchantId}; the change was rolled back", actionType, profile.Id);
+            return Result.Conflict("The decision could not be completed. Reload the application and try again.");
         }
 
         logger.LogInformation("Admin {AdminId} performed {Action} on merchant {MerchantId}", adminUserId, actionType, profile.Id);
@@ -452,6 +545,28 @@ public sealed class MerchantVerificationService(
         }
 
         return candidate;
+    }
+
+    private static bool IsUniqueIndexViolation(DbUpdateException exception, string indexName)
+    {
+        for (var current = exception.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current is not SqlException sqlException)
+            {
+                continue;
+            }
+
+            foreach (SqlError error in sqlException.Errors)
+            {
+                if (error.Number is 2601 or 2627
+                    && error.Message.Contains(indexName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private async Task TryDeleteAsync(string objectKey, CancellationToken cancellationToken)

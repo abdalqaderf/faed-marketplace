@@ -69,31 +69,46 @@ public sealed class VerificationController(IMerchantVerificationService verifica
     }
 
     [HttpPost]
-    public async Task<IActionResult> UploadDocument(VerificationDocumentUploadModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> UploadDocument(VerificationDocumentUploadModel upload, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid || model.File is null || model.File.Length == 0)
+        var userId = User.RequireUserId();
+
+        if (upload.File is { Length: 0 })
         {
-            TempData["ErrorMessage"] = ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage)
-                .FirstOrDefault(m => !string.IsNullOrWhiteSpace(m))
-                ?? "Choose a PDF, JPG or PNG file to upload.";
-            return RedirectToAction(nameof(Index));
+            ModelState.AddModelError($"Upload.{nameof(upload.File)}", "The selected file is empty.");
         }
 
-        await using var stream = model.File.OpenReadStream();
-        var result = await verification.AddDocumentAsync(
-            User.RequireUserId(),
-            new AddVerificationDocumentInput(
-                model.DocumentType,
-                stream,
-                model.File.FileName,
-                model.File.ContentType,
-                model.File.Length),
-            cancellationToken);
+        if (ModelState.IsValid && upload.File is not null)
+        {
+            await using var stream = upload.File.OpenReadStream();
+            var result = await verification.AddDocumentAsync(
+                userId,
+                new AddVerificationDocumentInput(
+                    upload.DocumentType,
+                    stream,
+                    upload.File.FileName,
+                    upload.File.ContentType,
+                    upload.File.Length),
+                cancellationToken);
 
-        SetOutcome(result, "Document attached.");
-        return RedirectToAction(nameof(Index));
+            if (result.Succeeded)
+            {
+                TempData["StatusMessage"] = "Document attached.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Surface the server-side upload failure against the field it concerns so the
+            // merchant sees it inline (docs/07-UI-UX-SPEC.md, faed-responsive-accessibility
+            // "field-level errors") rather than as one detached banner after a redirect.
+            var field = result.ErrorKind == ResultErrorKind.Validation
+                        && (result.Error?.Contains("document type", StringComparison.OrdinalIgnoreCase) ?? false)
+                ? nameof(upload.DocumentType)
+                : nameof(upload.File);
+            ModelState.AddModelError($"Upload.{field}", result.Error ?? "The document could not be attached.");
+        }
+
+        var application = await verification.GetMyApplicationAsync(userId, cancellationToken);
+        return View(nameof(Index), new MerchantVerificationPageModel { Application = application, Upload = upload });
     }
 
     [HttpPost]

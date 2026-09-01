@@ -61,11 +61,39 @@ the app and the `dotnet ef` command above honour the override because they share
 `Faed.Web` configuration. The Identity roles (`Buyer`, `Merchant`, `Admin`) are seeded
 automatically and idempotently on startup.
 
-The SQL Server integration tests create and drop only the explicitly allow-listed databases
-`Faed_IntegrationTests` and `Faed_WebTests`. They use a separate `Faed_TEST_CONNECTION`
-environment variable for the server/credentials (default: LocalDB), replace any configured
-catalog with one of those fixed test catalogs, and never read the application connection
-string.
+An optional confirmed development admin can also be seeded from user secrets. It is created
+only while the app runs in the `Development` environment:
+
+```bash
+dotnet user-secrets set "Faed:AdminSeed:Email" "admin@faed.local" --project src/Faed.Web
+dotnet user-secrets set "Faed:AdminSeed:Password" "<development-password>" --project src/Faed.Web
+```
+
+The password stays outside the repository. Re-running the app is safe: an existing account
+is reused and assigned the `Admin` role if needed.
+
+The SQL Server integration tests create, use and drop only the explicitly allow-listed
+databases `Faed_IntegrationTests` and `Faed_WebTests`. They take the server and credentials
+from a separate `Faed_TEST_CONNECTION` environment variable (default: LocalDB), replace any
+configured catalog with one of those two fixed test catalogs, and never write to the
+application database — `TestHostDatabaseTargetTests` asserts that the hosted application's
+`DbContext` really does target `Faed_WebTests`.
+
+These integration tests need a reachable SQL Server. When none is reachable and none was
+configured they **skip** on a developer workstation (the unit tests still run and
+`dotnet test` is green with a lower executed count). They **fail** when `Faed_TEST_CONNECTION`
+is set but unreachable, and on CI — the runner is detected by `CI=true` — so a green pipeline
+always means the SQL Server exit criteria actually executed. To run them where LocalDB is
+unavailable, point `Faed_TEST_CONNECTION` at any SQL Server instance (a container is fine):
+
+```bash
+export Faed_TEST_CONNECTION="Server=localhost,1433;User Id=sa;Password=<pw>;TrustServerCertificate=true"
+dotnet test Faed.slnx
+```
+
+CI runs restore, build, unit tests and integration tests against a SQL Server service
+container on every push and pull request (`.github/workflows/ci.yml`,
+`docs/09-TEST-STRATEGY.md` §6).
 
 ## Read before coding
 

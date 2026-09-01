@@ -25,6 +25,15 @@ public static class TestSqlServer
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(BaseConnectionEnvVar));
 
     /// <summary>
+    /// True on a continuous-integration runner (most CI systems set <c>CI=true</c>). There a
+    /// missing SQL Server is a hard failure — the integration suite must actually execute to
+    /// prove the SQL Server exit criteria (docs/09-TEST-STRATEGY.md §2); on a developer
+    /// workstation the same situation only skips.
+    /// </summary>
+    public static bool RunningInContinuousIntegration =>
+        string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Builds a connection string for one of the hard-coded disposable databases. Any
     /// catalog in <c>Faed_TEST_CONNECTION</c> is deliberately replaced, so an application
     /// or production database cannot be selected through configuration.

@@ -119,6 +119,105 @@ Next: `tasks/TASK-004-LISTINGS-AND-INVENTORY.md` (do not start until explicitly 
 Catalog admin UI / CRUD (TASK-010), listings, options, variants, reference-price evidence
 (TASK-004), brand seed data.
 
+## TASK-001–003 review hardening
+
+A review of the completed TASK-001/002/003 work produced the following fixes. No new
+feature scope; TASK-004 remains not started.
+
+1. **Verification uploads — active/executable content (fails closed).**
+   `VerificationDocumentValidator.ValidatePayload` inspects the whole buffered upload rather
+   than trusting a signature. Images are parsed structurally: JPEG marker by marker with
+   `EOI` required as the last byte, PNG chunk by chunk with every CRC32 verified, `IEND`
+   required last, and the raster inflated and matched against the `IHDR` geometry. No file
+   may contain a `<script` / `<?php` marker or an embedded ZIP/RAR/7z/ELF/PE/second-PDF
+   payload anywhere. The PDF active-content scan (`/JavaScript`, `/Launch`, `/EmbeddedFile`,
+   `/RichMedia`) runs over the raw bytes, over a copy with PDF name hex-escapes resolved
+   (`/Java#53cript` → `/JavaScript`), and over the decoded content of every Flate stream —
+   the filter name is de-escaped first, so `/Flate#44ecode` is still recognised, and a
+   `/DecodeParms` predictor is reversed so the bytes scanned are the bytes a reader consumes.
+   A PDF is **rejected** (not trusted) when any part cannot be inspected: encryption, LZW,
+   an external stream source, an unrecognised/indirect filter or an irreversible predictor, a
+   Flate stream that will not inflate, or exhausting the 64 MB / 512-stream inflate budget.
+
+   The structural rules are set at the point where full inspection is still possible, not
+   tighter: multiple `%%EOF`/`startxref` markers (linearized and incrementally-saved PDFs),
+   PDF 1.5+ cross-reference streams and PNG ancillary chunks are all accepted, because every
+   byte is scanned regardless. An earlier, stricter revision refused all of them and thereby
+   rejected 8 of 10 real PDFs and 6 of 7 real PNGs — friction with no safety gain. Measured
+   on unmodified real-world files the validator now accepts 10/10 PDFs, 3/3 JPEGs and 7/7
+   PNGs while every hostile fixture in `VerificationDocumentValidatorTests` is still refused.
+   Recorded as `docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md`
+   (docs/08-SECURITY-AND-PRIVACY.md §3 "no executable content"). Test fixtures use a real
+   minimal PDF instead of the string `"%PDF-1.4 fake"`.
+2. **Privileged service methods now recheck the actor.** `IUserRoleService.IsInRoleAsync`
+   was added; `MerchantVerificationService` approve/reject/suspend/reinstate and
+   `OpenVerificationDocumentAsync` return `Forbidden` unless the supplied user id actually
+   holds the `Admin` role — the MVC `AdminOnly` policy is no longer the only gate
+   (docs/08-SECURITY-AND-PRIVACY.md §2).
+3. **Approval is atomic with the Merchant-role grant.** The status change, its audit row
+   and the `AddToRoleAsync` call now run inside one `IApplicationDbContext.BeginTransactionAsync`
+   transaction. A permanent role-sync failure rolls the whole decision back (returning a
+   retryable `Conflict`) instead of leaving an approved profile that can never be
+   re-approved (AGENTS.md §7).
+4. **Merchant concurrency conflicts return `Conflict`, not HTTP 500.** `SaveDraftAsync` and
+   `RemoveDocumentAsync` now catch `DbUpdateConcurrencyException` and surface a conflict
+   result, matching `SubmitForReviewAsync` and the admin decision path.
+5. **Catalog root lookup is collation-independent.** `CatalogDataSeeder` loads existing
+   categories once and matches every slug — the `fashion-overstock` root included — with an
+   ordinal-ignore-case comparer, instead of delegating the root lookup to the database
+   where a case-sensitive server collation could miss it and allow a second root insert.
+6. **Admin decision form no longer overflows narrow screens.** The reject form's inline
+   `min-width: 18rem` was replaced with a `.faed-decision-row__grow` rule
+   (`flex: 1 1 16rem; min-width: 0`) so the panel stays within a 320px viewport.
+7. **Upload validation is field-level.** `VerificationController.UploadDocument` re-renders
+   the verification page with the error bound to the document-type or file field
+   (`asp-validation-for`) instead of a single `TempData` banner after a redirect
+   (docs/07-UI-UX-SPEC.md, faed-responsive-accessibility "field-level errors").
+8. **Integration tests fail (not skip) when SQL Server should have been there.** The suite
+   still skips gracefully on a developer workstation that has no reachable SQL Server and was
+   never told where to find one (unit tests run, `dotnet test` stays green with a lower count
+   — the documented behaviour, docs/09 §2). It hard-fails when `CI=true` *or* when
+   `Faed_TEST_CONNECTION` is set but unreachable, so neither a green pipeline nor a typo in
+   that variable can silently omit the SQL Server proof. README documents pointing
+   `Faed_TEST_CONNECTION` at a container when LocalDB is unavailable.
+
+### Post-audit fixes
+
+A second, evidence-based audit of the work above found three defects in it. All are fixed.
+
+9. **The hosted integration tests were writing to the application database.**
+   `DependencyInjection.AddPersistence` read `ConnectionStrings:DefaultConnection` eagerly
+   during service registration, before `WebApplicationFactory`'s configuration override was
+   merged — so the whole web test host used the application's `Faed` catalog while the
+   disposable `Faed_WebTests` catalog was created, migrated and dropped unused. The
+   connection string is now resolved from the built `IConfiguration` when the context options
+   are created, the factory re-registers the context against the test catalog as defence in
+   depth, and `TestHostDatabaseTargetTests` asserts the hosted context really targets
+   `Faed_WebTests`. This violated docs/09-TEST-STRATEGY.md §2 ("never read the application's
+   normal connection string") and made every web test order- and history-dependent.
+10. **Two of the finding-4 regression tests did not pass.**
+    `SaveDraft_WhenAnotherMerchantClaimsTheSlug_RetriesWithTheNextSlug` and
+    `SaveDraft_WhenAnotherRequestCreatesTheUsersFirstApplication_ReturnsConflict` failed
+    because leftover rows in the shared application database made the injected "racing" write
+    collide with an earlier run instead of with the test's own insert. Fixing item 9 makes
+    both deterministic; the service logic itself was already correct.
+11. **A deactivated administrator still passed the service-level role recheck.**
+    `UserRoleService.IsInRoleAsync` now requires `ApplicationUser.IsActive`, since disabling
+    an account leaves its role rows in place (docs/08-SECURITY-AND-PRIVACY.md §2).
+
+CI is now real rather than hypothetical: `.github/workflows/ci.yml` runs restore, build,
+unit tests and integration tests against a SQL Server service container on push and pull
+request (docs/09-TEST-STRATEGY.md §6).
+
+### Responsive / accessibility review (findings 6–7)
+
+- Responsive: fixed one horizontal-overflow source (the admin decision form on ~320px).
+  No other overflow, tap-target or small-width spacing issues found in the merchant/admin
+  verification views.
+- Accessibility: upload errors are now field-level with `.faed-field__error` messages and a
+  model-only validation summary; labels, semantic headings, focus-visible outlines and
+  non-color status text were already in place and unchanged.
+
 ## TASK-002 — Merchant Verification
 
 ### Behaviour implemented
@@ -268,7 +367,8 @@ projects and no project-reference layering.
   is additionally granted to a user on verification approval (idempotent).
 - Optional development admin seeding: only when `Faed:AdminSeed:Email` +
   `Faed:AdminSeed:Password` are supplied (user secrets / env) and the environment is not
-  Production. No password in source control.
+  Production. No password is stored in source control. Seeds for the other roles belong to
+  the phase that first needs one (AGENTS.md §12).
 - Merchant verification is a domain state, not an Identity role. Policies: `AdminOnly`
   (role check), `ApprovedMerchant` (per-request DB check of verification status).
 
@@ -320,13 +420,35 @@ projects and no project-reference layering.
 ## Current validation (TASK-003)
 
 - `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
-- `dotnet test Faed.slnx` — 72 passed (43 unit, 29 integration), 0 failed, 0 skipped
-  (SQL Server LocalDB reachable). New coverage: catalog entity invariants; EF model shape
+- `dotnet test Faed.slnx` — after the TASK-001–003 review hardening and the post-audit
+  fixes: **135 passed (100 unit, 35 integration), 0 failed, 0 skipped** on a workstation
+  where SQL Server LocalDB (`MSSQLLocalDB`) is reachable. `dotnet build Faed.slnx` succeeds
+  with 0 warnings and 0 errors. The integration tests are `[SkippableFact]` by design
+  (docs/09-TEST-STRATEGY.md §2): on a machine with **no** reachable SQL Server they skip
+  rather than fail, so a green run there reports fewer executed tests — the SQL Server exit
+  criteria for TASK-001/002/003 are only proven on a run where the integration suite
+  actually executes. New coverage: catalog entity invariants; EF model shape
   (condition/discount-reason independence, self-referencing `Category`, unique
   slug/code indexes); startup seeds A–D + eight reasons + launch taxonomy; no Grade E;
   seeder is idempotent on re-run and when an existing slug differs only by casing; a second
   root `Category` persists to SQL Server with no schema change; DB-level unique-slug
-  enforcement for `Category` and `Brand`.
+  enforcement for `Category` and `Brand`. Review hardening added: `ValidatePayload` rejects
+  `%%EOF`-less PDFs, JavaScript/Launch/EmbeddedFile/RichMedia PDFs (including markers hidden
+  behind PDF name hex-escapes or inside a Flate stream, and filter names hex-escaped to
+  `/Flate#44ecode`), encrypted / LZW / unrecognised-filter / non-inflatable-stream PDFs,
+  and script-carrying image polyglots, while still accepting a normal compressed PDF and an
+  image-only-stream PDF; a non-admin actor calling the verification service directly is
+  `Forbidden` and changes no state or audit.
+  Post-audit coverage: the hosted `ApplicationDbContext` targets the disposable
+  `Faed_WebTests` catalog and never the application database; the slug and first-application
+  unique-index races resolve to the right result while an unrelated `DbUpdateException` still
+  propagates; `/JavaScript` visible only after a `/DecodeParms` predictor is reversed is
+  rejected, as is JavaScript introduced by an appended PDF revision, a script marker hidden
+  in a compressed PNG `zTXt`, an archive in a compressed `iTXt`, a `zTXt` that will not
+  inflate, an unknown *critical* PNG chunk, and `/DecodeParms` carrying an unknown key —
+  while an incrementally-saved PDF, a cross-reference-stream PDF, a predictor-encoded stream,
+  clean content behind a hex-escaped `/Flate#44ecode` filter name, and a PNG carrying `tEXt`,
+  `iCCP` and vendor provenance chunks are all accepted.
 - `dotnet ef database update` — `AddCatalog` applies from the existing schema;
   `dotnet ef migrations has-pending-model-changes` reports no drift (after build).
 - App runs (Development); Home and `/Identity/Account/Login` return 200; `CatalogDataSeeder`

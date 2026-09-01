@@ -46,6 +46,21 @@ public sealed class UserRoleService(UserManager<ApplicationUser> userManager) : 
         }
     }
 
+    public async Task<bool> IsInRoleAsync(string userId, string role, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return false;
+        }
+
+        var user = await userManager.FindByIdAsync(userId);
+
+        // A deactivated account keeps its role rows, so the role check alone would still let a
+        // disabled administrator decide applications and open private verification documents
+        // (docs/08-SECURITY-AND-PRIVACY.md §2).
+        return user is { IsActive: true } && await userManager.IsInRoleAsync(user, role);
+    }
+
     private static string Describe(IdentityResult result) =>
         string.Join(", ", result.Errors.Select(e => e.Description));
 }

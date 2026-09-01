@@ -37,6 +37,23 @@ public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, 
     {
         if (!await TestSqlServer.IsReachableAsync(ConnectionString))
         {
+            if (TestSqlServer.RunningInContinuousIntegration)
+            {
+                // CI must not report green while the web integration tests silently skip
+                // (docs/09-TEST-STRATEGY.md §2). Fail the whole collection instead.
+                throw new InvalidOperationException(
+                    "CI=true but no SQL Server is reachable for the web integration tests. " +
+                    "Provide a SQL Server service or set Faed_TEST_CONNECTION.");
+            }
+
+            if (TestSqlServer.WasExplicitlyConfigured)
+            {
+                // The developer said where the test server is; not reaching it is a real
+                // failure, not an environment that simply lacks SQL Server.
+                throw new InvalidOperationException(
+                    "Faed_TEST_CONNECTION is set but its SQL Server is not reachable.");
+            }
+
             DatabaseReady = false;
             return;
         }
@@ -69,6 +86,14 @@ public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, 
 
         builder.ConfigureTestServices(services =>
         {
+            // Defence in depth against a future eager connection-string read in the app's
+            // composition root: bind the context to the disposable test catalog here as well,
+            // so the suite can never write to the application database
+            // (docs/09-TEST-STRATEGY.md §2). `DatabaseTargetsDisposableCatalog` proves it.
+            services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+            services.RemoveAll<DbContextOptions>();
+            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(ConnectionString));
+
             services.AddControllers().AddApplicationPart(typeof(SellingProbeController).Assembly);
 
             services.RemoveAll(typeof(IFileStorage));

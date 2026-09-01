@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Faed.Web.Rendering;
 
 /// <summary>
@@ -13,10 +15,12 @@ public static class AmmanTime
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone);
 
     /// <summary>Date and time, e.g. <c>31 Aug 2026 15:00</c>.</summary>
-    public static string FormatDateTime(DateTime utc) => $"{ToLocal(utc):d MMM yyyy HH:mm}";
+    public static string FormatDateTime(DateTime utc) =>
+        ToLocal(utc).ToString("d MMM yyyy HH:mm", CultureInfo.InvariantCulture);
 
     /// <summary>Date only, e.g. <c>31 Aug 2026</c>.</summary>
-    public static string FormatDate(DateTime utc) => $"{ToLocal(utc):d MMM yyyy}";
+    public static string FormatDate(DateTime utc) =>
+        ToLocal(utc).ToString("d MMM yyyy", CultureInfo.InvariantCulture);
 
     private static TimeZoneInfo ResolveZone()
     {

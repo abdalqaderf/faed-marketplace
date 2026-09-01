@@ -129,20 +129,23 @@
 
             @if (app.IsEditable)
             {
-                <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="mt-3">
+                <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="mt-3" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
                     <div class="faed-field">
-                        <label class="faed-field__label" for="DocumentType">Document type</label>
-                        <select class="faed-select" id="DocumentType" name="DocumentType">
+                        <label class="faed-field__label" asp-for="Upload.DocumentType">Document type</label>
+                        <select class="faed-select" asp-for="Upload.DocumentType">
                             @foreach (var type in docTypes)
                             {
                                 <option value="@type">@MerchantStatusDisplay.DocumentTypeLabel(type)</option>
                             }
                         </select>
+                        <span class="faed-field__error" asp-validation-for="Upload.DocumentType"></span>
                     </div>
                     <div class="faed-field">
-                        <label class="faed-field__label" for="File">File</label>
-                        <input class="faed-input" type="file" id="File" name="File" accept=".pdf,.jpg,.jpeg,.png" required />
+                        <label class="faed-field__label" asp-for="Upload.File">File</label>
+                        <input class="faed-input" type="file" asp-for="Upload.File" accept=".pdf,.jpg,.jpeg,.png" />
                         <span class="faed-field__hint">PDF, JPG or PNG up to @maxMb MB.</span>
+                        <span class="faed-field__error" asp-validation-for="Upload.File"></span>
                     </div>
                     <button type="submit" class="faed-btn faed-btn--ghost">Attach document</button>
                 </form>
@@ -167,3 +170,7 @@
         }
     }
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

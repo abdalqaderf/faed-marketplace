@@ -1,5 +1,6 @@
 using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Faed.Web.Services.Abstractions;
 
@@ -25,4 +26,11 @@ public interface IApplicationDbContext
     DbSet<Brand> Brands { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Opens an explicit database transaction so a use case that must persist several
+    /// changes together (for example a verification decision and its Identity role grant)
+    /// commits atomically or not at all (AGENTS.md §7).
+    /// </summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 }

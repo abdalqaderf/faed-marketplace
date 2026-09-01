@@ -16,25 +16,33 @@ namespace Faed.IntegrationTests;
 /// <c>Faed_TEST_CONNECTION</c> environment variable (never the application's
 /// <c>ConnectionStrings__DefaultConnection</c>). Its catalog is always replaced with the
 /// hard-coded <c>Faed_IntegrationTests</c> catalog before any create/drop operation. When
-/// that variable is not set the test falls back to LocalDB; if that is unreachable the
-/// test is skipped. When the variable IS set, an unreachable server fails the test.
+/// that variable is not set the test falls back to LocalDB. An unreachable SQL Server
+/// skips the test on a developer workstation but fails it on CI (<c>CI=true</c>), so a
+/// green CI run cannot silently omit the SQL Server proof.
 /// </summary>
 public class SqlServerPersistenceTests
 {
     [SkippableFact]
     public async Task Migrations_ApplyFromEmptyDatabase_AndIdentitySchemaIsQueryable()
     {
-        var wasExplicitlyConfigured = TestSqlServer.WasExplicitlyConfigured;
         var connectionString = TestSqlServer.ConnectionStringFor(TestSqlServer.PersistenceDatabaseName);
         TestSqlServer.AssertSafeTestDatabase(connectionString, TestSqlServer.PersistenceDatabaseName);
 
         if (!await TestSqlServer.IsReachableAsync(connectionString))
         {
-            // No explicit test database configured => environment simply lacks SQL Server.
-            Skip.If(!wasExplicitlyConfigured, "No local SQL Server instance reachable for integration testing.");
+            // Skipping is only correct when the environment simply has no SQL Server and was
+            // never told where to find one. On CI, or when the developer explicitly pointed
+            // Faed_TEST_CONNECTION at a server, an unreachable server is a real failure —
+            // otherwise a typo in that variable silently removes the whole SQL Server proof
+            // (docs/09-TEST-STRATEGY.md §2).
+            Skip.If(
+                !TestSqlServer.RunningInContinuousIntegration && !TestSqlServer.WasExplicitlyConfigured,
+                "No SQL Server reachable for integration testing (start LocalDB or set Faed_TEST_CONNECTION).");
 
-            // An explicitly configured SQL Server that cannot be reached is a real failure.
-            Assert.Fail("Faed_TEST_CONNECTION is set but its SQL Server is not reachable.");
+            Assert.Fail(TestSqlServer.RunningInContinuousIntegration
+                ? "CI=true but no SQL Server is reachable for integration testing. " +
+                  "Provide a SQL Server service or set Faed_TEST_CONNECTION."
+                : "Faed_TEST_CONNECTION is set but its SQL Server is not reachable.");
         }
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

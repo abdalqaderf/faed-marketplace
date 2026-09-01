@@ -1,12 +1,15 @@
 using System.Text;
+using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Merchants;
+using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Data;
 using Faed.IntegrationTests.Support;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Faed.IntegrationTests;
@@ -32,6 +35,90 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         Assert.True(submit.Failed);
         Assert.Equal(ResultErrorKind.Validation, submit.ErrorKind);
+    }
+
+    [SkippableFact]
+    public async Task SaveDraft_WhenAnotherMerchantClaimsTheSlug_RetriesWithTheNextSlug()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ServiceScopeWrapper(factory);
+        var applicantUserId = await scope.CreateUserAsync();
+        var competingUserId = await scope.CreateUserAsync();
+        var businessName = "Concurrent Slug Co";
+        var baseSlug = MerchantSlug.Slugify(businessName);
+
+        var racingContext = new BeforeFirstSaveApplicationDbContext(
+            scope.Db,
+            async cancellationToken =>
+            {
+                await using var competitorDb = scope.CreateDbContext();
+                Assert.True(await competitorDb.Users.AnyAsync(u => u.Id == competingUserId, cancellationToken));
+                competitorDb.MerchantProfiles.Add(
+                    new MerchantProfile(competingUserId, businessName, baseSlug, DateTime.UtcNow));
+                await competitorDb.SaveChangesAsync(cancellationToken);
+            });
+        var service = scope.CreateService(racingContext);
+
+        var result = await service.SaveDraftAsync(
+            applicantUserId,
+            new MerchantApplicationInput(businessName, null, null));
+
+        Assert.True(result.Succeeded, result.Error);
+        var profiles = await scope.Db.MerchantProfiles
+            .AsNoTracking()
+            .Where(p => p.UserId == applicantUserId || p.UserId == competingUserId)
+            .ToListAsync();
+        Assert.Equal(2, profiles.Count);
+        Assert.Contains(profiles, p => p.UserId == competingUserId && p.PublicSlug == baseSlug);
+        Assert.Contains(profiles, p => p.UserId == applicantUserId && p.PublicSlug == $"{baseSlug}-2");
+    }
+
+    [SkippableFact]
+    public async Task SaveDraft_WhenAnotherRequestCreatesTheUsersFirstApplication_ReturnsConflict()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ServiceScopeWrapper(factory);
+        var userId = await scope.CreateUserAsync();
+
+        var racingContext = new BeforeFirstSaveApplicationDbContext(
+            scope.Db,
+            async cancellationToken =>
+            {
+                await using var winnerDb = scope.CreateDbContext();
+                Assert.True(await winnerDb.Users.AnyAsync(u => u.Id == userId, cancellationToken));
+                winnerDb.MerchantProfiles.Add(
+                    new MerchantProfile(userId, "First Writer", "first-writer", DateTime.UtcNow));
+                await winnerDb.SaveChangesAsync(cancellationToken);
+            });
+        var service = scope.CreateService(racingContext);
+
+        var result = await service.SaveDraftAsync(
+            userId,
+            new MerchantApplicationInput("Second Writer", null, null));
+
+        Assert.True(result.Failed);
+        Assert.Equal(ResultErrorKind.Conflict, result.ErrorKind);
+        Assert.Contains("another tab", result.Error, StringComparison.OrdinalIgnoreCase);
+        var profile = await scope.Db.MerchantProfiles.AsNoTracking().SingleAsync(p => p.UserId == userId);
+        Assert.Equal("First Writer", profile.BusinessName);
+    }
+
+    [SkippableFact]
+    public async Task SaveDraft_WhenDatabaseUpdateFailureIsNotAnExpectedUniqueRace_Rethrows()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ServiceScopeWrapper(factory);
+        var userId = await scope.CreateUserAsync();
+        var failingContext = new BeforeFirstSaveApplicationDbContext(
+            scope.Db,
+            _ => Task.FromException(new DbUpdateException("Injected unrelated database failure.")));
+        var service = scope.CreateService(failingContext);
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => service.SaveDraftAsync(
+            userId,
+            new MerchantApplicationInput("Failure Probe", null, null)));
+
+        Assert.Equal("Injected unrelated database failure.", exception.Message);
     }
 
     [SkippableFact]
@@ -74,6 +161,26 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         Assert.Equal(ResultErrorKind.Forbidden, approve.ErrorKind);
         Assert.Equal(ResultErrorKind.Forbidden, reject.ErrorKind);
+
+        var profile = await scope.Db.MerchantProfiles.AsNoTracking().SingleAsync(p => p.Id == profileId);
+        Assert.Equal(MerchantVerificationStatus.PendingReview, profile.VerificationStatus);
+        Assert.Equal(0, await scope.Db.AdminActionLogs.AsNoTracking().CountAsync(l => l.TargetId == profileId.ToString()));
+    }
+
+    [SkippableFact]
+    public async Task Decisions_ByANonAdminActor_AreForbidden_AndChangeNothing()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ServiceScopeWrapper(factory);
+        var merchantUserId = await scope.CreateUserAsync();
+        var buyerId = await scope.CreateUserAsync(FaedRoles.Buyer);
+        var profileId = await scope.SubmitApplicationAsync(merchantUserId);
+
+        var approve = await scope.Service.ApproveAsync(buyerId, profileId);
+        var openDoc = await scope.Service.OpenVerificationDocumentAsync(buyerId, Guid.NewGuid());
+
+        Assert.Equal(ResultErrorKind.Forbidden, approve.ErrorKind);
+        Assert.Equal(ResultErrorKind.Forbidden, openDoc.ErrorKind);
 
         var profile = await scope.Db.MerchantProfiles.AsNoTracking().SingleAsync(p => p.Id == profileId);
         Assert.Equal(MerchantVerificationStatus.PendingReview, profile.VerificationStatus);
@@ -189,10 +296,10 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
         await scope.Service.SaveDraftAsync(merchantUserId, new MerchantApplicationInput("Docs Co", null, null));
         var addDoc = await scope.Service.AddDocumentAsync(merchantUserId, new AddVerificationDocumentInput(
             MerchantVerificationDocumentType.CommercialRegistration,
-            new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 fake")),
+            TestDocuments.MinimalPdfStream(),
             "registration.pdf",
             "application/pdf",
-            12));
+            TestDocuments.MinimalPdf.Length));
         Assert.True(addDoc.Succeeded, addDoc.Error);
 
         var open = await scope.Service.OpenVerificationDocumentAsync(adminId, addDoc.Value);
@@ -232,6 +339,15 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         public UserManager<ApplicationUser> Users => _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
+        public IMerchantVerificationService CreateService(IApplicationDbContext context) =>
+            ActivatorUtilities.CreateInstance<MerchantVerificationService>(_scope.ServiceProvider, context);
+
+        public ApplicationDbContext CreateDbContext() => new(
+            new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlServer(Db.Database.GetConnectionString()
+                    ?? throw new InvalidOperationException("The test DbContext has no connection string."))
+                .Options);
+
         public async Task<string> CreateUserAsync(string? role = null)
         {
             var user = new ApplicationUser
@@ -262,10 +378,10 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
             await Service.SaveDraftAsync(userId, new MerchantApplicationInput("Test Merchant", "t@test.local", null));
             var add = await Service.AddDocumentAsync(userId, new AddVerificationDocumentInput(
                 MerchantVerificationDocumentType.CommercialRegistration,
-                new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 fake")),
+                TestDocuments.MinimalPdfStream(),
                 "reg.pdf",
                 "application/pdf",
-                12));
+                TestDocuments.MinimalPdf.Length));
             Assert.True(add.Succeeded, add.Error);
 
             var submit = await Service.SubmitForReviewAsync(userId);
@@ -279,5 +395,40 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
             _scope.Dispose();
             await Task.CompletedTask;
         }
+    }
+
+    private sealed class BeforeFirstSaveApplicationDbContext(
+        ApplicationDbContext inner,
+        Func<CancellationToken, Task> beforeFirstSave) : IApplicationDbContext
+    {
+        private int _saveStarted;
+
+        public DbSet<MerchantProfile> MerchantProfiles => inner.MerchantProfiles;
+
+        public DbSet<MerchantVerificationDocument> MerchantVerificationDocuments =>
+            inner.MerchantVerificationDocuments;
+
+        public DbSet<AdminActionLog> AdminActionLogs => inner.AdminActionLogs;
+
+        public DbSet<Category> Categories => inner.Categories;
+
+        public DbSet<ConditionGrade> ConditionGrades => inner.ConditionGrades;
+
+        public DbSet<DiscountReason> DiscountReasons => inner.DiscountReasons;
+
+        public DbSet<Brand> Brands => inner.Brands;
+
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Exchange(ref _saveStarted, 1) == 0)
+            {
+                await beforeFirstSave(cancellationToken);
+            }
+
+            return await inner.SaveChangesAsync(cancellationToken);
+        }
+
+        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
+            inner.BeginTransactionAsync(cancellationToken);
     }
 }

@@ -80,12 +80,12 @@
     {
         <div class="faed-panel">
             <h2 class="faed-panel__title">Decision</h2>
-            <div class="d-flex flex-wrap gap-4">
+            <div class="faed-decision-row">
                 <form asp-action="Approve" method="post">
                     <input type="hidden" name="id" value="@Model.Id" />
                     <button type="submit" class="faed-btn faed-btn--primary">Approve merchant</button>
                 </form>
-                <form asp-action="Reject" method="post" class="flex-grow-1" style="min-width: 18rem;">
+                <form asp-action="Reject" method="post" class="faed-decision-row__grow">
                     <input type="hidden" name="id" value="@Model.Id" />
                     <div class="faed-field">
                         <label class="faed-field__label" for="reject-reason">Rejection reason</label>

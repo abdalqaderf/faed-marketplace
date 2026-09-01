@@ -10,4 +10,11 @@ public interface IUserRoleService
     Task AddToRoleAsync(string userId, string role, CancellationToken cancellationToken = default);
 
     Task RemoveFromRoleAsync(string userId, string role, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True when <paramref name="userId"/> resolves to a real account that currently holds
+    /// <paramref name="role"/>. Used by services for a defence-in-depth authorization recheck
+    /// that does not rely on the MVC pipeline alone (docs/08-SECURITY-AND-PRIVACY.md §2).
+    /// </summary>
+    Task<bool> IsInRoleAsync(string userId, string role, CancellationToken cancellationToken = default);
 }

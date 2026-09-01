@@ -20,7 +20,7 @@ public static class DependencyInjection
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        services.AddPersistence(configuration);
+        services.AddPersistence();
         services.AddPrivateFileStorage(configuration, environment);
 
         services.AddScoped<IUserRoleService, UserRoleService>();
@@ -34,17 +34,26 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
+    private static void AddPersistence(this IServiceCollection services)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
         // One application DbContext; Identity shares it. Migrations live in this project
         // under Data/Migrations (docs/06-ARCHITECTURE.md §5).
-        services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+        //
+        // The connection string is resolved from the *built* IConfiguration when the context
+        // options are created, never captured here at registration time. Reading it eagerly
+        // silently ignored any configuration source added after AddFaedPlatform runs — which
+        // is exactly how a test host overrides it — and pointed the integration test host at
+        // the application database instead of its disposable one (docs/09-TEST-STRATEGY.md §2).
+        services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+            options.UseSqlServer(ResolveConnectionString(
+                serviceProvider.GetRequiredService<IConfiguration>())));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
     }
+
+    private static string ResolveConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     private static void AddPrivateFileStorage(
         this IServiceCollection services,

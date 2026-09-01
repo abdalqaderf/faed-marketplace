@@ -7,13 +7,12 @@ using Microsoft.Extensions.Logging;
 namespace Faed.Web.Data.Seed;
 
 /// <summary>
-/// Idempotent seeding of the fixed Faed Identity roles (Buyer, Merchant, Admin) and an
-/// optional development admin account.
+/// Idempotent seeding of the fixed Faed Identity roles (Buyer, Merchant, Admin) and
+/// optional development accounts.
 ///
-/// The admin account is seeded only when <c>Faed:AdminSeed:Email</c> and
-/// <c>Faed:AdminSeed:Password</c> are both supplied via user secrets or environment
-/// variables, and the caller should only invoke it outside Production. No password is
-/// ever stored in source control (docs/08-SECURITY-AND-PRIVACY.md §11-12).
+/// Each account is seeded only when its email and password are supplied via user secrets
+/// or environment variables, and the caller should only invoke it outside Production. No
+/// password is ever stored in source control (docs/08-SECURITY-AND-PRIVACY.md §11-12).
 /// </summary>
 public static class IdentityDataSeeder
 {
@@ -43,19 +42,42 @@ public static class IdentityDataSeeder
         }
     }
 
-    public static async Task SeedDevelopmentAdminAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static Task SeedDevelopmentAdminAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default) =>
+        SeedDevelopmentAccountAsync(
+            services,
+            "AdminSeed",
+            FaedRoles.Admin,
+            cancellationToken);
+
+    // A development seed for the other roles belongs to the phase that first needs one
+    // (AGENTS.md §12 — do not scaffold future phases). The helper below is already generic,
+    // so adding one is a single call.
+    private static async Task SeedDevelopmentAccountAsync(
+        IServiceProvider services,
+        string configurationSection,
+        string role,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         using var scope = services.CreateScope();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var logger = Logger(scope);
 
-        var email = configuration["Faed:AdminSeed:Email"];
-        var password = configuration["Faed:AdminSeed:Password"];
+        var emailKey = $"Faed:{configurationSection}:Email";
+        var passwordKey = $"Faed:{configurationSection}:Password";
+        var email = configuration[emailKey];
+        var password = configuration[passwordKey];
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
             logger.LogInformation(
-                "Development admin seed skipped: set Faed:AdminSeed:Email and Faed:AdminSeed:Password (user secrets) to enable it.");
+                "Development {Role} seed skipped: set {EmailKey} and {PasswordKey} (user secrets) to enable it.",
+                role,
+                emailKey,
+                passwordKey);
             return;
         }
 
@@ -64,31 +86,48 @@ public static class IdentityDataSeeder
         var existing = await userManager.FindByEmailAsync(email);
         if (existing is not null)
         {
-            if (!await userManager.IsInRoleAsync(existing, FaedRoles.Admin))
+            if (!await userManager.IsInRoleAsync(existing, role))
             {
-                await userManager.AddToRoleAsync(existing, FaedRoles.Admin);
+                await AddToRoleAsync(userManager, existing, role);
             }
 
-            logger.LogInformation("Development admin {Email} already present", email);
+            logger.LogInformation("Development {Role} {Email} already present", role, email);
             return;
         }
 
-        var admin = new ApplicationUser
+        var user = new ApplicationUser
         {
             UserName = email,
             Email = email,
             EmailConfirmed = true,
         };
 
-        var created = await userManager.CreateAsync(admin, password);
+        var created = await userManager.CreateAsync(user, password);
         if (!created.Succeeded)
         {
             var errors = string.Join(", ", created.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to seed development admin '{email}': {errors}");
+            throw new InvalidOperationException(
+                $"Failed to seed development {role} '{email}': {errors}");
         }
 
-        await userManager.AddToRoleAsync(admin, FaedRoles.Admin);
-        logger.LogInformation("Seeded development admin {Email}", email);
+        await AddToRoleAsync(userManager, user, role);
+        logger.LogInformation("Seeded development {Role} {Email}", role, email);
+    }
+
+    private static async Task AddToRoleAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationUser user,
+        string role)
+    {
+        var result = await userManager.AddToRoleAsync(user, role);
+        if (result.Succeeded)
+        {
+            return;
+        }
+
+        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+        throw new InvalidOperationException(
+            $"Failed to add development account '{user.Email}' to role '{role}': {errors}");
     }
 
     private static ILogger Logger(IServiceScope scope) => scope.ServiceProvider

@@ -112,7 +112,7 @@ public sealed class MerchantVerificationAuthorizationTests(FaedWebApplicationFac
 
             pendingUserId = await NewUserAsync(users);
             approvedUserId = await NewUserAsync(users);
-            var adminId = await NewUserAsync(users);
+            var adminId = await NewAdminAsync(scope);
 
             await SubmitAsync(service, pendingUserId);
             var approvedProfileId = await SubmitAsync(service, approvedUserId);
@@ -206,6 +206,22 @@ public sealed class MerchantVerificationAuthorizationTests(FaedWebApplicationFac
         return (client, match.Groups[1].Value);
     }
 
+    private static async Task<string> NewAdminAsync(IServiceScope scope)
+    {
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userId = await NewUserAsync(users);
+
+        if (!await roles.RoleExistsAsync(FaedRoles.Admin))
+        {
+            await roles.CreateAsync(new IdentityRole(FaedRoles.Admin));
+        }
+
+        var user = await users.FindByIdAsync(userId);
+        Assert.True((await users.AddToRoleAsync(user!, FaedRoles.Admin)).Succeeded);
+        return userId;
+    }
+
     private static async Task<string> NewUserAsync(UserManager<ApplicationUser> users)
     {
         var user = new ApplicationUser
@@ -223,10 +239,10 @@ public sealed class MerchantVerificationAuthorizationTests(FaedWebApplicationFac
         await service.SaveDraftAsync(userId, new MerchantApplicationInput("Probe Merchant", null, null));
         var add = await service.AddDocumentAsync(userId, new AddVerificationDocumentInput(
             MerchantVerificationDocumentType.CommercialRegistration,
-            new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 fake")),
+            TestDocuments.MinimalPdfStream(),
             "reg.pdf",
             "application/pdf",
-            12));
+            TestDocuments.MinimalPdf.Length));
         Assert.True(add.Succeeded, add.Error);
         Assert.True((await service.SubmitForReviewAsync(userId)).Succeeded);
 

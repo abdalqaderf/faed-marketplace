@@ -1,0 +1,61 @@
+name: CI
+
+# The baseline from docs/09-TEST-STRATEGY.md §6: restore, build, unit tests, integration
+# tests. The integration suite needs a real SQL Server (never InMemory or SQLite), so one
+# runs as a service container and is addressed through Faed_TEST_CONNECTION. `CI=true` is
+# set by GitHub Actions, which makes an unreachable server a hard failure instead of a skip.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_PASSWORD || 'Faed_Ci_Password_1' }}
+        ports:
+          - 1433:1433
+
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+      Faed_TEST_CONNECTION: "Server=localhost,1433;User Id=sa;Password=${{ secrets.CI_SQL_PASSWORD || 'Faed_Ci_Password_1' }};TrustServerCertificate=true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Wait for SQL Server
+        run: |
+          for attempt in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/1433) >/dev/null 2>&1; then
+              echo "SQL Server is accepting connections."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "SQL Server did not become reachable." >&2
+          exit 1
+
+      - name: Restore
+        run: dotnet restore Faed.slnx
+
+      - name: Build
+        run: dotnet build Faed.slnx --no-restore --configuration Release
+
+      - name: Unit tests
+        run: dotnet test tests/Faed.UnitTests/Faed.UnitTests.csproj --no-build --configuration Release
+
+      - name: Integration tests
+        run: dotnet test tests/Faed.IntegrationTests/Faed.IntegrationTests.csproj --no-build --configuration Release

@@ -119,12 +119,17 @@ public static class CatalogDataSeeder
 
     private static async Task<int> SeedLaunchTaxonomyAsync(ApplicationDbContext db, CancellationToken cancellationToken)
     {
-        var existingSlugs = (await db.Categories.Select(c => c.Slug).ToListAsync(cancellationToken))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Load the existing rows once and match every slug (root included) with the same
+        // ordinal-ignore-case comparer, rather than delegating the root lookup to the
+        // database where a case-sensitive server collation could miss it and let a second
+        // root be inserted (docs/09-TEST-STRATEGY.md, TASK-003 idempotency criterion).
+        var existing = await db.Categories.ToListAsync(cancellationToken);
+        var existingSlugs = existing.Select(c => c.Slug).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var added = 0;
 
-        var root = await db.Categories.FirstOrDefaultAsync(c => c.Slug == RootCategorySlug, cancellationToken);
+        var root = existing.FirstOrDefault(
+            c => string.Equals(c.Slug, RootCategorySlug, StringComparison.OrdinalIgnoreCase));
         if (root is null)
         {
             root = new Category("Fashion Overstock", RootCategorySlug, parentCategoryId: null, sortOrder: 0);
