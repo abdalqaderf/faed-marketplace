@@ -1,0 +1,232 @@
+@model ListingModerationDetailPageModel
+@{
+    ViewData["Title"] = Model.Listing.Title;
+    var listing = Model.Listing;
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Admin sections">
+        <a asp-area="Admin" asp-controller="MerchantVerification" asp-action="Index">Merchant verification</a>
+        <a class="is-active" asp-area="Admin" asp-controller="ListingModeration" asp-action="Index">Listing moderation</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">@listing.Title</h1>
+            <p class="faed-page__subtitle">@listing.MerchantBusinessName &middot; /@listing.Slug</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@ListingStatusDisplay.BadgeClass(listing.Status)">@ListingStatusDisplay.Label(listing.Status)</span>
+        </div>
+    </div>
+
+    @if (listing.PendingModeration is not null)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            Reason for review: @listing.PendingModeration.ReasonForReview
+        </div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Listing summary</h2>
+        <dl class="faed-details">
+            <dt>Category</dt>
+            <dd>@listing.CategoryName</dd>
+            <dt>Brand</dt>
+            <dd>@(listing.BrandName ?? "—")</dd>
+            <dt>Condition</dt>
+            <dd>Grade @listing.ConditionCode — @listing.ConditionName<br /><span class="faed-doclist__meta">@listing.ConditionDescription</span></dd>
+            <dt>Why discounted</dt>
+            <dd>@(listing.DiscountReasonNames.Count > 0 ? string.Join(", ", listing.DiscountReasonNames) : "—")</dd>
+            <dt>Description</dt>
+            <dd>@listing.Description</dd>
+            <dt>Retail price</dt>
+            <dd>@(listing.RetailPrice is { } retail ? $"JOD {retail:0.000}" : "—") @(listing.AllowB2C ? "(B2C enabled)" : "")</dd>
+            <dt>Reference price</dt>
+            <dd>@(listing.ReferencePrice is { } reference ? $"JOD {reference:0.000}" : "—")</dd>
+            <dt>Wholesale</dt>
+            <dd>
+                @(listing.AllowB2B
+                    ? $"JOD {listing.WholesaleIndicativeUnitPrice:0.000} indicative, MOQ {listing.WholesaleMinQuantity}"
+                    : "Not offered")
+            </dd>
+            <dt>Included / missing</dt>
+            <dd>
+                Included: @(listing.IncludedItemsText ?? "—")<br />
+                Missing: @(listing.MissingItemsText ?? "—")
+            </dd>
+        </dl>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Reference price evidence</h2>
+        @if (listing.ReferencePriceEvidence.Count == 0)
+        {
+            <p class="faed-field__hint">None provided.</p>
+        }
+        else
+        {
+            <ul class="faed-doclist">
+                @foreach (var evidence in listing.ReferencePriceEvidence)
+                {
+                    <li>
+                        <span class="faed-doclist__name">@ListingStatusDisplay.EvidenceTypeLabel(evidence.EvidenceType)</span>
+                        <span class="faed-doclist__meta">
+                            @if (evidence.HasFile)
+                            {
+                                <a asp-area="" asp-controller="ListingMedia" asp-action="ShowEvidence" asp-route-id="@evidence.Id" target="_blank" rel="noopener">
+                                    @(evidence.OriginalFileName ?? "Open file")
+                                </a>
+                            }
+                            else if (evidence.ReferenceUrl is not null)
+                            {
+                                <a href="@evidence.ReferenceUrl" target="_blank" rel="noopener noreferrer nofollow">@evidence.ReferenceUrl</a>
+                            }
+                            else
+                            {
+                                @(evidence.Note ?? "—")
+                            }
+                            @if (evidence.HasFile && !string.IsNullOrEmpty(evidence.Note))
+                            {
+                                <text> &mdash; @evidence.Note</text>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Variants</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th>SKU</th><th>Combination</th><th>Available</th><th>Active</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var variant in listing.Variants)
+                    {
+                        <tr>
+                            <td>@variant.Sku</td>
+                            <td>@variant.Combination</td>
+                            <td>@variant.AvailableQuantity</td>
+                            <td>@(variant.IsActive ? "Yes" : "No")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Photos</h2>
+        @foreach (var group in new[] { ListingMediaType.Product, ListingMediaType.Defect, ListingMediaType.Packaging })
+        {
+            var images = group switch
+            {
+                ListingMediaType.Product => listing.ProductPhotos,
+                ListingMediaType.Defect => listing.DefectPhotos,
+                _ => listing.PackagingPhotos,
+            };
+
+            @if (images.Count > 0)
+            {
+                <h3 class="faed-panel__title" style="font-size:0.9rem;">@(ListingStatusDisplay.MediaTypeLabel(group))s</h3>
+                <div class="faed-thumb-grid mb-3">
+                    @foreach (var image in images)
+                    {
+                        <div class="faed-thumb">
+                            <img src="/listing-images/@image.Id" alt="@(image.AltText ?? listing.Title)" loading="lazy" />
+                        </div>
+                    }
+                </div>
+            }
+        }
+        @* Matched by the reason's stable Code (tasks/TASK-003-CATALOG.md seed), not its
+           display Name — renaming the reason in a later catalog-management task must not
+           silently disable this warning. *@
+        @if (listing.DefectPhotos.Count == 0 && listing.DiscountReasonCodes.Contains("CosmeticDefect"))
+        {
+            <div class="faed-alert faed-alert--error" role="alert">
+                A defect-related discount reason is selected but no defect photo was attached.
+            </div>
+        }
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Review history</h2>
+        @if (listing.Moderations.Count == 0)
+        {
+            <p class="faed-field__hint">No prior reviews.</p>
+        }
+        else
+        {
+            <ul class="faed-doclist">
+                @foreach (var moderation in listing.Moderations)
+                {
+                    <li>
+                        <span class="faed-doclist__name">@ListingStatusDisplay.ModerationStatusLabel(moderation.Status) &middot; @AmmanTime.FormatDate(moderation.SubmittedAtUtc)</span>
+                        <span class="faed-doclist__meta">
+                            @moderation.ReasonForReview
+                            @if (!string.IsNullOrEmpty(moderation.ReviewNote))
+                            {
+                                <text> &mdash; @moderation.ReviewNote</text>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @if (listing.Status == ListingStatus.PendingReview)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Decision</h2>
+            <div class="faed-decision-row">
+                <form asp-action="Approve" asp-route-id="@listing.Id" method="post" class="faed-decision-row__grow">
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="review-note">Review note (optional)</label>
+                        <textarea class="faed-input" id="review-note" name="reviewNote" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--primary">Approve &amp; publish</button>
+                </form>
+                <form asp-action="Reject" asp-route-id="@listing.Id" method="post" class="faed-decision-row__grow">
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="reject-reason">Rejection reason</label>
+                        <textarea class="faed-input" id="reject-reason" name="reason" rows="2" required></textarea>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--danger">Reject</button>
+                </form>
+            </div>
+        </div>
+    }
+    else if (listing.Status is ListingStatus.Live or ListingStatus.SoldOut)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Take down</h2>
+            <form asp-action="Hide" asp-route-id="@listing.Id" method="post">
+                <div class="faed-field">
+                    <label class="faed-field__label" for="hide-reason">Reason</label>
+                    <textarea class="faed-input" id="hide-reason" name="reason" rows="2" required></textarea>
+                </div>
+                <button type="submit" class="faed-btn faed-btn--danger">Hide from marketplace</button>
+            </form>
+        </div>
+    }
+    else if (listing.Status == ListingStatus.Hidden)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Hidden</h2>
+            <p class="faed-panel__hint">
+                @(listing.HiddenByAdmin
+                    ? "An admin took this listing down. The merchant cannot republish it themselves."
+                    : "The merchant hid this listing themselves. They can republish it, or you can do it on their behalf below.")
+            </p>
+            <form asp-action="Restore" asp-route-id="@listing.Id" method="post">
+                <button type="submit" class="faed-btn faed-btn--primary">Restore to the marketplace</button>
+            </form>
+        </div>
+    }
+</div>

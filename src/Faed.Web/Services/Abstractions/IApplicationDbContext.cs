@@ -25,6 +25,19 @@ public interface IApplicationDbContext
 
     DbSet<Brand> Brands { get; }
 
+    DbSet<Listing> Listings { get; }
+
+    /// <summary>The authoritative inventory records (AGENTS.md Rule A, docs/adr/0002).</summary>
+    DbSet<ListingVariant> ListingVariants { get; }
+
+    DbSet<ListingMedia> ListingMedia { get; }
+
+    DbSet<ListingReferencePriceEvidence> ListingReferencePriceEvidence { get; }
+
+    DbSet<ListingModeration> ListingModerations { get; }
+
+    DbSet<InventoryAdjustment> InventoryAdjustments { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

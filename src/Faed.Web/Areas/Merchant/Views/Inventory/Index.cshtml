@@ -1,0 +1,155 @@
+@model InventoryPageModel
+@{
+    ViewData["Title"] = "Inventory";
+    var lowStockCount = Model.Rows.Count(r => r.IsActive && r.AvailableQuantity <= 3);
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        <a asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+        <a class="is-active" asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Inventory</h1>
+            <p class="faed-page__subtitle">Stock across every variant, and a history of manual corrections.</p>
+        </div>
+    </div>
+
+    <div class="faed-stat-row">
+        <div class="faed-stat">
+            <div class="faed-stat__value">@Model.Rows.Count(r => r.IsActive)</div>
+            <div class="faed-stat__label">Active variants</div>
+        </div>
+        <div class="faed-stat @(lowStockCount > 0 ? "faed-stat--attention" : "")">
+            <div class="faed-stat__value">@lowStockCount</div>
+            <div class="faed-stat__label">Low stock (&le; 3 units)</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@Model.Rows.Sum(r => r.AvailableQuantity)</div>
+            <div class="faed-stat__label">Available units</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@Model.Rows.Sum(r => r.ReservedQuantity)</div>
+            <div class="faed-stat__label">Reserved units</div>
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No variants yet</div>
+            <div>Add variants to a listing to start tracking stock.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap mb-4">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th>Listing</th>
+                        <th>SKU</th>
+                        <th>Combination</th>
+                        <th>Available</th>
+                        <th>Reserved</th>
+                        <th>Sold</th>
+                        <th>Active</th>
+                        <th>Adjust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr class="@(row.IsActive && row.AvailableQuantity <= 3 ? "faed-row--attention" : "")">
+                            <td><a asp-area="Merchant" asp-controller="Listings" asp-action="Edit" asp-route-id="@row.ListingId">@row.ListingTitle</a></td>
+                            <td>@row.Sku</td>
+                            <td>@row.Combination</td>
+                            <td>@row.AvailableQuantity</td>
+                            <td>@row.ReservedQuantity</td>
+                            <td>@row.SoldQuantity</td>
+                            <td>@(row.IsActive ? "Yes" : "No")</td>
+                            <td>
+                                <button type="button" class="faed-btn faed-btn--ghost faed-btn--sm"
+                                        aria-label="Adjust stock for @row.Sku (@row.ListingTitle)"
+                                        onclick="document.getElementById('adjust-@row.VariantId').showModal()">
+                                    Adjust
+                                </button>
+                                <dialog id="adjust-@row.VariantId" class="faed-panel faed-dialog" aria-label="Adjust stock for @row.Sku">
+                                    <form asp-action="Adjust" method="post">
+                                        <input type="hidden" name="Adjust.VariantId" value="@row.VariantId" />
+                                        <h2 class="faed-panel__title">Adjust @row.Sku</h2>
+                                        <p class="faed-panel__hint">@row.ListingTitle &middot; @row.Combination &middot; currently @row.AvailableQuantity available</p>
+                                        <div class="faed-field">
+                                            <label class="faed-field__label" for="adjust-type-@row.VariantId">Reason type</label>
+                                            <select class="faed-select" id="adjust-type-@row.VariantId" name="Adjust.AdjustmentType">
+                                                <option value="@InventoryAdjustmentType.StockFound">Stock found (adds units)</option>
+                                                <option value="@InventoryAdjustmentType.StockLostOrDamaged">Lost or damaged (removes units)</option>
+                                                <option value="@InventoryAdjustmentType.ManualCorrection">Manual correction</option>
+                                            </select>
+                                        </div>
+                                        <div class="faed-field">
+                                            <label class="faed-field__label" for="adjust-qty-@row.VariantId">Quantity change</label>
+                                            <input class="faed-input" id="adjust-qty-@row.VariantId" type="number"
+                                                   name="Adjust.QuantityDelta" placeholder="e.g. 5 or -2"
+                                                   aria-describedby="adjust-qty-hint-@row.VariantId" />
+                                            <span class="faed-field__hint" id="adjust-qty-hint-@row.VariantId">Positive to add units, negative to remove them.</span>
+                                        </div>
+                                        <div class="faed-field">
+                                            <label class="faed-field__label" for="adjust-reason-@row.VariantId">Reason</label>
+                                            <textarea class="faed-input" id="adjust-reason-@row.VariantId" name="Adjust.Reason" rows="2"></textarea>
+                                        </div>
+                                        <button type="submit" class="faed-btn faed-btn--primary">Save adjustment</button>
+                                        <button type="button" class="faed-btn faed-btn--ghost" onclick="document.getElementById('adjust-@row.VariantId').close()">Cancel</button>
+                                    </form>
+                                </dialog>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <h2 class="faed-panel__title">Recent adjustments</h2>
+    @if (Model.RecentAdjustments.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No adjustments yet</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Listing</th>
+                        <th>SKU</th>
+                        <th>Type</th>
+                        <th>Change</th>
+                        <th>Before &rarr; After</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var adjustment in Model.RecentAdjustments)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDateTime(adjustment.CreatedAtUtc)</td>
+                            <td>@adjustment.ListingTitle</td>
+                            <td>@adjustment.Sku</td>
+                            <td>@ListingStatusDisplay.AdjustmentTypeLabel(adjustment.AdjustmentType)</td>
+                            <td>@(adjustment.QuantityDelta > 0 ? $"+{adjustment.QuantityDelta}" : adjustment.QuantityDelta.ToString())</td>
+                            <td>@adjustment.QuantityBefore &rarr; @adjustment.QuantityAfter</td>
+                            <td>@adjustment.Reason</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -1,0 +1,589 @@
+@model ListingWorkspacePageModel
+@{
+    ViewData["Title"] = Model.Listing.Title;
+    var listing = Model.Listing;
+    var referenceData = Model.ReferenceData;
+    var canEdit = listing.AcceptsMaterialEdit;
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        <a class="is-active" asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+        <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">@listing.Title</h1>
+            <p class="faed-page__subtitle">/@listing.Slug &middot; @listing.CategoryName &middot; Grade @listing.ConditionCode</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@ListingStatusDisplay.BadgeClass(listing.Status)">@ListingStatusDisplay.Label(listing.Status)</span>
+        </div>
+    </div>
+
+    @if (listing.Status == ListingStatus.PendingReview)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            This listing is awaiting admin review and cannot be edited until a decision is made.
+            @if (listing.PendingModeration is not null)
+            {
+                <div>Reason for review: @listing.PendingModeration.ReasonForReview</div>
+            }
+        </div>
+    }
+    else if (listing.Status == ListingStatus.Rejected && listing.LatestDecision is not null)
+    {
+        <div class="faed-alert faed-alert--error" role="alert">
+            <strong>Rejected by admin.</strong>
+            <div>Reason: @listing.LatestDecision.ReviewNote</div>
+            <div>Fix the issue below and submit again.</div>
+        </div>
+    }
+    else if (listing.Status == ListingStatus.Hidden && listing.HiddenByAdmin)
+    {
+        <div class="faed-alert faed-alert--error" role="alert">
+            <strong>An administrator hid this listing.</strong>
+            <div>Contact Faed support to have it restored — you cannot republish it yourself.</div>
+        </div>
+    }
+    else if (listing.Status == ListingStatus.Hidden)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            This listing is hidden from the public marketplace. Republish it when it is ready again.
+        </div>
+    }
+    else if (listing.Status == ListingStatus.SoldOut)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            This listing is out of stock. It stays addressable but is not purchasable until restocked.
+        </div>
+    }
+    else if (listing.Status == ListingStatus.Live)
+    {
+        <div class="faed-alert faed-alert--success" role="status">This listing is live on the public marketplace.</div>
+    }
+
+    @if (canEdit && listing.Status is ListingStatus.Draft or ListingStatus.Rejected && listing.SubmissionBlockers.Count > 0)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Before you can submit for review</h2>
+            <ul class="faed-blockers">
+                @foreach (var blocker in listing.SubmissionBlockers)
+                {
+                    <li>@blocker</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="faed-page__actions mb-4">
+        @if (listing.Status is ListingStatus.Draft or ListingStatus.Rejected)
+        {
+            <form asp-action="Submit" asp-route-id="@listing.Id" method="post" class="d-inline">
+                <button type="submit" class="faed-btn faed-btn--primary" @(listing.SubmissionBlockers.Count > 0 ? "disabled" : "")>
+                    Submit for review
+                </button>
+            </form>
+        }
+        @if (listing.Status is ListingStatus.Live or ListingStatus.SoldOut)
+        {
+            <form asp-action="Hide" asp-route-id="@listing.Id" method="post" class="d-inline">
+                <button type="submit" class="faed-btn faed-btn--ghost">Hide from marketplace</button>
+            </form>
+        }
+        @if (listing.Status == ListingStatus.Hidden && !listing.HiddenByAdmin)
+        {
+            <form asp-action="Restore" asp-route-id="@listing.Id" method="post" class="d-inline">
+                <button type="submit" class="faed-btn faed-btn--primary">Republish</button>
+            </form>
+        }
+        @if (listing.Status != ListingStatus.Archived)
+        {
+            <form asp-action="Archive" asp-route-id="@listing.Id" method="post" class="d-inline"
+                  onsubmit="return confirm('Archive this listing? It will no longer be manageable.');">
+                <button type="submit" class="faed-btn faed-btn--danger">Archive</button>
+            </form>
+        }
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
+
+    <!-- ---- Business details ---- -->
+    <section class="faed-section">
+        <div class="faed-section__header">
+            <div>
+                <h2 class="faed-section__title">Business details</h2>
+                <p class="faed-section__hint">Category, condition, pricing and disclosure. Changing these while live sends the listing back for review.</p>
+            </div>
+        </div>
+        <div class="faed-section__body">
+            <form asp-action="UpdateDetails" asp-route-id="@listing.Id" method="post" novalidate>
+                <div class="faed-form-grid">
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.CategoryId">Category</label>
+                        <select class="faed-select" asp-for="Form.CategoryId" disabled="@(!canEdit)">
+                            @foreach (var category in referenceData.Categories)
+                            {
+                                <option value="@category.Id">@category.Label</option>
+                            }
+                        </select>
+                        <span class="faed-field__error" asp-validation-for="Form.CategoryId"></span>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.BrandId">Brand (optional)</label>
+                        <select class="faed-select" asp-for="Form.BrandId" disabled="@(!canEdit)">
+                            <option value="">No brand</option>
+                            @foreach (var brand in referenceData.Brands)
+                            {
+                                <option value="@brand.Id">@brand.Label</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.ConditionGradeId">Condition grade</label>
+                        <select class="faed-select" asp-for="Form.ConditionGradeId" disabled="@(!canEdit)">
+                            @foreach (var grade in referenceData.ConditionGrades)
+                            {
+                                <option value="@grade.Id">@grade.Label</option>
+                            }
+                        </select>
+                        <span class="faed-field__error" asp-validation-for="Form.ConditionGradeId"></span>
+                    </div>
+
+                    <fieldset class="faed-field faed-field--full" style="border:0; padding:0; margin:0 0 var(--faed-space-4);">
+                        <legend class="faed-field__label" style="padding:0;">Why discounted</legend>
+                        <div class="faed-checkbox-group">
+                            @foreach (var reason in referenceData.DiscountReasons)
+                            {
+                                <label class="faed-checkbox-row">
+                                    <input type="checkbox" name="Form.DiscountReasonIds" value="@reason.Id"
+                                           @(Model.Form.DiscountReasonIds.Contains(reason.Id) ? "checked" : "")
+                                           disabled="@(!canEdit)" />
+                                    <span>@reason.Label</span>
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.Title">Title</label>
+                        <input class="faed-input" asp-for="Form.Title" disabled="@(!canEdit)" />
+                        <span class="faed-field__error" asp-validation-for="Form.Title"></span>
+                    </div>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.Description">Description</label>
+                        <textarea class="faed-input" asp-for="Form.Description" rows="4" disabled="@(!canEdit)"></textarea>
+                        <span class="faed-field__error" asp-validation-for="Form.Description"></span>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.ReferencePrice">Reference price (JOD)</label>
+                        <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.ReferencePrice" disabled="@(!canEdit)" />
+                        <span class="faed-field__hint">What this normally sells for. Add evidence below.</span>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.RetailPrice">Faed retail price (JOD)</label>
+                        <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.RetailPrice" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-checkbox-row">
+                            <input type="checkbox" asp-for="Form.AllowB2C" disabled="@(!canEdit)" />
+                            <span>Sell to individual buyers (B2C)</span>
+                        </label>
+                        <label class="faed-checkbox-row">
+                            <input type="checkbox" asp-for="Form.AllowB2B" disabled="@(!canEdit)" />
+                            <span>Sell to other merchants (B2B)</span>
+                        </label>
+                        <label class="faed-checkbox-row">
+                            <input type="checkbox" asp-for="Form.AllowMixedVariantB2B" disabled="@(!canEdit)" />
+                            <span>Allow mixed variants toward the B2B minimum</span>
+                        </label>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.WholesaleIndicativeUnitPrice">Wholesale indicative price (JOD)</label>
+                        <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.WholesaleIndicativeUnitPrice" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.WholesaleMinQuantity">B2B minimum order quantity</label>
+                        <input class="faed-input" type="number" min="1" asp-for="Form.WholesaleMinQuantity" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.IncludedItemsText">What's included</label>
+                        <input class="faed-input" asp-for="Form.IncludedItemsText" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.MissingItemsText">What's missing</label>
+                        <input class="faed-input" asp-for="Form.MissingItemsText" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.ReturnPolicyText">Return policy</label>
+                        <textarea class="faed-input" asp-for="Form.ReturnPolicyText" rows="2" disabled="@(!canEdit)"></textarea>
+                    </div>
+
+                    <div class="faed-field faed-field--full">
+                        <label class="faed-field__label" asp-for="Form.WarrantyText">Warranty</label>
+                        <textarea class="faed-input" asp-for="Form.WarrantyText" rows="2" disabled="@(!canEdit)"></textarea>
+                    </div>
+                </div>
+
+                @if (canEdit)
+                {
+                    <button type="submit" class="faed-btn faed-btn--primary">Save details</button>
+                }
+            </form>
+        </div>
+    </section>
+
+    <!-- ---- Options & variants ---- -->
+    <section class="faed-section">
+        <div class="faed-section__header">
+            <div>
+                <h2 class="faed-section__title">Options &amp; variants</h2>
+                <p class="faed-section__hint">Define Size/Colour, then add each sellable combination with its own SKU and stock.</p>
+            </div>
+        </div>
+        <div class="faed-section__body">
+            @foreach (var option in listing.Options)
+            {
+                <div class="mb-3">
+                    <div class="faed-page__actions" style="justify-content: space-between;">
+                        <strong>@option.Name</strong>
+                        @if (canEdit)
+                        {
+                            <form asp-action="RemoveOption" asp-route-id="@listing.Id" asp-route-optionId="@option.Id" method="post"
+                                  onsubmit="return confirm('Remove this option?');">
+                                <button type="submit" class="faed-btn faed-btn--danger faed-btn--sm">Remove option</button>
+                            </form>
+                        }
+                    </div>
+                    <div class="faed-chip-list mt-2">
+                        @foreach (var value in option.Values)
+                        {
+                            <span class="faed-chip">
+                                @value.Value
+                                @if (canEdit)
+                                {
+                                    <form asp-action="RemoveOptionValue" asp-route-id="@listing.Id"
+                                          asp-route-optionId="@option.Id" asp-route-optionValueId="@value.Id" method="post" class="d-inline">
+                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm" style="min-height:auto;padding:0 0.35rem;" aria-label="Remove @value.Value">&times;</button>
+                                    </form>
+                                }
+                            </span>
+                        }
+                    </div>
+                    @if (canEdit)
+                    {
+                        <form asp-action="AddOptionValue" asp-route-id="@listing.Id" method="post" class="mt-2 d-flex gap-2">
+                            <input type="hidden" name="AddOptionValue.OptionId" value="@option.Id" />
+                            <label class="visually-hidden" for="add-value-@option.Id">Add a @option.Name value</label>
+                            <input class="faed-input" id="add-value-@option.Id" name="AddOptionValue.Value"
+                                   placeholder="Add a value" style="max-width:12rem;" />
+                            <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">Add</button>
+                        </form>
+                    }
+                </div>
+            }
+
+            @if (canEdit && listing.Variants.Count == 0)
+            {
+                <form asp-action="AddOption" asp-route-id="@listing.Id" method="post" class="d-flex gap-2 mb-4" novalidate>
+                    <label class="visually-hidden" asp-for="AddOption.Name">Option name</label>
+                    <input class="faed-input" asp-for="AddOption.Name" placeholder="e.g. Size or Colour" style="max-width:16rem;" />
+                    <button type="submit" class="faed-btn faed-btn--ghost">Add option</button>
+                </form>
+            }
+            else if (canEdit)
+            {
+                <p class="faed-field__hint">Remove the variants below before changing the option structure.</p>
+            }
+
+            <div class="faed-table-wrap mb-3">
+                <table class="faed-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Combination</th>
+                            <th>Available</th>
+                            <th>Reserved</th>
+                            <th>Sold</th>
+                            <th>Active</th>
+                            @if (canEdit)
+                            {
+                                <th>Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (listing.Variants.Count == 0)
+                        {
+                            <tr><td colspan="@(canEdit ? 7 : 6)">No variants yet.</td></tr>
+                        }
+                        @foreach (var variant in listing.Variants)
+                        {
+                            <tr>
+                                <td>@variant.Sku</td>
+                                <td>@variant.Combination</td>
+                                <td>@variant.AvailableQuantity</td>
+                                <td>@variant.ReservedQuantity</td>
+                                <td>@variant.SoldQuantity</td>
+                                <td>@(variant.IsActive ? "Yes" : "No")</td>
+                                @if (canEdit)
+                                {
+                                    <td>
+                                        <form asp-action="ToggleVariant" asp-route-id="@listing.Id" asp-route-variantId="@variant.Id"
+                                              asp-route-isActive="@(!variant.IsActive)" method="post" class="d-inline">
+                                            <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">
+                                                @(variant.IsActive ? "Deactivate" : "Reactivate")
+                                            </button>
+                                        </form>
+                                        @if (variant.ReservedQuantity == 0 && variant.SoldQuantity == 0)
+                                        {
+                                            <form asp-action="RemoveVariant" asp-route-id="@listing.Id" asp-route-variantId="@variant.Id" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Remove this variant?');">
+                                                <button type="submit" class="faed-btn faed-btn--danger faed-btn--sm">Remove</button>
+                                            </form>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (canEdit && listing.Options.All(o => o.Values.Count > 0))
+            {
+                @if (listing.Options.Count == 0)
+                {
+                    <p class="faed-field__hint">
+                        No options defined — this adds a single undifferentiated SKU. Add a Size/Colour
+                        option above first if this product comes in variants.
+                    </p>
+                }
+                <form asp-action="AddVariant" asp-route-id="@listing.Id" method="post" novalidate>
+                    <div class="faed-form-grid">
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddVariant.Sku">SKU</label>
+                            <input class="faed-input" asp-for="AddVariant.Sku" />
+                        </div>
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddVariant.InitialQuantity">Initial quantity</label>
+                            <input class="faed-input" type="number" min="0" asp-for="AddVariant.InitialQuantity" />
+                        </div>
+                        @foreach (var option in listing.Options)
+                        {
+                            <div class="faed-field">
+                                <label class="faed-field__label" for="add-variant-@option.Id">@option.Name</label>
+                                <select class="faed-select" id="add-variant-@option.Id" name="AddVariant.OptionValueIds">
+                                    @foreach (var value in option.Values)
+                                    {
+                                        <option value="@value.Id">@value.Value</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--ghost">Add variant</button>
+                </form>
+            }
+        </div>
+    </section>
+
+    <!-- ---- Photos ---- -->
+    <section class="faed-section">
+        <div class="faed-section__header">
+            <div>
+                <h2 class="faed-section__title">Photos</h2>
+                <p class="faed-section__hint">Product photos are required. Defect photos must clearly show any imperfection.</p>
+            </div>
+        </div>
+        <div class="faed-section__body">
+            @foreach (var group in new[] { ListingMediaType.Product, ListingMediaType.Defect, ListingMediaType.Packaging })
+            {
+                var images = group switch
+                {
+                    ListingMediaType.Product => listing.ProductPhotos,
+                    ListingMediaType.Defect => listing.DefectPhotos,
+                    _ => listing.PackagingPhotos,
+                };
+
+                <h3 class="faed-panel__title" style="font-size:0.95rem;">@(ListingStatusDisplay.MediaTypeLabel(group))s</h3>
+                @if (images.Count == 0)
+                {
+                    <p class="faed-field__hint mb-3">None added.</p>
+                }
+                else
+                {
+                    <div class="faed-thumb-grid mb-3">
+                        @foreach (var image in images)
+                        {
+                            <div class="faed-thumb">
+                                <img src="/listing-images/@image.Id" alt="@(image.AltText ?? listing.Title)" loading="lazy" />
+                                @if (image.MediaType == ListingMediaType.Defect)
+                                {
+                                    <span class="faed-thumb__label">Defect</span>
+                                }
+                                @if (canEdit)
+                                {
+                                    <form asp-action="RemoveImage" asp-route-id="@listing.Id" asp-route-mediaId="@image.Id" method="post" class="faed-thumb__remove">
+                                        <button type="submit" class="faed-btn faed-btn--danger faed-btn--sm">Remove</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+
+            @if (canEdit)
+            {
+                <form asp-action="UploadImage" asp-route-id="@listing.Id" method="post" enctype="multipart/form-data" class="mt-2" novalidate>
+                    <div class="faed-form-grid">
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="UploadImage.MediaType">Photo kind</label>
+                            <select class="faed-select" asp-for="UploadImage.MediaType">
+                                <option value="@ListingMediaType.Product">Product</option>
+                                <option value="@ListingMediaType.Defect">Defect</option>
+                                <option value="@ListingMediaType.Packaging">Packaging</option>
+                            </select>
+                        </div>
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="UploadImage.File">File</label>
+                            <input class="faed-input" type="file" asp-for="UploadImage.File" accept=".jpg,.jpeg,.png" />
+                        </div>
+                        <div class="faed-field faed-field--full">
+                            <label class="faed-field__label" asp-for="UploadImage.AltText">Description (for screen readers)</label>
+                            <input class="faed-input" asp-for="UploadImage.AltText" />
+                        </div>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--ghost">Upload photo</button>
+                </form>
+            }
+        </div>
+    </section>
+
+    <!-- ---- Reference price evidence ---- -->
+    <section class="faed-section">
+        <div class="faed-section__header">
+            <div>
+                <h2 class="faed-section__title">Reference price evidence</h2>
+                <p class="faed-section__hint">Required if you set a reference price above.</p>
+            </div>
+        </div>
+        <div class="faed-section__body">
+            @if (listing.ReferencePriceEvidence.Count == 0)
+            {
+                <p class="faed-field__hint mb-3">No evidence added.</p>
+            }
+            else
+            {
+                <ul class="faed-doclist mb-3">
+                    @foreach (var evidence in listing.ReferencePriceEvidence)
+                    {
+                        <li>
+                            <span class="faed-doclist__name">@ListingStatusDisplay.EvidenceTypeLabel(evidence.EvidenceType)</span>
+                            <span class="faed-doclist__meta">
+                                @if (evidence.HasFile)
+                                {
+                                    <a asp-area="" asp-controller="ListingMedia" asp-action="ShowEvidence" asp-route-id="@evidence.Id" target="_blank" rel="noopener">
+                                        @(evidence.OriginalFileName ?? "Open file")
+                                    </a>
+                                }
+                                else if (evidence.ReferenceUrl is not null)
+                                {
+                                    <a href="@evidence.ReferenceUrl" target="_blank" rel="noopener noreferrer nofollow">@evidence.ReferenceUrl</a>
+                                }
+                                else
+                                {
+                                    @(evidence.Note ?? "—")
+                                }
+                                @if (evidence.HasFile && !string.IsNullOrEmpty(evidence.Note))
+                                {
+                                    <text> &mdash; @evidence.Note</text>
+                                }
+                            </span>
+                            @if (canEdit)
+                            {
+                                <form asp-action="RemoveEvidence" asp-route-id="@listing.Id" asp-route-evidenceId="@evidence.Id" method="post" class="faed-doclist__spacer">
+                                    <button type="submit" class="faed-btn faed-btn--danger faed-btn--sm">Remove</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (canEdit)
+            {
+                <form asp-action="AddEvidence" asp-route-id="@listing.Id" method="post" enctype="multipart/form-data" novalidate>
+                    <div class="faed-form-grid">
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddEvidence.EvidenceType">Evidence type</label>
+                            <select class="faed-select" asp-for="AddEvidence.EvidenceType">
+                                @foreach (ReferencePriceEvidenceType type in Enum.GetValues<ReferencePriceEvidenceType>())
+                                {
+                                    <option value="@type">@ListingStatusDisplay.EvidenceTypeLabel(type)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddEvidence.ReferenceUrl">Link</label>
+                            <input class="faed-input" asp-for="AddEvidence.ReferenceUrl" />
+                        </div>
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddEvidence.Note">Note</label>
+                            <input class="faed-input" asp-for="AddEvidence.Note" />
+                        </div>
+                        <div class="faed-field">
+                            <label class="faed-field__label" asp-for="AddEvidence.File">Supporting file (optional)</label>
+                            <input class="faed-input" type="file" asp-for="AddEvidence.File" accept=".jpg,.jpeg,.png,.pdf" />
+                        </div>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--ghost">Add evidence</button>
+                </form>
+            }
+        </div>
+    </section>
+
+    @if (listing.Moderations.Count > 0)
+    {
+        <section class="faed-section">
+            <div class="faed-section__header">
+                <h2 class="faed-section__title">Review history</h2>
+            </div>
+            <div class="faed-section__body">
+                <ul class="faed-doclist">
+                    @foreach (var moderation in listing.Moderations)
+                    {
+                        <li>
+                            <span class="faed-doclist__name">@ListingStatusDisplay.ModerationStatusLabel(moderation.Status) &middot; @AmmanTime.FormatDate(moderation.SubmittedAtUtc)</span>
+                            <span class="faed-doclist__meta">
+                                @moderation.ReasonForReview
+                                @if (!string.IsNullOrEmpty(moderation.ReviewNote))
+                                {
+                                    <text> &mdash; @moderation.ReviewNote</text>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </section>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

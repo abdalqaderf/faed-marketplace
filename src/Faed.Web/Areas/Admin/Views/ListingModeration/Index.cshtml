@@ -1,0 +1,94 @@
+@model ListingModerationQueuePageModel
+@{
+    ViewData["Title"] = "Listing moderation";
+
+    var tabs = new (ModerationQueueFilter Value, string Label)[]
+    {
+        (ModerationQueueFilter.PendingReview, "Pending review"),
+        (ModerationQueueFilter.Live, "Live"),
+        (ModerationQueueFilter.Rejected, "Rejected"),
+        (ModerationQueueFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Admin sections">
+        <a asp-area="Admin" asp-controller="MerchantVerification" asp-action="Index">Merchant verification</a>
+        <a class="is-active" asp-area="Admin" asp-controller="ListingModeration" asp-action="Index">Listing moderation</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Listing moderation</h1>
+            <p class="faed-page__subtitle">
+                @Model.PendingCount listing@(Model.PendingCount == 1 ? "" : "s") awaiting review.
+            </p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter listings">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">Nothing here</div>
+            <div>No listings match this filter right now.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th>Listing</th>
+                        <th>Merchant</th>
+                        <th>Status</th>
+                        <th>Reason for review</th>
+                        <th>Variants</th>
+                        <th>Defect photos</th>
+                        <th>Reference price</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@item.ListingId">@item.Title</a></td>
+                            <td>@item.MerchantBusinessName</td>
+                            <td><span class="@ListingStatusDisplay.BadgeClass(item.Status)">@ListingStatusDisplay.Label(item.Status)</span></td>
+                            <td>@item.ReasonForReview</td>
+                            <td>@item.VariantCount</td>
+                            <td>@(item.DefectPhotoCount > 0 ? item.DefectPhotoCount.ToString() : "—")</td>
+                            <td>
+                                @if (item.ReferencePrice is { } price)
+                                {
+                                    <span>JOD @price.ToString("0.000")</span>
+                                    if (item.HasReferencePriceEvidence)
+                                    {
+                                        <span class="faed-badge faed-badge--approved">Evidenced</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="faed-badge faed-badge--rejected">No evidence</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>@AmmanTime.FormatDate(item.SubmittedAtUtc)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

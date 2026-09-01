@@ -28,6 +28,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<Brand> Brands => Set<Brand>();
 
+    public DbSet<Listing> Listings => Set<Listing>();
+
+    public DbSet<ListingVariant> ListingVariants => Set<ListingVariant>();
+
+    public DbSet<ListingMedia> ListingMedia => Set<ListingMedia>();
+
+    public DbSet<ListingReferencePriceEvidence> ListingReferencePriceEvidence => Set<ListingReferencePriceEvidence>();
+
+    public DbSet<ListingModeration> ListingModerations => Set<ListingModeration>();
+
+    public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
 

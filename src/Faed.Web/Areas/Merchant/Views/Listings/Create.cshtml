@@ -1,0 +1,74 @@
+@model ListingFormModel
+@{
+    ViewData["Title"] = "New listing";
+    var referenceData = (ListingReferenceData)ViewData["ReferenceData"]!;
+}
+
+<div class="faed-page">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        <a class="is-active" asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+        <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">New listing</h1>
+            <p class="faed-page__subtitle">
+                Start with the basics. You will add sizes, colours, stock and photos on the next screen.
+            </p>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <form asp-action="Create" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
+
+            <div class="faed-form-grid">
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="CategoryId">Category</label>
+                    <select class="faed-select" asp-for="CategoryId">
+                        <option value="">Choose a category</option>
+                        @foreach (var category in referenceData.Categories)
+                        {
+                            <option value="@category.Id">@category.Label</option>
+                        }
+                    </select>
+                    <span class="faed-field__error" asp-validation-for="CategoryId"></span>
+                </div>
+
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="ConditionGradeId">Condition grade</label>
+                    <select class="faed-select" asp-for="ConditionGradeId">
+                        <option value="">Choose a condition</option>
+                        @foreach (var grade in referenceData.ConditionGrades)
+                        {
+                            <option value="@grade.Id">@grade.Label</option>
+                        }
+                    </select>
+                    <span class="faed-field__error" asp-validation-for="ConditionGradeId"></span>
+                </div>
+
+                <div class="faed-field faed-field--full">
+                    <label class="faed-field__label" asp-for="Title">Title</label>
+                    <input class="faed-input" asp-for="Title" placeholder="e.g. Men's Running Sneakers" />
+                    <span class="faed-field__error" asp-validation-for="Title"></span>
+                </div>
+
+                <div class="faed-field faed-field--full">
+                    <label class="faed-field__label" asp-for="Description">Description</label>
+                    <textarea class="faed-input" asp-for="Description" rows="4"
+                              placeholder="Describe the product, its material, fit and anything a buyer needs to know."></textarea>
+                    <span class="faed-field__error" asp-validation-for="Description"></span>
+                </div>
+            </div>
+
+            <button type="submit" class="faed-btn faed-btn--primary">Create draft</button>
+            <a class="faed-btn faed-btn--ghost" asp-action="Index">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

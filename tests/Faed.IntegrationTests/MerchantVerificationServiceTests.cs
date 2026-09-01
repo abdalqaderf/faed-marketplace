@@ -418,6 +418,18 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         public DbSet<Brand> Brands => inner.Brands;
 
+        public DbSet<Listing> Listings => inner.Listings;
+
+        public DbSet<ListingVariant> ListingVariants => inner.ListingVariants;
+
+        public DbSet<ListingMedia> ListingMedia => inner.ListingMedia;
+
+        public DbSet<ListingReferencePriceEvidence> ListingReferencePriceEvidence => inner.ListingReferencePriceEvidence;
+
+        public DbSet<ListingModeration> ListingModerations => inner.ListingModerations;
+
+        public DbSet<InventoryAdjustment> InventoryAdjustments => inner.InventoryAdjustments;
+
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (Interlocked.Exchange(ref _saveStarted, 1) == 0)

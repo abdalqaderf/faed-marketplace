@@ -1,0 +1,97 @@
+@model ListingListPageModel
+@{
+    ViewData["Title"] = "Listings";
+
+    var tabs = new (MerchantListingFilter Value, string Label)[]
+    {
+        (MerchantListingFilter.NeedsAttention, "Needs attention"),
+        (MerchantListingFilter.All, "All"),
+        (MerchantListingFilter.Draft, "Draft"),
+        (MerchantListingFilter.PendingReview, "Pending review"),
+        (MerchantListingFilter.Live, "Live"),
+        (MerchantListingFilter.Rejected, "Rejected"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-subnav" aria-label="Merchant sections">
+        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        <a class="is-active" asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+        <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Listings</h1>
+            <p class="faed-page__subtitle">Manage your Fashion Overstock listings, variants and stock.</p>
+        </div>
+        <div class="faed-page__actions">
+            <a class="faed-btn faed-btn--primary" asp-action="Create">New listing</a>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter listings">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No listings here yet</div>
+            <div>
+                @(Model.Filter == MerchantListingFilter.All
+                    ? "Create your first listing to start selling."
+                    : "Nothing matches this filter right now.")
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th>Listing</th>
+                        <th>Status</th>
+                        <th>Category</th>
+                        <th>Condition</th>
+                        <th>Retail price</th>
+                        <th>Variants</th>
+                        <th>Available</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Edit" asp-route-id="@item.Id">@item.Title</a>
+                                @if (item.HasDefectPhotos)
+                                {
+                                    <span class="faed-badge faed-badge--info" title="Has defect photos">Defect disclosed</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="@ListingStatusDisplay.BadgeClass(item.Status)">@ListingStatusDisplay.Label(item.Status)</span>
+                                @if (item.Status == ListingStatus.Rejected && !string.IsNullOrEmpty(item.LatestReviewNote))
+                                {
+                                    <div class="faed-doclist__meta">@item.LatestReviewNote</div>
+                                }
+                            </td>
+                            <td>@item.CategoryName</td>
+                            <td>Grade @item.ConditionCode</td>
+                            <td>@(item.RetailPrice is { } price ? $"JOD {price:0.000}" : "—")</td>
+                            <td>@item.VariantCount</td>
+                            <td>@item.AvailableUnits</td>
+                            <td>@AmmanTime.FormatDate(item.UpdatedAtUtc)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

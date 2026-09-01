@@ -7,12 +7,20 @@
 | TASK-001 — Foundation | 0 | Completed |
 | TASK-002 — Merchant Verification | 1 | Completed |
 | TASK-003 — Catalog Foundations | 2 | Completed |
-| TASK-004 — Listings, Variants, Inventory and Moderation | 3 | Not started |
+| TASK-004 — Listings, Variants, Inventory and Moderation | 3 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-004 until
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-005 until
 explicitly requested.
 
 ## Current state
+
+**Phase 3 — Listings, Variants, Inventory and Moderation complete (TASK-004).**
+
+The `Listing` aggregate (options/values, sellable `ListingVariant`s, media, discount
+reasons, reference-price evidence, moderation history), variant-level inventory with
+`rowversion` concurrency and an `InventoryAdjustment` audit trail, and the merchant
+listing workspace / admin moderation queue are implemented on top of the TASK-002/003
+foundation. See "TASK-004 — Listings, Variants, Inventory and Moderation" below.
 
 **Architecture restructure complete — single-project organized MVC.**
 
@@ -78,9 +86,291 @@ implemented.
 
 ## Active task
 
-None. TASK-003 is closed.
+None. TASK-004 is closed.
 
-Next: `tasks/TASK-004-LISTINGS-AND-INVENTORY.md` (do not start until explicitly requested).
+Next: `tasks/TASK-005-PUBLIC-MARKETPLACE.md` (do not start until explicitly requested).
+
+## TASK-004 — Listings, Variants, Inventory and Moderation
+
+### Behaviour implemented
+
+- `Listing` aggregate (`Models/Entities/Listing.cs`) — owns `ListingOption`/`ListingOptionValue`,
+  `ListingVariant` (+ `ListingVariantOptionValue` join), `ListingMedia`, `ListingDiscountReason`,
+  `ListingReferencePriceEvidence` and `ListingModeration` as private backing-field collections.
+  Holds no authoritative stock total (AGENTS.md Rule A); `AvailableUnits` is derived from
+  active variants. Every mutator that changes a material claim (category, brand, condition,
+  title, description, included/missing items, prices, sales channels, discount reasons,
+  options/variants, defect photos) routes through `ApplyMaterialChange`, which takes a
+  `Live`/`SoldOut` listing back to `PendingReview` and opens/extends a `ListingModeration`
+  row, or returns a `Hidden` listing to `Draft` so `Restore` can never republish unreviewed
+  content (AGENTS.md §8, docs/02-SCOPE-AND-DECISIONS.md "Listing moderation policy").
+  Non-material fields (return policy, warranty, mixed-lot flag, ordinary/packaging photos,
+  reference-price evidence additions, stock quantity) do not reopen moderation.
+  `UpdateDetails` applies the business-detail fields *and* the discount-reason set as one
+  atomic transition under a single `RequireMaterialEditAllowed()` check — see "Bug found and
+  fixed" below.
+- `ListingVariant` — the authoritative stock record (AGENTS.md Rule A, docs/adr/0002).
+  `AvailableQuantity`/`ReservedQuantity`/`SoldQuantity`/`InitialQuantity` all `>= 0`, enforced
+  by a domain guard in `AdjustAvailable` *and* a database check constraint
+  (`CK_ListingVariants_Quantities_NonNegative`). SQL Server `rowversion` `RowVersion` is
+  present from the migration that first creates the table. `OptionCombinationKey` is a
+  deterministic, order-independent fingerprint of the variant's option-value set, backed by
+  a unique index (`ListingId`, `OptionCombinationKey`) so a duplicate combination is rejected
+  by the database even when two requests race each other, not only by the in-memory aggregate
+  check.
+- `ListingMedia` / `ListingDiscountReason` / `ListingReferencePriceEvidence` / `ListingModeration`
+  / `InventoryAdjustment` — supporting entities per docs/04-DOMAIN-MODEL.md §3-5. Photos and
+  evidence store only a private `IFileStorage` object key, never a public URL
+  (docs/08-SECURITY-AND-PRIVACY.md §3). `InventoryAdjustment` records who/when/variant/before/
+  after/reason for every manual stock correction (docs/03-BUSINESS-RULES.md §6); stock is
+  never silently overwritten.
+- `Services/Listings` — `MerchantListingService` (`IMerchantListingService`): create/edit a
+  listing, manage options/values/variants, upload/remove product/defect/packaging photos and
+  reference-price evidence, submit for review, hide/restore/archive. Re-resolves the owning
+  Approved merchant from the database on every call (never trusts a route/form value,
+  docs/08-SECURITY-AND-PRIVACY.md §6, §9); a guessed listing id reads as "not found" for a
+  non-owner. Uploads are buffered, structurally validated with the same fail-closed inspector
+  already hardened for merchant verification documents
+  (`ListingImageValidator` → `VerificationDocumentValidator.ValidatePayload`,
+  docs/adr/0007), and only then stored — an upload that fails after the bytes are written is
+  cleaned up rather than left orphaned.
+  `InventoryService` (`IInventoryService`): variant-level stock adjustments, each written
+  together with its `InventoryAdjustment` row and a listing `RefreshAvailability` call inside
+  one transaction (AGENTS.md §7); a stale `rowversion` surfaces as `Result.Conflict`, never a
+  raw DB exception (docs/06-ARCHITECTURE.md §9). `ListingModerationService`
+  (`IListingModerationService`): admin queue, approve/reject/hide, each decision written with
+  its `AdminActionLog` entry in one transaction. `ListingMediaService`
+  (`IListingMediaService`): resolves one listing image for a caller entitled to see it —
+  anyone once the listing is `Live`/`SoldOut`, otherwise only the owning merchant or an admin.
+- `Areas/Merchant/Controllers/{Listings,Inventory}Controller` and
+  `Areas/Admin/Controllers/ListingModerationController` — thin controllers behind the
+  `ApprovedMerchant` / `AdminOnly` policies; `Controllers/ListingMediaController`
+  (`/listing-images/{id}`) is the only route that ever serves a listing image, allows
+  anonymous requests, and defers every visibility decision to `IListingMediaService`.
+- Merchant listing workspace (`Areas/Merchant/Views/Listings/{Index,Create,Workspace}.cshtml`)
+  and inventory screen (`Areas/Merchant/Views/Inventory/Index.cshtml`), admin moderation queue
+  and detail (`Areas/Admin/Views/ListingModeration/{Index,Details}.cshtml`) — Faed design
+  system components (`faed-section`, `faed-thumb-grid`, `faed-chip`, `faed-stat`,
+  `faed-blockers`, native `<dialog>` for the stock-adjustment form), DB-driven category/
+  condition/brand/discount-reason choices (no hard-coded catalog values), submission blockers
+  surfaced as plain sentences, defect photos visually distinguished from product/packaging
+  photos.
+- Migration `20260901141629_AddListingsAndInventory` — all TASK-004 tables; `RowVersion`
+  present on `ListingVariants` from this first migration; `dotnet ef migrations
+  has-pending-model-changes` reports clean.
+
+### Bug found and fixed during manual verification
+
+Running the full merchant → submit → admin-approve → material-edit flow through the real
+MVC pipeline against SQL Server (registration, verification, listing creation, variant/photo
+upload, submission, approval, then editing the live listing's title) surfaced a real defect
+that the build and the unit-only pass had not: `MerchantListingService.ApplyDetails`
+originally called `Listing.UpdateDetails(...)` and then a separate `Listing.SetDiscountReasons(...)`.
+When the business-detail edit was material (for example a title change on a `Live` listing),
+`UpdateDetails` correctly transitioned the in-memory aggregate to `PendingReview` — but the
+very next call, `SetDiscountReasons`, re-checked `RequireMaterialEditAllowed()` and now saw a
+`PendingReview` listing, throwing "This listing is being reviewed and cannot be edited until a
+decision is made." even though the discount reasons themselves had not changed. The edit
+silently failed (redisplayed the form with that error) whenever both a material field and the
+existing discount reasons were submitted together — i.e. on every normal save from the
+workspace form. Fixed by merging discount-reason assignment into `UpdateDetails` itself, so
+every field the business-details form submits — including discount reasons — is validated and
+applied under one `RequireMaterialEditAllowed()` check and one `ApplyMaterialChange` transition.
+Regression-covered by `Faed.UnitTests.ListingTests.MaterialEdit_OnLiveListing_ReturnsToPendingReview_WithoutLosingApprovalHistory`
+and, against real SQL Server, `Faed.IntegrationTests.ListingServiceTests.MaterialEdit_OnALiveListing_ReturnsItToPendingReview_AndPreservesTheApprovalHistory`.
+
+### Manual end-to-end verification (real MVC pipeline, real SQL Server, real file storage)
+
+Performed via HTTP against the running app (LocalDB `Faed`, `LocalFileStorage`), not only
+through automated tests:
+register → confirm email → apply as merchant → upload a genuine PDF (passes the fail-closed
+inspector) → submit → admin approves → merchant creates a Draft listing → adds a `Size`
+option with `M`/`L` values → adds variant `SNK-BLK-M` (5 units) → uploads a genuine PNG
+product photo (passes the fail-closed inspector) → sets retail price + discount reason →
+submits for review → admin approves → listing is `Live` and its photo is publicly reachable
+anonymously → merchant adjusts stock (`+3`, audited, before/after correct) → merchant edits
+the title on the `Live` listing → listing correctly returns to `PendingReview`, its photo
+stops being publicly reachable, and the prior approval is preserved in history (this run is
+what surfaced the bug above) → admin rejects the new version → an over-large negative stock
+adjustment is rejected server-side without changing the stored quantity.
+
+### Exit-criteria coverage (tasks/TASK-004)
+
+| Exit criterion | Covered by |
+|---|---|
+| Variant combination is unique | `ListingTests.AddVariant_DuplicateOptionCombination_Throws` (aggregate); `ListingServiceTests.DuplicateOptionCombination_IsRejectedByTheDatabase_EvenAcrossTwoConcurrentContexts` (unique index, real SQL Server) |
+| Stock is variant-level | `ListingTests.AddVariant_DistinctCombinations_BothSucceed` (Black/M, Black/L, White/M example); `ListingVariantTests` |
+| Quantities cannot become negative | `ListingVariantTests.AdjustAvailable_NegativeDeltaExceedingStock_Throws`; DB check constraint; `ListingServiceTests.AdjustStock_CannotGoNegative_AndIsAudited`; manual verification |
+| Live listing material edit requires moderation | `ListingTests.MaterialEdit_OnLiveListing_ReturnsToPendingReview_WithoutLosingApprovalHistory`; `ListingServiceTests.MaterialEdit_OnALiveListing_ReturnsItToPendingReview_AndPreservesTheApprovalHistory`; manual verification (the bug this caught) |
+| Public cannot see non-Live data | `ListingServiceTests.NonLiveListing_ImageIsHiddenFromAnonymous_ButVisibleToOwnerAndAdmin_AndPublicOnceLive`; manual verification (anonymous 403 before approval, 200 after) |
+| Defect media is distinguishable | `ListingMediaType.Defect` kept separate from `Product`/`Packaging`; workspace/admin views label it explicitly |
+| Migration includes RowVersion from first variant creation | `20260901141629_AddListingsAndInventory` creates `ListingVariants.RowVersion` as `rowversion` in its `CREATE TABLE` |
+
+### Additional coverage
+
+- Manual stock adjustment is audited: `ListingServiceTests.AdjustStock_CannotGoNegative_AndIsAudited`.
+- Optimistic concurrency on `ListingVariant.RowVersion`, proven against real SQL Server:
+  `ListingServiceTests.AdjustStock_TwoConcurrentContexts_OnlyTheFirstSaveSucceeds` (AGENTS.md
+  §7). The literal "two buyers race for the last unit" scenario is B2C order-flow scope
+  (TASK-006); this proves the concurrency token itself stops a lost update on the variant it
+  protects.
+- Condition grade and discount reasons are independent on a listing:
+  `ListingTests.ConditionGrade_And_DiscountReasons_AreIndependentOnAListing` (AGENTS.md Rule B
+  — a Grade A item can still carry a past-season/overstock reason).
+- Submission blockers are real, server-checked sentences, not just UI hints:
+  `ListingTests.SubmitForReview_WithoutProductPhoto_Throws`,
+  `SubmitForReview_WhenB2CWithoutRetailPrice_Throws`,
+  `SubmitForReview_ReferencePriceWithoutEvidence_Throws`,
+  `SubmitForReview_ReferencePriceNotHigherThanRetail_Throws`.
+- `Approve` publishes as `Live` when stock exists and as `SoldOut` (addressable, not
+  purchasable) when it does not: `Approve_WithStock_PublishesAsLive`,
+  `Approve_WithNoStock_PublishesAsSoldOut_NotLive`.
+- Editing while `PendingReview` is rejected server-side: `Edit_WhilePendingReview_Throws`.
+
+### Not implemented (correctly deferred)
+
+Public marketplace browsing/listing-detail pages (TASK-005), B2C ordering and reservation
+(TASK-006), B2B negotiation/deals (TASK-007/008), demo listing seed data
+(docs/12-SEED-DATA.md explicitly defers this until the phases that consume it exist).
+
+### Post-review fixes (code review after initial TASK-004 completion)
+
+A follow-up review of the initial TASK-004 implementation found six real gaps and four
+lower-severity issues; all are fixed:
+
+- **Reference-price evidence files were unreachable.** Uploads were stored and validated but
+  had no read path — an admin could see an evidence *record* but never open the uploaded
+  invoice/catalogue file itself, contradicting AGENTS.md §8 "the reviewing admin sees them
+  all". Added `IListingMediaService.OpenReferencePriceEvidenceAsync` (owner/admin only, never
+  public — unlike listing photography), `ListingMediaController.ShowEvidence`
+  (`/listing-evidence/{id}`, `[Authorize]`), and a `DbSet<ListingReferencePriceEvidence>` on
+  `IApplicationDbContext`/`ApplicationDbContext` to query it directly. Both the admin review
+  screen and the merchant workspace now link to it.
+- **A listing could publish while its merchant was no longer approved.** `ListingModerationService`
+  re-checks `MerchantProfile.VerificationStatus == Approved` at the moment of `Approve`
+  (docs/17-DATA-INVARIANTS.md "A Live Listing's merchant must be approved") — a merchant
+  suspended between submission and the admin's decision now fails the approval with a clear
+  `Conflict` instead of silently publishing.
+- **SoldOut listing photos were served to anonymous visitors.** `ListingMediaService.OpenImageAsync`
+  treated `Live` and `SoldOut` as equally public; only `Live` is (docs/03-BUSINESS-RULES.md
+  §2 "public users see only Live listings" — SoldOut is "addressable to authorized users",
+  not anonymous traffic). Fixed to match `Listing.IsPubliclyVisible`.
+- **A listing could be edited down to zero product photos while Live.** Removing an ordinary
+  (non-defect) photo never re-ran the submission checks, so a merchant could delete every
+  product photo from a published listing and it stayed `Live` with none — silently violating
+  "at least one product photo". `Listing.RemoveMedia` now refuses to remove the last active
+  `Product` photo outright (add a replacement first); `Defect`/`Packaging` photos are
+  unaffected by this rule.
+- **Category validation accepted the non-leaf sector root.** The reference-data list already
+  excluded "Fashion Overstock" itself, but a crafted POST could still attach a listing to it.
+  `MerchantListingService.ValidateDetailsAsync` now requires `ParentCategoryId != null`.
+- **Archived listings still accepted stock adjustments.** The inventory screen already hid
+  archived rows, but a direct POST to `InventoryService.AdjustStockAsync` worked regardless.
+  Now rejected explicitly, mirroring `Listing.RequireNotArchived` on every other mutator.
+- Lower-severity: `InventoryService.AdjustStockAsync` now catches a bare `DbUpdateException`
+  (not only the concurrency subtype) so the `CK_ListingVariants_Quantities_NonNegative`
+  backstop can never surface as an unhandled 500; `ListingReferencePriceEvidence.ReferenceUrl`
+  is validated as an absolute `http`/`https` URL at the domain layer (it is rendered as a
+  clickable link), closing a `javascript:`-scheme vector; `ListingModeration.AppendReason`
+  compares exact `"; "`-separated segments instead of a whole-string substring check, so a
+  new reason that happens to textually contain an old one can no longer be dropped (this
+  branch is currently unreachable from any mutator — see the code comment — but the fix is
+  correct defensively); removed three unused entity methods (`ListingVariant.Rename`,
+  `ListingOption.Rename`, `ListingMedia.Describe`).
+- New regression tests: `Faed.UnitTests.ListingTests.RemoveMedia_LastProductPhoto_Throws` (+2
+  related), `AddReferencePriceEvidence_NonHttpUrl_Throws` (+1 valid-URL case); against real
+  SQL Server, `Faed.IntegrationTests.ListingServiceTests.ReferencePriceEvidenceFile_IsRetrievableByOwnerAndAdmin_ButNotAnonymous`,
+  `Approve_WhenTheMerchantIsNoLongerApproved_Fails_AndListingStaysPending`,
+  `SoldOutListingImage_IsHiddenFromAnonymous_ButVisibleToOwnerAndAdmin`,
+  `Create_WithTheNonLeafCategoryRoot_IsRejected`, `AdjustStock_OnAnArchivedListing_IsRejected`.
+- The concurrency scope note from the original TASK-004 write-up stands: the literal "two
+  B2C requests for the last unit" / "B2C vs accepted B2B deal" scenarios
+  (AGENTS.md §7, docs/09-TEST-STRATEGY.md §3) require the B2C/B2B order flow and are
+  correctly out of scope until TASK-006/007/008; what TASK-004 owns — the `ListingVariant`
+  `rowversion` token itself stopping a lost update — is proven in
+  `AdjustStock_TwoConcurrentContexts_OnlyTheFirstSaveSucceeds`.
+
+### Post-review fixes, round 2
+
+A second review pass (after round 1 above was already fixed and re-verified) found one
+medium-severity gap, three low-severity issues and three nits; all are fixed:
+
+- **A merchant could reverse an admin takedown.** `Listing.HideByAdmin` and the merchant's
+  own `Hide` funnelled into the same `Hide()`, recording nothing about *who* hid the listing.
+  `Restore()` then let the merchant republish any `Hidden` listing whose last review was an
+  approval — exactly the state an admin's hide leaves it in, so a merchant could immediately
+  undo an admin takedown with no signal to the admin that it happened
+  (docs/16-PERMISSIONS-MATRIX.md "Moderate listing — Admin only"). Added a
+  `Listing.HiddenByAdmin` flag (migration `20260901153402_AddListingHiddenByAdmin`), set by
+  `HideByAdmin` and cleared only by the new `RestoreByAdmin`; the merchant's own `Restore`
+  now throws when the flag is set. `IListingModerationService.RestoreAsync` (+
+  `AdminActionType.ListingRestored`, audited) exposes admin restoration via a new
+  Admin/ListingModeration/Restore action and a "Restore to the marketplace" button on the
+  admin Details page; the merchant workspace shows "An administrator hid this listing.
+  Contact Faed support…" instead of a Republish button whenever `HiddenByAdmin` is set.
+- **`RefreshAvailability` could leave a Live listing advertising zero stock.** Two requests
+  each depleting a *different* variant on the same listing each computed
+  `AvailableUnits` from the `Variants` navigation loaded at the start of their own request, so
+  neither saw the other's fresh depletion and neither flipped the listing to `SoldOut` (only
+  the touched variant's own `rowversion` was checked; the untouched sibling's staleness never
+  triggered a conflict). Self-healing on the next adjustment, as originally noted, but now
+  mitigated: added `Listing.RefreshAvailability(int currentAvailableUnits, DateTime nowUtc)`,
+  and `InventoryService.AdjustStockAsync` supplies a total computed from a fresh, untracked
+  database query over the *other* active variants plus the just-applied value for the one it
+  adjusted, instead of trusting the collection loaded at the top of the request. This closes
+  the window from before the request started; true simultaneous commits are a separate,
+  harder problem the reservation flow (a later task) will need to solve properly.
+- **The multipart upload ceiling ignored the listings image cap.** `Program.cs` sized
+  `FormOptions.MultipartBodyLengthLimit` from `MerchantVerification:MaxDocumentBytes` alone;
+  TASK-004 added a second upload path (`Listings:MaxImageBytes`) with its own independent
+  cap that the global ceiling never accounted for. Worked today only because the listings
+  cap happens to be smaller. Now sized from `Math.Max` of both configured limits.
+- **No-option single-variant listings were impossible through the UI.** The domain already
+  permitted a variant with an empty option set (one plain SKU, no Size/Colour), but the
+  workspace only ever showed "Add variant" once at least one option existed. A merchant
+  selling one undifferentiated product had to invent an option to work around it. The
+  "Add variant" form now also renders with zero options defined.
+- Nits: the admin defect-photo warning now matches the discount reason's stable `Code`
+  (`CosmeticDefect`) instead of its display `Name`, so a future catalog-management rename
+  cannot silently disable it (`ListingDetailView` gained `DiscountReasonCodes` alongside
+  `DiscountReasonNames`); the moderation queue's pending count uses a dedicated
+  `GetPendingCountAsync` (`SELECT COUNT(*)`) instead of running the full queue query twice;
+  the workspace's empty-variants-table row computes its `colspan` from whether the Actions
+  column is actually rendered instead of a hard-coded `7`.
+- New regression tests: `Faed.UnitTests.ListingTests.HideByAdmin_MarksTheListing_*`,
+  `Restore_AfterTheMerchantsOwnHide_Succeeds`, `RestoreByAdmin_LiftsAnAdminTakedown_*`,
+  `RestoreByAdmin_WhenNotHidden_Throws`, `RefreshAvailability_WithAnExplicitTotal_*`,
+  `AddVariant_WithNoOptionsDefined_*`; against real SQL Server,
+  `Faed.IntegrationTests.ListingServiceTests.MerchantRestore_AfterAnAdminTakedown_Fails_AndOnlyAdminRestoreWorks`,
+  `AdjustStock_DepletingTwoVariantsAcrossSeparateRequests_ListingBecomesSoldOut` (its doc
+  comment is explicit that this covers sequential-but-separate requests, not genuinely
+  simultaneous commits — see the unit-level test for the deterministic proof of the
+  underlying `RefreshAvailability` overload behaviour).
+- Not implemented, deliberately: the review's other medium finding — that a rejected material
+  edit to a `Live` listing overwrites the previously-approved content in place, with no
+  retained approved/submitted version to revert to, and the re-reviewing admin sees only a
+  comma-list of which fields changed rather than their before/after values — is a genuine
+  partial gap against AGENTS.md §8 ("preserve merchant draft; submitted version; …
+  approved/public version semantics"), but implementing full version snapshotting (or an
+  automatic revert-to-last-approved on rejection) is a product-policy decision, not a bug fix,
+  and the review's own text flagged it as needing team confirmation rather than a clear
+  requirement. Left for the product owner to decide before it is built (AGENTS.md §12 "Do not
+  silently resolve an unresolved product decision").
+
+### Validation (TASK-004)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **184 passed (137 unit, 47 integration), 0 failed, 0 skipped**
+  on a workstation where SQL Server LocalDB (`MSSQLLocalDB`) is reachable, stable across
+  repeated runs; the integration suite is `[SkippableFact]` by design and skips rather than
+  fails with no reachable SQL Server (docs/09-TEST-STRATEGY.md §2).
+- `dotnet ef database update` — `AddListingsAndInventory` and
+  `AddListingHiddenByAdmin` both apply from the existing schema;
+  `dotnet ef migrations has-pending-model-changes` reports no drift.
+- Manual end-to-end verification against the real running app, real SQL Server LocalDB and
+  real (local) file storage — including the admin hide → merchant-restore-blocked →
+  admin-restore → merchant-can-self-hide-again round trip, with the audit log confirmed
+  (`ListingApproved`, `ListingHidden`, `ListingRestored`).
 
 ## TASK-003 — Catalog Foundations
 
@@ -292,8 +582,13 @@ src/
 └── Faed.Web/
     ├── Models/
     │   ├── Entities/       # MerchantProfile, MerchantVerificationDocument, AdminActionLog,
-    │   │                   # Category, ConditionGrade, DiscountReason, Brand
-    │   ├── Enums/          # MerchantVerificationStatus, *DocumentType, AdminActionType
+    │   │                   # Category, ConditionGrade, DiscountReason, Brand,
+    │   │                   # Listing (+ Option/OptionValue/Variant/VariantOptionValue/Media/
+    │   │                   # DiscountReason join/ReferencePriceEvidence/Moderation),
+    │   │                   # InventoryAdjustment
+    │   ├── Enums/          # MerchantVerificationStatus, *DocumentType, AdminActionType,
+    │   │                   # ListingStatus, ListingMediaType, ListingModerationStatus,
+    │   │                   # ReferencePriceEvidenceType, InventoryAdjustmentType
     │   ├── Identity/       # ApplicationUser, FaedRoles
     │   └── DomainException.cs
     ├── Data/
@@ -303,21 +598,29 @@ src/
     │   └── Seed/           # IdentityDataSeeder, CatalogDataSeeder (both idempotent)
     ├── Services/
     │   ├── Abstractions/   # IApplicationDbContext, IFileStorage, IUserRoleService, IClock
-    │   ├── Common/Result.cs
+    │   ├── Common/          # Result.cs, Slug.cs
     │   ├── Merchants/      # IMerchantVerificationService + implementation, models, validator, slug
+    │   ├── Listings/        # IMerchantListingService, IInventoryService,
+    │   │                    # IListingModerationService, IListingMediaService + implementations,
+    │   │                    # ListingOptions, ListingImageValidator, ListingQueries, models
     │   ├── Storage/        # LocalFileStorage
     │   ├── UserRoleService.cs
     │   └── SystemClock.cs
     ├── Authorization/      # FaedPolicies, ApprovedMerchant handler, ClaimsPrincipal ext.
+    ├── Controllers/         # ListingMediaController (public/private image serving)
     ├── Areas/{Admin,Merchant,Identity}/
+    │   ├── Admin/Controllers/       # MerchantVerificationController, ListingModerationController
+    │   └── Merchant/Controllers/    # VerificationController, ListingsController, InventoryController
     ├── ViewModels/         # ErrorViewModel (area-local view models under each Area/ViewModels)
-    ├── Rendering/          # AmmanTime, MerchantStatusDisplay (view-only helpers)
+    ├── Rendering/          # AmmanTime, MerchantStatusDisplay, ListingStatusDisplay (view-only helpers)
     ├── DependencyInjection.cs   # AddFaedPlatform composition helper
     └── Program.cs
 tests/
-├── Faed.UnitTests/         # MerchantProfile state machine, upload validator, slug, foundation
-└── Faed.IntegrationTests/  # SQL Server persistence; merchant-verification service + MVC
-                            # authorization (WebApplicationFactory + test auth scheme)
+├── Faed.UnitTests/         # MerchantProfile / Listing / ListingVariant state machines,
+│                           # upload validator, slug, foundation
+└── Faed.IntegrationTests/  # SQL Server persistence; merchant-verification and listing
+                            # services + MVC authorization (WebApplicationFactory + test
+                            # auth scheme); listing/variant/moderation/inventory concurrency
 ```
 
 Both test projects reference `src/Faed.Web` directly. There are no other production
@@ -340,6 +643,20 @@ projects and no project-reference layering.
   are `ValueGeneratedNever` (assigned by the entity constructor). Migration IDs are
   unchanged by the restructure; `dotnet ef migrations has-pending-model-changes` reports
   clean.
+- `20260901141629_AddListingsAndInventory` (`src/Faed.Web/Data/Migrations`) — `Listings`
+  (unique `Slug`, restricted FKs to `MerchantProfiles`/`Categories`/`ConditionGrades`/`Brands`,
+  `rowversion`), `ListingOptions`/`ListingOptionValues` (unique per-listing name / per-option
+  value), `ListingVariants` (`rowversion` present from this first migration; check constraint
+  `CK_ListingVariants_Quantities_NonNegative`; unique `(ListingId, Sku)` and
+  `(ListingId, OptionCombinationKey)`), `ListingVariantOptionValues`, `ListingMedia`,
+  `ListingDiscountReasons` (restricted FK to `DiscountReasons`), `ListingReferencePriceEvidence`,
+  `ListingModerations`, `InventoryAdjustments` (restricted FK to `ListingVariants` — the audit
+  trail outlives the variant edit that produced it). `has-pending-model-changes` reports
+  clean after build.
+- `20260901153402_AddListingHiddenByAdmin` (`src/Faed.Web/Data/Migrations`) — adds
+  `Listings.HiddenByAdmin` (`bit NOT NULL DEFAULT 0`), distinguishing an admin takedown from
+  the merchant's own hide so only an admin can lift the former. `has-pending-model-changes`
+  reports clean after build.
 
 ## Persistence
 

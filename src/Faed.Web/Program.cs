@@ -3,6 +3,7 @@ using Faed.Web.Authorization;
 using Faed.Web.Data;
 using Faed.Web.Data.Seed;
 using Faed.Web.Models.Identity;
+using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -15,13 +16,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFaedPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Keep the multipart upload ceiling in step with the configured document size limit
-// (docs/06-ARCHITECTURE.md §11) instead of hard-coding it at the controller.
+// Keep the multipart upload ceiling in step with the largest configured per-file limit
+// (docs/06-ARCHITECTURE.md §11) instead of hard-coding it at the controller. There are two
+// independent upload paths with two independent caps — merchant verification documents and
+// listing photos/evidence — so this must track whichever is larger, or raising just one of
+// them in configuration would make its uploads fail at the framework layer with an opaque
+// error before either validator ever runs.
 var maxDocumentBytes = builder.Configuration.GetValue<long?>(
     $"{MerchantVerificationOptions.SectionName}:{nameof(MerchantVerificationOptions.MaxDocumentBytes)}")
     ?? new MerchantVerificationOptions().MaxDocumentBytes;
+var maxImageBytes = builder.Configuration.GetValue<long?>(
+    $"{ListingOptions.SectionName}:{nameof(ListingOptions.MaxImageBytes)}")
+    ?? new ListingOptions().MaxImageBytes;
 builder.Services.Configure<FormOptions>(options =>
-    options.MultipartBodyLengthLimit = maxDocumentBytes + 1024 * 1024);
+    options.MultipartBodyLengthLimit = Math.Max(maxDocumentBytes, maxImageBytes) + 1024 * 1024);
 
 // Identity: Individual Accounts baseline, extended to ApplicationUser and Faed roles.
 builder.Services

@@ -2,7 +2,7 @@ namespace Faed.Web.Models.Enums;
 
 /// <summary>
 /// Auditable admin actions (docs/04-DOMAIN-MODEL.md §10). Extended as later phases add
-/// listing moderation, dispute resolution and account moderation.
+/// dispute resolution and account moderation.
 /// </summary>
 public enum AdminActionType
 {
@@ -11,4 +11,8 @@ public enum AdminActionType
     MerchantSuspended = 2,
     MerchantReinstated = 3,
     MerchantVerificationDocumentAccessed = 4,
+    ListingApproved = 5,
+    ListingRejected = 6,
+    ListingHidden = 7,
+    ListingRestored = 8,
 }

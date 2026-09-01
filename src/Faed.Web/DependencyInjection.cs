@@ -1,6 +1,7 @@
 using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
+using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,15 @@ public static class DependencyInjection
         services.AddOptions<MerchantVerificationOptions>()
             .Bind(configuration.GetSection(MerchantVerificationOptions.SectionName));
         services.AddScoped<IMerchantVerificationService, MerchantVerificationService>();
+
+        // Listings, variants, inventory and moderation use cases (docs/10-IMPLEMENTATION-PLAN.md
+        // Phase 3, tasks/TASK-004-LISTINGS-AND-INVENTORY.md).
+        services.AddOptions<ListingOptions>()
+            .Bind(configuration.GetSection(ListingOptions.SectionName));
+        services.AddScoped<IMerchantListingService, MerchantListingService>();
+        services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<IListingModerationService, ListingModerationService>();
+        services.AddScoped<IListingMediaService, ListingMediaService>();
 
         return services;
     }
