@@ -1,0 +1,22 @@
+@model int
+@{
+    var isNotFound = Model == 404;
+    ViewData["Title"] = isNotFound ? "Page not found" : "Something went wrong";
+}
+
+<div class="faed-page">
+    <div class="faed-empty">
+        <div class="faed-empty__title">
+            @(isNotFound ? "We couldn't find that page" : $"Something went wrong ({Model})")
+        </div>
+        <p>
+            @(isNotFound
+                ? "The listing, merchant or page you're looking for may have been removed, or the link may be out of date."
+                : "Please try again in a moment.")
+        </p>
+        <div class="faed-page__actions" style="justify-content: center;">
+            <a class="faed-btn faed-btn--primary" asp-controller="Home" asp-action="Index">Back to Faed</a>
+            <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Browse the shop</a>
+        </div>
+    </div>
+</div>

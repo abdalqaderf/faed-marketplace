@@ -39,7 +39,13 @@ public sealed class ListingMediaService(
         var listing = await db.Listings
             .AsNoTracking()
             .Where(l => l.Id == media.ListingId)
-            .Select(l => new { l.Status, l.MerchantProfileId })
+            .Select(l => new
+            {
+                l.Status,
+                l.MerchantProfileId,
+                MerchantIsApproved = db.MerchantProfiles.Any(m =>
+                    m.Id == l.MerchantProfileId && m.VerificationStatus == MerchantVerificationStatus.Approved),
+            })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (listing is null)
@@ -47,12 +53,16 @@ public sealed class ListingMediaService(
             return Result<StoredFileContent>.NotFound("The image was not found.");
         }
 
-        // Public visibility rule: only a Live listing is public (docs/03-BUSINESS-RULES.md §2,
-        // docs/11-ACCEPTANCE-CRITERIA.md "Public sees only Live listings"). SoldOut is
-        // "addressable to authorized users" (docs/03 §2), not to anonymous public traffic — a
-        // sold-out listing's photography is reachable only by the owning merchant or an admin,
-        // same as Draft/PendingReview/Rejected/Hidden/Archived.
-        if (listing.Status != ListingStatus.Live)
+        // Public visibility rule: only a Live listing whose merchant is still Approved is
+        // public (docs/03-BUSINESS-RULES.md §2, docs/11-ACCEPTANCE-CRITERIA.md "Public sees
+        // only Live listings"). A merchant suspended after publishing must stop being
+        // reachable by anonymous traffic even though their listings keep the Live status
+        // (docs/17-DATA-INVARIANTS.md "A Live Listing's merchant must be approved"). SoldOut
+        // is "addressable to authorized users" (docs/03 §2), not to anonymous public traffic —
+        // a sold-out listing's photography is reachable only by the owning merchant or an
+        // admin, same as Draft/PendingReview/Rejected/Hidden/Archived.
+        var isPublic = listing.Status == ListingStatus.Live && listing.MerchantIsApproved;
+        if (!isPublic)
         {
             var allowed = await IsOwnerOrAdminAsync(userId, listing.MerchantProfileId, cancellationToken);
             if (!allowed)

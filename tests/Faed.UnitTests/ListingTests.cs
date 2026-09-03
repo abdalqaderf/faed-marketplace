@@ -12,6 +12,11 @@ public class ListingTests
 {
     private static readonly DateTime Now = new(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
 
+    // Neither is defect-related; tests that need a physical-imperfection combination pass
+    // their own explicit code(s) instead (docs/03-BUSINESS-RULES.md §3).
+    private const string DefaultGradeCode = "A";
+    private static readonly string[] DefaultReasonCodes = ["Overstock"];
+
     private static Listing NewListing() => new(
         Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
         "Men's Running Sneakers", "mens-running-sneakers",
@@ -133,8 +138,8 @@ public class ListingTests
         listing.AddVariant("SKU-1", [m.Id], 5, Now);
         SetDetails(listing);
 
-        Assert.Throws<DomainException>(() => listing.SubmitForReview(Now));
-        Assert.Contains(listing.DescribeSubmissionBlockers(), b => b.Contains("photo"));
+        Assert.Throws<DomainException>(() => listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now));
+        Assert.Contains(listing.DescribeSubmissionBlockers(DefaultGradeCode, DefaultReasonCodes), b => b.Contains("photo"));
     }
 
     [Fact]
@@ -142,7 +147,7 @@ public class ListingTests
     {
         var listing = SubmittableListing(retailPrice: null);
 
-        Assert.Throws<DomainException>(() => listing.SubmitForReview(Now));
+        Assert.Throws<DomainException>(() => listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now));
     }
 
     [Fact]
@@ -151,7 +156,7 @@ public class ListingTests
         var listing = SubmittableListing();
         SetDetails(listing, referencePrice: 49.9m, retailPrice: 24.5m, discountReasonIds: [Guid.NewGuid()]);
 
-        Assert.Throws<DomainException>(() => listing.SubmitForReview(Now));
+        Assert.Throws<DomainException>(() => listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now));
     }
 
     [Fact]
@@ -162,7 +167,7 @@ public class ListingTests
         listing.AddReferencePriceEvidence(
             ReferencePriceEvidenceType.PreviousStorePrice, "https://example.com", null, null, null, null, Now);
 
-        Assert.Throws<DomainException>(() => listing.SubmitForReview(Now));
+        Assert.Throws<DomainException>(() => listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now));
     }
 
     [Fact]
@@ -170,18 +175,68 @@ public class ListingTests
     {
         var listing = SubmittableListing();
 
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
 
         Assert.Equal(ListingStatus.PendingReview, listing.Status);
         Assert.NotNull(listing.PendingModeration);
         Assert.Equal("submitted for review", listing.PendingModeration!.ReasonForReview);
     }
 
+    [Theory]
+    [InlineData("B")]
+    [InlineData("D")]
+    public void SubmitForReview_ConditionGradeClaimsAPhysicalImperfection_WithoutEvidence_Throws(string gradeCode)
+    {
+        // docs/03-BUSINESS-RULES.md §3: Grade B "packaging imperfection" and Grade D
+        // "cosmetic imperfection" must be shown, not merely claimed.
+        var listing = SubmittableListing();
+
+        var ex = Assert.Throws<DomainException>(
+            () => listing.SubmitForReview(gradeCode, DefaultReasonCodes, Now));
+        Assert.Contains("defect or packaging photo", ex.Message);
+        Assert.Contains(
+            listing.DescribeSubmissionBlockers(gradeCode, DefaultReasonCodes),
+            b => b.Contains("defect or packaging photo"));
+    }
+
+    [Theory]
+    [InlineData("PackagingDamage")]
+    [InlineData("CosmeticDefect")]
+    public void SubmitForReview_DiscountReasonClaimsAPhysicalImperfection_WithoutEvidence_Throws(string reasonCode)
+    {
+        var listing = SubmittableListing();
+
+        Assert.Throws<DomainException>(
+            () => listing.SubmitForReview(DefaultGradeCode, [reasonCode], Now));
+    }
+
+    [Fact]
+    public void SubmitForReview_GradeB_WithAPackagingPhoto_Succeeds()
+    {
+        var listing = SubmittableListing();
+        listing.AddMedia(ListingMediaType.Packaging, "key-2", "box.jpg", "image/jpeg", 1024, null, Now);
+
+        listing.SubmitForReview("B", DefaultReasonCodes, Now);
+
+        Assert.Equal(ListingStatus.PendingReview, listing.Status);
+    }
+
+    [Fact]
+    public void SubmitForReview_CosmeticDefectReason_WithADefectPhoto_Succeeds()
+    {
+        var listing = SubmittableListing();
+        listing.AddMedia(ListingMediaType.Defect, "key-2", "scratch.jpg", "image/jpeg", 1024, "Cosmetic mark", Now);
+
+        listing.SubmitForReview(DefaultGradeCode, ["CosmeticDefect"], Now);
+
+        Assert.Equal(ListingStatus.PendingReview, listing.Status);
+    }
+
     [Fact]
     public void Approve_WithStock_PublishesAsLive()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
 
         listing.Approve("admin-1", "Looks good", Now);
 
@@ -195,7 +250,7 @@ public class ListingTests
     {
         var listing = SubmittableListing();
         var variant = listing.Variants.Single();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
 
         listing.Approve("admin-1", null, Now);
         // Deplete the only variant via a manual correction, mirroring how the merchant would.
@@ -210,7 +265,7 @@ public class ListingTests
     public void Reject_RecordsReasonAndReturnsListingToRejected()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
 
         listing.Reject("admin-1", "Missing defect disclosure", Now);
 
@@ -227,7 +282,7 @@ public class ListingTests
         // already flipped Live -> PendingReview must not see itself locked out
         // (docs/02-SCOPE-AND-DECISIONS.md "Listing moderation policy").
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
         Assert.Equal(ListingStatus.Live, listing.Status);
 
@@ -244,7 +299,7 @@ public class ListingTests
     public void NonMaterialEdit_OnLiveListing_StaysLive()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
 
         listing.UpdateDetails(
@@ -308,7 +363,7 @@ public class ListingTests
     public void Edit_WhilePendingReview_Throws()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
 
         Assert.Throws<DomainException>(() => SetDetails(listing, title: "New title"));
     }
@@ -323,7 +378,8 @@ public class ListingTests
         var listing = SubmittableListing();
         var onlyPhoto = listing.Media.Single(m => m.MediaType == ListingMediaType.Product);
 
-        Assert.Throws<DomainException>(() => listing.RemoveMedia(onlyPhoto.Id, Now));
+        Assert.Throws<DomainException>(
+            () => listing.RemoveMedia(onlyPhoto.Id, DefaultGradeCode, DefaultReasonCodes, Now));
         Assert.Single(listing.Media, m => m.MediaType == ListingMediaType.Product);
     }
 
@@ -335,7 +391,7 @@ public class ListingTests
             ListingMediaType.Product, "key-2", "side.jpg", "image/jpeg", 1024, "Side view", Now);
         var first = listing.Media.Single(m => m.MediaType == ListingMediaType.Product && m.Id != second.Id);
 
-        listing.RemoveMedia(first.Id, Now);
+        listing.RemoveMedia(first.Id, DefaultGradeCode, DefaultReasonCodes, Now);
 
         Assert.Single(listing.Media, m => m.MediaType == ListingMediaType.Product);
     }
@@ -344,14 +400,105 @@ public class ListingTests
     public void RemoveMedia_LastPackagingPhoto_Succeeds()
     {
         // Only Product photography carries the "at least one" rule; packaging photos are
-        // optional, so removing the last one is not blocked.
+        // optional, so removing the last one is not blocked — as long as the listing's grade
+        // and reasons do not themselves disclose a physical imperfection.
         var listing = SubmittableListing();
         var packaging = listing.AddMedia(
             ListingMediaType.Packaging, "key-3", "box.jpg", "image/jpeg", 1024, null, Now);
 
-        listing.RemoveMedia(packaging.Id, Now);
+        listing.RemoveMedia(packaging.Id, DefaultGradeCode, DefaultReasonCodes, Now);
 
         Assert.DoesNotContain(listing.Media, m => m.MediaType == ListingMediaType.Packaging);
+    }
+
+    [Theory]
+    [InlineData("B", "Overstock")]
+    [InlineData("A", "PackagingDamage")]
+    public void RemoveMedia_LastDisclosurePhoto_WhenAnImperfectionIsDisclosed_Throws(string gradeCode, string reasonCode)
+    {
+        // docs/03-BUSINESS-RULES.md §3: a listing whose grade or discount reason discloses a
+        // physical imperfection must keep at least one defect/packaging photo. Removing an
+        // ordinary packaging photo is not otherwise material and does not re-run the submission
+        // checks, so a Live listing could otherwise be left publicly visible with no evidence.
+        var listing = SubmittableListing();
+        var packaging = listing.AddMedia(
+            ListingMediaType.Packaging, "key-9", "box.jpg", "image/jpeg", 1024, null, Now);
+        string[] reasonCodes = [reasonCode];
+
+        Assert.Throws<DomainException>(() => listing.RemoveMedia(packaging.Id, gradeCode, reasonCodes, Now));
+        Assert.Single(listing.Media, m => m.MediaType == ListingMediaType.Packaging);
+    }
+
+    [Fact]
+    public void RemoveMedia_DisclosurePhoto_WhenAnotherRemains_Succeeds()
+    {
+        var listing = SubmittableListing();
+        listing.AddMedia(ListingMediaType.Packaging, "key-a", "box-1.jpg", "image/jpeg", 1024, null, Now);
+        var second = listing.AddMedia(ListingMediaType.Defect, "key-b", "scuff.jpg", "image/jpeg", 1024, null, Now);
+
+        listing.RemoveMedia(second.Id, "B", DefaultReasonCodes, Now);
+
+        Assert.Single(listing.Media, m => m.MediaType is ListingMediaType.Defect or ListingMediaType.Packaging);
+    }
+
+    [Fact]
+    public void AddMedia_ProductPhoto_OnLiveListing_ReturnsToPendingReview_PreservingApprovalHistory()
+    {
+        // AGENTS.md §8: the Product gallery is what a buyer judges the item by, so adding one
+        // to a published listing is a material change — the new photo must not be publicly
+        // visible until an admin has reviewed it, exactly like a title or price edit.
+        var listing = SubmittableListing();
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
+        listing.Approve("admin-1", null, Now);
+        Assert.Equal(ListingStatus.Live, listing.Status);
+
+        listing.AddMedia(ListingMediaType.Product, "key-2", "side.jpg", "image/jpeg", 1024, "Side view", Now);
+
+        Assert.Equal(ListingStatus.PendingReview, listing.Status);
+        Assert.NotNull(listing.PendingModeration);
+        Assert.Contains("product photo", listing.PendingModeration!.ReasonForReview);
+        Assert.Contains(listing.Moderations, m => m.Status == ListingModerationStatus.Approved);
+    }
+
+    [Fact]
+    public void RemoveMedia_ProductPhoto_OnLiveListing_WhenAnotherRemains_ReturnsToPendingReview()
+    {
+        var listing = SubmittableListing();
+        var second = listing.AddMedia(
+            ListingMediaType.Product, "key-2", "side.jpg", "image/jpeg", 1024, "Side view", Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
+        listing.Approve("admin-1", null, Now);
+
+        listing.RemoveMedia(second.Id, DefaultGradeCode, DefaultReasonCodes, Now);
+
+        Assert.Equal(ListingStatus.PendingReview, listing.Status);
+        Assert.Contains("product photo", listing.PendingModeration!.ReasonForReview);
+    }
+
+    [Fact]
+    public void AddMedia_ProductPhoto_WhilePendingReview_Throws()
+    {
+        // A listing already awaiting a decision is frozen — a merchant cannot slip a new
+        // Product photo past the reviewer mid-review.
+        var listing = SubmittableListing();
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
+
+        Assert.Throws<DomainException>(() => listing.AddMedia(
+            ListingMediaType.Product, "key-2", "side.jpg", "image/jpeg", 1024, null, Now));
+    }
+
+    [Fact]
+    public void AddMedia_PackagingPhoto_OnLiveListing_StaysLive()
+    {
+        // Preserved TASK-005 behaviour: an ordinary packaging shot is not a material claim, so
+        // it does not reopen moderation (only Product and Defect imagery do).
+        var listing = SubmittableListing();
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
+        listing.Approve("admin-1", null, Now);
+
+        listing.AddMedia(ListingMediaType.Packaging, "key-2", "box.jpg", "image/jpeg", 1024, null, Now);
+
+        Assert.Equal(ListingStatus.Live, listing.Status);
     }
 
     [Theory]
@@ -393,7 +540,7 @@ public class ListingTests
     public void HideByAdmin_MarksTheListing_SoTheMerchantCannotRestoreItThemselves()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
 
         listing.HideByAdmin("admin-1", "Policy violation", Now);
@@ -407,7 +554,7 @@ public class ListingTests
     public void Restore_AfterTheMerchantsOwnHide_Succeeds()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
         listing.Hide(Now);
 
@@ -421,7 +568,7 @@ public class ListingTests
     public void RestoreByAdmin_LiftsAnAdminTakedown_AndClearsTheFlag()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
         listing.HideByAdmin("admin-1", "Policy violation", Now);
 
@@ -439,7 +586,7 @@ public class ListingTests
     public void RestoreByAdmin_WhenNotHidden_Throws()
     {
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
 
         Assert.Throws<DomainException>(() => listing.RestoreByAdmin("admin-1", Now));
@@ -452,7 +599,7 @@ public class ListingTests
         // supplies a freshly queried total rather than letting RefreshAvailability derive it
         // from Variants, which may not reflect a concurrent request's change to a sibling.
         var listing = SubmittableListing();
-        listing.SubmitForReview(Now);
+        listing.SubmitForReview(DefaultGradeCode, DefaultReasonCodes, Now);
         listing.Approve("admin-1", null, Now);
         Assert.Equal(ListingStatus.Live, listing.Status);
 

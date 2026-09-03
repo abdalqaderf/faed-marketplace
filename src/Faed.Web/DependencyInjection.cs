@@ -2,6 +2,7 @@ using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Listings;
+using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,10 @@ public static class DependencyInjection
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<IListingModerationService, ListingModerationService>();
         services.AddScoped<IListingMediaService, ListingMediaService>();
+
+        // Anonymous-safe public marketplace browsing (docs/10-IMPLEMENTATION-PLAN.md Phase 4,
+        // tasks/TASK-005-PUBLIC-MARKETPLACE.md).
+        services.AddScoped<IPublicMarketplaceService, PublicMarketplaceService>();
 
         return services;
     }

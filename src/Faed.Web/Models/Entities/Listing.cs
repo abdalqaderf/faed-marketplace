@@ -400,8 +400,20 @@ public class Listing
     }
 
     /// <summary>
-    /// Adds an image. Defect photography is the listing's disclosure evidence, so adding or
-    /// removing one is material; ordinary product and packaging shots are not.
+    /// Image kinds that are part of what the listing publicly claims, so adding or removing
+    /// one on a published listing is a material change that must be re-reviewed before it is
+    /// visible: the primary <see cref="ListingMediaType.Product"/> gallery a buyer judges the
+    /// item by, and <see cref="ListingMediaType.Defect"/> disclosure evidence
+    /// (AGENTS.md §8 "Do not let a merchant edit a live listing … and bypass review",
+    /// docs/03-BUSINESS-RULES.md §3). Ordinary packaging shots are not on this list.
+    /// </summary>
+    private static bool IsMaterialMedia(ListingMediaType mediaType) =>
+        mediaType is ListingMediaType.Product or ListingMediaType.Defect;
+
+    /// <summary>
+    /// Adds an image. Product and defect photography are what a buyer judges the item by, so
+    /// adding or removing one on a published listing routes through moderation
+    /// (<see cref="IsMaterialMedia"/>); ordinary packaging shots are not material.
     /// </summary>
     public ListingMedia AddMedia(
         ListingMediaType mediaType,
@@ -413,7 +425,7 @@ public class Listing
         DateTime nowUtc)
     {
         RequireNotArchived();
-        if (mediaType == ListingMediaType.Defect)
+        if (IsMaterialMedia(mediaType))
         {
             RequireMaterialEditAllowed();
         }
@@ -424,9 +436,10 @@ public class Listing
             mediaType, storageObjectKey, originalFileName, contentType, sizeBytes, altText, sortOrder, nowUtc);
         _media.Add(media);
 
-        if (mediaType == ListingMediaType.Defect)
+        if (IsMaterialMedia(mediaType))
         {
-            ApplyMaterialChange("defect photo added", nowUtc);
+            ApplyMaterialChange(
+                mediaType == ListingMediaType.Product ? "product photo added" : "defect photo added", nowUtc);
         }
         else
         {
@@ -436,14 +449,23 @@ public class Listing
         return media;
     }
 
-    /// <summary>Removes an image and returns its storage key so the caller can delete the bytes.</summary>
-    public string RemoveMedia(Guid mediaId, DateTime nowUtc)
+    /// <summary>
+    /// Removes an image and returns its storage key so the caller can delete the bytes. The
+    /// caller supplies the resolved catalog codes (as for <see cref="DescribeSubmissionBlockers"/>)
+    /// so the aggregate can refuse to drop the last piece of disclosure evidence a published
+    /// listing is required to carry.
+    /// </summary>
+    public string RemoveMedia(
+        Guid mediaId,
+        string conditionGradeCode,
+        IReadOnlyCollection<string> discountReasonCodes,
+        DateTime nowUtc)
     {
         RequireNotArchived();
         var media = _media.SingleOrDefault(m => m.Id == mediaId)
             ?? throw new DomainException("That image is not part of this listing.");
 
-        if (media.MediaType == ListingMediaType.Defect)
+        if (IsMaterialMedia(media.MediaType))
         {
             RequireMaterialEditAllowed();
         }
@@ -459,11 +481,27 @@ public class Listing
                 "A listing must keep at least one product photo. Add another before removing this one.");
         }
 
+        if (media.MediaType is ListingMediaType.Defect or ListingMediaType.Packaging
+            && _media.Count(m => m.MediaType is ListingMediaType.Defect or ListingMediaType.Packaging) <= 1
+            && DisclosesAPhysicalImperfection(conditionGradeCode, discountReasonCodes))
+        {
+            // Same reasoning as the last-product-photo guard: this listing's condition grade or
+            // discount reason discloses a physical imperfection, so it must keep at least one
+            // defect or packaging photo showing it (docs/03-BUSINESS-RULES.md §3). Removing an
+            // ordinary packaging photo is not otherwise material and does not re-run the
+            // submission checks, so the aggregate refuses outright rather than let the listing
+            // stay/return public with no visual evidence.
+            throw new DomainException(
+                "This listing discloses a physical imperfection, so it must keep at least one " +
+                "defect or packaging photo. Add another before removing this one.");
+        }
+
         _media.Remove(media);
 
-        if (media.MediaType == ListingMediaType.Defect)
+        if (IsMaterialMedia(media.MediaType))
         {
-            ApplyMaterialChange("defect photo removed", nowUtc);
+            ApplyMaterialChange(
+                media.MediaType == ListingMediaType.Product ? "product photo removed" : "defect photo removed", nowUtc);
         }
         else
         {
@@ -518,10 +556,45 @@ public class Listing
     // ---- Lifecycle ------------------------------------------------------------------
 
     /// <summary>
+    /// Condition grades whose own description names a physical imperfection
+    /// (docs/12-SEED-DATA.md: Grade B "packaging imperfection", Grade D "cosmetic
+    /// imperfection") — a listing carrying one of these must show the imperfection, not
+    /// merely claim it (docs/03-BUSINESS-RULES.md §3 "defects must be disclosed and
+    /// visually evidenced where applicable").
+    /// </summary>
+    private static readonly HashSet<string> ConditionGradeCodesRequiringEvidence =
+        new(StringComparer.OrdinalIgnoreCase) { "B", "D" };
+
+    /// <summary>Discount reasons that are themselves a claim about a physical defect.</summary>
+    private static readonly HashSet<string> DiscountReasonCodesRequiringEvidence =
+        new(StringComparer.OrdinalIgnoreCase) { "PackagingDamage", "CosmeticDefect" };
+
+    /// <summary>
+    /// True when this listing's condition grade or one of its discount reasons is itself a
+    /// claim about a physical imperfection, which must be shown and not merely stated
+    /// (docs/03-BUSINESS-RULES.md §3). Both codes are resolved by the caller — the aggregate
+    /// stores only the catalog ids (docs/06-ARCHITECTURE.md "Enums vs tables").
+    /// </summary>
+    public bool DisclosesAPhysicalImperfection(
+        string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes) =>
+        ConditionGradeCodesRequiringEvidence.Contains(conditionGradeCode)
+        || discountReasonCodes.Any(DiscountReasonCodesRequiringEvidence.Contains);
+
+    /// <summary>
     /// Everything that stops this listing being published, as merchant-facing sentences.
     /// Empty means the listing is submittable (docs/17-DATA-INVARIANTS.md "Listing").
     /// </summary>
-    public IReadOnlyList<string> DescribeSubmissionBlockers()
+    /// <param name="conditionGradeCode">The stable <see cref="ConditionGrade.Code"/> for
+    /// <see cref="ConditionGradeId"/>.</param>
+    /// <param name="discountReasonCodes">The stable <see cref="DiscountReason.Code"/>s for
+    /// every id in <see cref="DiscountReasons"/>.</param>
+    /// <remarks>
+    /// Both parameters are resolved by the caller: the aggregate stores only the catalog
+    /// ids, never a denormalized copy of admin-managed reference text
+    /// (docs/06-ARCHITECTURE.md, "Enums vs tables").
+    /// </remarks>
+    public IReadOnlyList<string> DescribeSubmissionBlockers(
+        string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes)
     {
         var problems = new List<string>();
 
@@ -570,18 +643,27 @@ public class Listing
             problems.Add("Add at least one product photo.");
         }
 
+        if (DisclosesAPhysicalImperfection(conditionGradeCode, discountReasonCodes)
+            && !_media.Any(m => m.MediaType is ListingMediaType.Defect or ListingMediaType.Packaging))
+        {
+            problems.Add(
+                "This listing's condition grade or discount reason discloses a physical imperfection — " +
+                "add a defect or packaging photo showing it.");
+        }
+
         return problems;
     }
 
     /// <summary>Merchant submits a Draft or previously Rejected listing for admin review.</summary>
-    public void SubmitForReview(DateTime nowUtc)
+    public void SubmitForReview(
+        string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes, DateTime nowUtc)
     {
         if (Status is not (ListingStatus.Draft or ListingStatus.Rejected))
         {
             throw new DomainException($"A listing in status {Status} cannot be submitted for review.");
         }
 
-        var blockers = DescribeSubmissionBlockers();
+        var blockers = DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
         if (blockers.Count > 0)
         {
             throw new DomainException(blockers[0]);

@@ -248,6 +248,40 @@ public sealed class ListingServiceTests(FaedWebApplicationFactory factory)
     }
 
     [SkippableFact]
+    public async Task RemoveImage_TheLastDisclosurePhotoOfAGradeBListing_IsRejected_AndTheListingStaysLive()
+    {
+        // docs/03-BUSINESS-RULES.md §3: a Grade B listing must show its packaging imperfection.
+        // Removing an ordinary packaging photo is not otherwise material and does not re-run the
+        // submission checks, so without this guard a Live listing could be left publicly visible
+        // with no visual evidence at all.
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ListingScope(factory);
+        var (userId, _) = await scope.CreateApprovedMerchantAsync();
+        var adminId = await scope.CreateUserAsync(FaedRoles.Admin);
+        var listingId = await scope.CreateSubmittableListingAsync(userId, conditionGradeCode: "B");
+
+        var addPackaging = await scope.Listings.AddImageAsync(userId, listingId, new AddListingImageInput(
+            ListingMediaType.Packaging, TestImages.MinimalPngStream(), "box.png", "image/png",
+            TestImages.MinimalPng.Length, "Torn box corner"));
+        Assert.True(addPackaging.Succeeded, addPackaging.Error);
+
+        Assert.True((await scope.Listings.SubmitForReviewAsync(userId, listingId)).Succeeded);
+        Assert.True((await scope.Moderation.ApproveAsync(adminId, listingId, null)).Succeeded);
+
+        var packagingId = await scope.Db.ListingMedia
+            .Where(m => m.ListingId == listingId && m.MediaType == ListingMediaType.Packaging)
+            .Select(m => m.Id).SingleAsync();
+
+        var remove = await scope.Listings.RemoveImageAsync(userId, listingId, packagingId);
+
+        Assert.True(remove.Failed);
+        Assert.True(await scope.Db.ListingMedia.AnyAsync(m => m.Id == packagingId));
+        var status = await scope.Db.Listings.AsNoTracking()
+            .Where(l => l.Id == listingId).Select(l => l.Status).SingleAsync();
+        Assert.Equal(ListingStatus.Live, status);
+    }
+
+    [SkippableFact]
     public async Task SoldOutListingImage_IsHiddenFromAnonymous_ButVisibleToOwnerAndAdmin()
     {
         // docs/03-BUSINESS-RULES.md §2: a sold-out listing is "addressable to authorized
@@ -491,12 +525,17 @@ public sealed class ListingServiceTests(FaedWebApplicationFactory factory)
 
         /// <summary>A listing with one option/value, one stocked variant, a product photo, a
         /// discount reason and a retail price — ready to submit for review.</summary>
-        public async Task<Guid> CreateSubmittableListingAsync(string userId, int initialQuantity = 5)
+        public async Task<Guid> CreateSubmittableListingAsync(
+            string userId, int initialQuantity = 5, string? conditionGradeCode = null)
         {
             var referenceData = await Listings.GetReferenceDataAsync();
             var categoryId = referenceData.Categories[0].Id;
-            var conditionGradeId = referenceData.ConditionGrades[0].Id;
-            var reasonId = referenceData.DiscountReasons[0].Id;
+            var conditionGradeId = conditionGradeCode is null
+                ? referenceData.ConditionGrades[0].Id
+                : referenceData.ConditionGrades.Single(g => g.Label.Contains($"Grade {conditionGradeCode} ")).Id;
+            // Not "[0]" (alphabetically "Cosmetic Defect") — this listing carries no defect
+            // photo, and Cosmetic Defect now requires one (docs/03-BUSINESS-RULES.md §3).
+            var reasonId = referenceData.DiscountReasons.Single(r => r.Label == "Overstock").Id;
 
             var create = await Listings.CreateAsync(userId, new ListingDetailsInput(
                 categoryId, null, conditionGradeId,

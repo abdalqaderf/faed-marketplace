@@ -334,10 +334,11 @@ public sealed class MerchantListingService(
         string userId, Guid listingId, Guid mediaId, CancellationToken cancellationToken = default)
     {
         string? removedKey = null;
-        var result = await MutateAsync(userId, listingId, (listing, now) =>
+        var result = await MutateAsync(userId, listingId, async (listing, now) =>
         {
-            removedKey = listing.RemoveMedia(mediaId, now);
-            return Task.FromResult(Result.Success());
+            var (conditionGradeCode, discountReasonCodes) = await listing.LoadDisclosureCodesAsync(db, cancellationToken);
+            removedKey = listing.RemoveMedia(mediaId, conditionGradeCode, discountReasonCodes, now);
+            return Result.Success();
         }, cancellationToken);
 
         if (result.Succeeded && removedKey is not null)
@@ -420,17 +421,19 @@ public sealed class MerchantListingService(
 
     public Task<Result> SubmitForReviewAsync(
         string userId, Guid listingId, CancellationToken cancellationToken = default) =>
-        MutateAsync(userId, listingId, (listing, now) =>
+        MutateAsync(userId, listingId, async (listing, now) =>
         {
-            var blockers = listing.DescribeSubmissionBlockers();
+            var (conditionGradeCode, discountReasonCodes) = await listing.LoadDisclosureCodesAsync(db, cancellationToken);
+
+            var blockers = listing.DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
             if (blockers.Count > 0)
             {
-                return Task.FromResult(Result.Validation(blockers[0]));
+                return Result.Validation(blockers[0]);
             }
 
-            listing.SubmitForReview(now);
+            listing.SubmitForReview(conditionGradeCode, discountReasonCodes, now);
             logger.LogInformation("Listing {ListingId} submitted for moderation", listing.Id);
-            return Task.FromResult(Result.Success());
+            return Result.Success();
         }, cancellationToken);
 
     public Task<Result> HideAsync(string userId, Guid listingId, CancellationToken cancellationToken = default) =>

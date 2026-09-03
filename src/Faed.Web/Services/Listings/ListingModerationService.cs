@@ -165,6 +165,20 @@ public sealed class ListingModerationService(
                 return Result.Conflict(
                     "This listing's merchant is no longer an approved seller, so it cannot be published.");
             }
+
+            // Approval publishes whatever the listing currently is, not the snapshot that was
+            // submitted. A blocker can reappear after submission — most importantly the merchant
+            // removing the last defect/packaging photo a disclosed imperfection depends on — so
+            // the submission checks run once more here rather than trusting that nothing changed
+            // (docs/03-BUSINESS-RULES.md §3, docs/17-DATA-INVARIANTS.md "Listing").
+            var (conditionGradeCode, discountReasonCodes) =
+                await listing.LoadDisclosureCodesAsync(db, cancellationToken);
+            var blockers = listing.DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
+            if (blockers.Count > 0)
+            {
+                return Result.Conflict(
+                    $"This listing no longer meets the requirements for publication: {blockers[0]}");
+            }
         }
 
         try

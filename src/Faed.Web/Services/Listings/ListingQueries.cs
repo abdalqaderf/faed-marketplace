@@ -150,7 +150,35 @@ internal static class ListingQueries
                 .OrderByDescending(m => m.SubmittedAtUtc)
                 .Select(m => new ListingModerationView(
                     m.Id, m.Status, m.ReasonForReview, m.ReviewNote, m.SubmittedAtUtc, m.ReviewedAtUtc))],
-            listing.DescribeSubmissionBlockers());
+            listing.DescribeSubmissionBlockers(grade?.Code ?? "?", reasonCodes));
+    }
+
+    /// <summary>
+    /// Resolves the stable catalog codes that <see cref="Listing.DescribeSubmissionBlockers"/>,
+    /// <see cref="Listing.SubmitForReview"/>, <see cref="Listing.RemoveMedia"/> and
+    /// <see cref="Listing.DisclosesAPhysicalImperfection"/> need to decide whether a physical
+    /// imperfection must be photographed — the aggregate stores only the catalog ids
+    /// (docs/03-BUSINESS-RULES.md §3, "defects must be disclosed and visually evidenced").
+    /// </summary>
+    internal static async Task<(string ConditionGradeCode, IReadOnlyCollection<string> DiscountReasonCodes)>
+        LoadDisclosureCodesAsync(this Listing listing, IApplicationDbContext db, CancellationToken cancellationToken)
+    {
+        var conditionGradeCode = await db.ConditionGrades
+            .AsNoTracking()
+            .Where(g => g.Id == listing.ConditionGradeId)
+            .Select(g => g.Code)
+            .SingleAsync(cancellationToken);
+
+        var reasonIds = listing.DiscountReasons.Select(r => r.DiscountReasonId).ToList();
+        var discountReasonCodes = reasonIds.Count == 0
+            ? []
+            : await db.DiscountReasons
+                .AsNoTracking()
+                .Where(r => reasonIds.Contains(r.Id))
+                .Select(r => r.Code)
+                .ToListAsync(cancellationToken);
+
+        return (conditionGradeCode, discountReasonCodes);
     }
 
     internal static IReadOnlyList<VariantOptionView> DescribeOptions(

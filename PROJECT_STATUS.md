@@ -8,11 +8,20 @@
 | TASK-002 — Merchant Verification | 1 | Completed |
 | TASK-003 — Catalog Foundations | 2 | Completed |
 | TASK-004 — Listings, Variants, Inventory and Moderation | 3 | Completed |
+| TASK-005 — Public Marketplace | 4 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-005 until
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-006 until
 explicitly requested.
 
 ## Current state
+
+**Phase 4 — Public Marketplace complete (TASK-005).**
+
+The anonymous-safe discovery experience (`IPublicMarketplaceService`) sits on top of the
+TASK-003/004 catalog and listing aggregate with no schema changes: Home, Shop (filters +
+paging), listing detail, and the merchant storefront all read exclusively through queries
+scoped to `ListingStatus.Live` and `MerchantVerificationStatus.Approved`. See "TASK-005 —
+Public Marketplace" below.
 
 **Phase 3 — Listings, Variants, Inventory and Moderation complete (TASK-004).**
 
@@ -86,9 +95,375 @@ implemented.
 
 ## Active task
 
-None. TASK-004 is closed.
+None. TASK-005 is closed.
 
-Next: `tasks/TASK-005-PUBLIC-MARKETPLACE.md` (do not start until explicitly requested).
+Next: `tasks/TASK-006-B2C-ORDERS.md` (do not start until explicitly requested).
+
+## TASK-005 — Public Marketplace
+
+### Behaviour implemented
+
+- `Services/Marketplace/IPublicMarketplaceService` + `PublicMarketplaceService` — the only
+  code path the public pages use to read listing/merchant data. Every method filters to
+  `ListingStatus.Live` (`GetHomePageAsync`, `BrowseListingsAsync`, `GetListingBySlugAsync`)
+  and `MerchantVerificationStatus.Approved` (`GetMerchantStoreHeaderBySlugAsync`,
+  and every card's `MerchantIsVerified` flag) — there is no query in this service capable of
+  returning a Draft/PendingReview/Rejected/Hidden/SoldOut/Archived listing or a
+  non-Approved merchant's storefront (docs/03-BUSINESS-RULES.md §2,
+  docs/11-ACCEPTANCE-CRITERIA.md "Public sees only Live listings"). A category/condition/
+  discount-reason/brand/merchant filter given as a slug or code that does not resolve to a
+  real, active row returns zero results rather than being silently ignored — an
+  unresolvable filter must never fall back to "show everything"
+  (docs/06-ARCHITECTURE.md §12 "slugs are never authorization identifiers, but they are
+  still real lookups"). Browsing is a two-phase read (filter/sort/page down to a bounded
+  list of ids, then hydrate that page's rows against the small reference tables) so the
+  filter query stays simple to translate while still touching each reference table once
+  per call rather than once per row (docs/06-ARCHITECTURE.md §13).
+- `PublicListingDetailView` / `ListingCardView` / `PublicMerchantProfileView` — display
+  shapes deliberately separate from the merchant/admin `ListingDetailView`: moderation
+  history, rejection notes, `HiddenByAdmin` and submission blockers are internal review
+  state and have no field on the public shapes at all, so there is no way to accidentally
+  render them into a public page (docs/08-SECURITY-AND-PRIVACY.md §3). Reserved/sold
+  variant counters are likewise absent from the public variant view — only
+  `AvailableQuantity`/`IsSellable`, matching faed-commerce-ux "avoid exact unit-count
+  obsession" while still allowing an honest "only N left" / "sold out" state.
+- `Controllers/{Shop,Listing,Store}Controller` — new public, anonymous, attribute-routed
+  controllers (`/shop`, `/listing/{slug}`, `/store/{slug}`); `HomeController.Index` now
+  renders the real marketplace home instead of the TASK-001 placeholder. A slug that does
+  not resolve returns `NotFound()`, re-executed by a new
+  `app.UseStatusCodePagesWithReExecute("/status/{0}")` into a branded empty state
+  (`Home.StatusCodePage` / `Views/Home/StatusCode.cshtml`) instead of the framework's bare
+  404 (docs/07-UI-UX-SPEC.md §12 "do not show generic blank pages").
+- Views: `Home/Index` (hero, category navigation, featured listings, how-it-works,
+  condition/discount transparency, merchant acquisition CTA), `Shop/Index` and
+  `Store/Index` (share one `_ShopBrowse` partial — filters, sort, product grid, pagination,
+  empty state — via the `IShopBrowsePageModel` interface so the two pages cannot drift
+  visually or behaviourally), `Listing/Details` (gallery, price/condition/discount blocks,
+  a vanilla-JS variant picker, availability state, a B2B block, and a defect/packaging
+  disclosure section kept visually separate from ordinary product photos). Filters
+  (`Areas`-free `ViewModels/Marketplace/ShopFilterModel`) round-trip through the query
+  string; an unresolvable filter still renders the filter UI (so the visitor can change it)
+  with a "no results" empty state, distinguished from the true "nothing live yet" empty
+  state.
+- The B2C "Add to Order" / B2B "Make an Offer" buttons are rendered `disabled` with a
+  visible hint ("Online ordering isn't switched on yet") rather than posting to endpoints
+  that do not exist yet — B2C/B2B ordering is TASK-006/007/008 scope
+  (docs/10-IMPLEMENTATION-PLAN.md, faed-commerce-ux "Disabled CTAs must explain why").
+  Nothing about checkout/cart/reservation was scaffolded ahead of that work.
+- New CSS component layer appended to `wwwroot/css/faed.css` (hero, product card, price
+  block, category grid, variant picker, gallery, filter panel, sort bar, pagination, store
+  header, how-it-works/transparency sections) — reuses the existing design tokens, no raw
+  Bootstrap card/button styling introduced (faed-ui-direction). The mobile filter drawer is
+  Bootstrap 5.3's responsive `offcanvas-lg` component (a static sidebar at ≥lg, a slide-in
+  drawer with its own close button below it), not a hand-rolled one.
+- No schema/migration changes — every entity, index and enum this task reads
+  (`Listing`, `ListingVariant`, `ListingMedia`, `ListingDiscountReason`, `Category`,
+  `ConditionGrade`, `DiscountReason`, `Brand`, `MerchantProfile`) already existed from
+  TASK-003/004.
+
+### Accessibility fixes made during the mandatory review (faed-responsive-accessibility, faed-ui-quality-gate)
+
+- The product card's verified checkmark was `aria-hidden` with only a mouse-hover
+  `title`, so a screen-reader user got no verification signal at all; added a
+  `visually-hidden` "Verified merchant." text alternative alongside the icon.
+- Gallery thumbnail buttons had no accessible name (an empty decorative `alt` inside an
+  unlabelled `<button>`); added `aria-label` per thumbnail and grouped them under
+  `role="group" aria-label="Product photos"`.
+- Variant option chip groups had a plain `<span>` label with no programmatic association;
+  each group is now `role="group" aria-labelledby="option-label-{id}"`.
+- The JS variant picker toggled an `is-unavailable` CSS class without updating
+  `aria-disabled`, so a keyboard/assistive-tech user got a silent no-op click with no
+  indication why; the picker now sets `aria-disabled` alongside the class.
+- Selected variant chips were distinguished by background colour alone; added a
+  non-colour checkmark glyph and bold weight so the selected state survives a
+  colour-only reading (faed-responsive-accessibility "selected variant state is visible
+  beyond color").
+- Variant chips and gallery thumbnails were undersized for touch (well under 44px) and had
+  no explicit focus-visible style; both now meet the same tap-target/focus conventions as
+  `.faed-btn`.
+- A CSS rule that hid the mobile filter drawer's close header relied on an accidental
+  specificity tie-break to be re-shown below the `lg` breakpoint rather than an explicit
+  media query; rewritten so the desktop-only hide is itself inside `@media (min-width: 992px)`.
+- The Shop/Store empty state said "No listings match your filters" even when zero filters
+  were active (i.e. the marketplace is simply empty) — split into two distinct, correctly
+  worded empty states.
+
+### Exit-criteria coverage (tasks/TASK-005)
+
+| Exit criterion | Covered by |
+|---|---|
+| Anonymous user can understand a listing without hidden critical information | `Listing/Details.cshtml` renders merchant + verified state, condition + meaning, why discounted, defect evidence (separate, labelled section), reference price only when it passed moderation, variant availability, B2C/B2B availability and fulfillment/policy text above and immediately below the fold |
+| Non-Live listings cannot be accessed publicly | `PublicMarketplaceServiceTests.GetListingBySlugAsync_OnlyEverReturnsALiveListing` (Draft/PendingReview/Hidden all `null`, same slug); `BrowseListingsAsync_ExcludesNonLiveListings_AndAnUnresolvableCategoryYieldsZeroResults`; manual verification (a raw-SQL Draft listing 404s on `/listing/{slug}` and is absent from `/shop` search) |
+| Mobile layout checked | faed-responsive-accessibility pass above; `offcanvas-lg` filter drawer, single-column product grid/listing layout below their breakpoints |
+| Accessibility baseline checked | faed-responsive-accessibility pass above (fixes listed) |
+
+### Manual end-to-end verification (real MVC pipeline, real SQL Server)
+
+Ran the app against LocalDB with a merchant/listing pair inserted directly (bypassing the
+already-covered TASK-002/004 flows) to exercise the read side under real HTTP: Home shows
+the featured listing, category counts and verified badge; `/shop` filters correctly by
+category/condition/channel/price/search, and an unresolvable category returns a genuine
+zero-result empty state (not "show everything"); `/listing/{slug}` renders price, the
+40%-lower discount computed from reference vs. retail price, condition meaning, the B2B
+block, and the variant-availability JSON payload; `/store/{slug}` shows the verified badge
+and listing count; a Draft listing inserted at the same time returns 404 on its own slug and
+is absent from `/shop` search results; `/listing/does-not-exist` and `/store/does-not-exist`
+both render the branded 404 page. Test data removed afterwards.
+
+### Not implemented (correctly deferred)
+
+B2C cart/order placement, B2B negotiation/offers, real "How It Works" as a separate route
+(folded into a Home section instead), per-facet result counts on the filter sidebar,
+multi-select filters (each dimension is single-select via the query string) — none of these
+are TASK-005 deliverables (docs/10-IMPLEMENTATION-PLAN.md Phase 4 scope).
+
+### Post-review fixes (code review after initial TASK-005 completion)
+
+A review of the initial TASK-005 implementation found two P1 defects and eight P2 issues.
+All are fixed.
+
+- **A suspended merchant's Live listings stayed fully public.** Every public read
+  (`PublicMarketplaceService.GetHomePageAsync`/`BrowseListingsAsync`/`GetListingBySlugAsync`
+  and `ListingMediaService.OpenImageAsync`) filtered only on `ListingStatus.Live` — suspending
+  a merchant changes only `MerchantProfile.VerificationStatus`, so their listings (and photos)
+  kept appearing to anonymous visitors while only the storefront page itself 404'd
+  (docs/17-DATA-INVARIANTS.md "A Live Listing's merchant must be approved"). Added a single
+  `PublicLiveListings()` gate (`Status == Live` **and** the owning merchant is currently
+  `Approved`) that every browse/home/detail query now goes through, and the equivalent check
+  in `ListingMediaService.OpenImageAsync`. Regression-covered end-to-end:
+  `PublicMarketplaceServiceTests.SuspendingTheMerchant_HidesTheirLiveListingEverywhere_*`
+  (service layer) and `PublicMarketplaceHttpTests.LiveListing_IsReachableByAnonymousHttp_*`
+  (real HTTP — detail page, store page and image all flip to 404/403 the moment the merchant
+  is suspended, while the `Listing.Status` row is untouched).
+- **A listing could publish with a disclosed defect and no evidence photo.** Submission
+  already required *a* discount reason and *a* product photo, but never required a defect or
+  packaging photo for Grade B ("packaging imperfection"), Grade D ("cosmetic imperfection"),
+  or the `PackagingDamage`/`CosmeticDefect` discount reasons — an admin could approve a listing
+  that claims a physical flaw with nothing showing it (docs/03-BUSINESS-RULES.md §3 "defects
+  must be disclosed and visually evidenced where applicable"). `Listing.DescribeSubmissionBlockers`
+  and `Listing.SubmitForReview` now take the resolved condition-grade code and discount-reason
+  codes (the aggregate itself only ever stored catalog ids) and block submission until a
+  `Defect` or `Packaging` photo exists; `MerchantListingService.SubmitForReviewAsync` resolves
+  those codes from the database before calling either. Covered by 6 new
+  `Faed.UnitTests.ListingTests` cases (grade B/D and each reason, both the throw and the
+  succeeds-once-photographed path) and
+  `PublicMarketplaceServiceTests.SubmitForReviewAsync_ConditionGradeClaimsAPhysicalImperfection_WithoutEvidence_IsRejected`
+  against real SQL Server.
+- **The marketplace was not actually bounded to the Fashion Overstock launch sector.** Home's
+  category navigation, the Shop category facet, and browse itself considered every active
+  non-root category and every Live listing globally — today's seed data happens to have only
+  the three launch categories, but nothing stopped a category added under an unrelated future
+  sector from immediately appearing in the MVP UI (AGENTS.md §3 "Do not expose unrelated
+  sectors in the MVP UI"). Added `GetLaunchSectorCategoryIdsAsync`, which walks the category
+  tree from `CatalogDataSeeder.RootCategorySlug`, and applied it to every category-facing
+  query; a category slug outside that set now resolves the same as one that does not exist.
+  Covered by `BrowseListingsAsync_NeverExposesACategoryOutsideTheLaunchSector`, which inserts a
+  real second-root "Electronics → Phones" branch and proves it is invisible to Home, the Shop
+  facet list, and direct-slug browsing alike.
+- **The sort dropdown could get stuck on the previous choice.** The sort mini-form emitted a
+  hidden `Sort` input carrying the *current* sort value and then, immediately after, a
+  `<select name="Sort">` with the newly chosen one — two same-named controls in one form, and
+  ASP.NET Core model binding takes the first value in the query string, so a change away from
+  "Newest" silently kept losing to the stale hidden value. Fixed by excluding `Sort` from the
+  hidden-field loop in that one form (pagination/other links still carry it via
+  `ToFilterRouteValues()`, which is unaffected).
+- **An out-of-range page produced an empty page with a positive total, and an unbounded
+  multiplication.** `Page` was lower-bounded but never capped to the real last page, so a
+  hand-edited `?Page=999999` returned zero items next to a nonzero `TotalCount` — which the UI
+  then misreported as "No listings here yet" with no way back — and left `(page - 1) * pageSize`
+  unbounded by anything but the caller's input. `BrowseListingsAsync` now clamps `page` to the
+  computed `TotalPages` once the true count is known, before paging. Covered by
+  `BrowseListingsAsync_OutOfRangePage_ClampsToTheLastRealPage_*`.
+- **Size and colour filtering, required by docs/07-UI-UX-SPEC.md §4, did not exist.** Generic
+  listing options have no shared reference table (each merchant names their own "Size"/
+  "Colour"), so `ShopQuery` gained `SizeValue`/`ColorValue` matched case-insensitively against
+  option name aliases, `ShopFacets` gained `Sizes`/`Colors` (distinct values actually in use,
+  scoped the same way the Brand facet already was), and the Shop/Store filter panel renders
+  both when any values exist. Covered by `BrowseListingsAsync_FiltersBySizeAndColour`.
+- **Browsing only ever used `RetailPrice`, even for wholesale-only listings.** A listing with
+  `AllowB2C == false` has no `RetailPrice` at all (docs/04-DOMAIN-MODEL.md §3), so it was
+  invisible to every price filter, mis-sorted as free/priceless, and its card said "Price on
+  request" despite carrying a real `WholesaleIndicativeUnitPrice`. Price filtering and sorting
+  now use `RetailPrice ?? WholesaleIndicativeUnitPrice`; `ListingCardView` gained
+  `EffectivePrice`/`EffectivePriceIsWholesale`, rendered on the card and on the listing-detail
+  price block as "JOD X /unit · wholesale". Covered by
+  `BrowseListingsAsync_AWholesaleOnlyListing_IsPriceFilterableAndSortable_ByItsIndicativePrice`
+  and `BrowseListingsAsync_SortsByPrice_UsingTheEffectivePriceForBothDirections`.
+- **The channel filter's labels contradicted its behaviour.** "Retail only" and "Wholesale
+  only" implied exclusivity but matched inclusively (`AllowB2C`/`AllowB2B` alone), so a
+  dual-channel listing appeared under both — arguably the more useful behaviour for a buyer
+  checking "can I buy this at retail", but not what the labels promised. Kept the inclusive
+  behaviour (excluding dual-channel listings from a retail-minded filter would be a worse
+  result for that buyer) and relabelled the options "All listings" / "Retail available" /
+  "Wholesale available", with a one-line hint that a listing can offer both. Regression test
+  renamed to `BrowseListingsAsync_FiltersByChannel_Inclusively` to say what it actually proves.
+- **Sold-out variant combinations were selectable in the picker.** `refreshDisabledStates`
+  marked a combination "possible" whenever *any* variant matched it, ignoring
+  `variant.sellable` — a combination that exists but is depleted was never disabled
+  (faed-commerce-ux "disable unavailable combinations"). Fixed to require a *sellable* match;
+  also added `aria-live="polite"` to the availability text so the change is announced, not
+  only visible. Covered indirectly by
+  `GetListingBySlugAsync_VariantAvailability_ReflectsDepletedStock` (the data source
+  the picker consumes); the picker script itself has no test harness in this repo.
+- **Fulfillment copy asserted capabilities nothing backs, and was wrong for B2B-only
+  listings.** Every listing stated "Pickup and merchant delivery options are confirmed at
+  checkout" regardless of channel — merchant pickup/delivery capability is not modelled yet
+  (TASK-004/005 status), and B2B fulfillment is direct pickup or seller-arranged shipping, not
+  a B2C checkout at all (docs/03-BUSINESS-RULES.md §12). Split into a retail line (shown only
+  when `AllowB2C`, softened to "will be shown once ordering opens") and a wholesale line (shown
+  only when `AllowB2B`).
+- **TASK-005's tests only ever exercised the service layer.** Added
+  `PublicMarketplaceHttpTests` (`WebApplicationFactory`, real MVC pipeline, no auth) covering
+  `/shop`, `/listing/{slug}` (404 for unknown, 200 with content for Live), `/store/{slug}`
+  (404 for unknown), and `/listing-images/{id}` — including the same merchant-suspension
+  scenario as the service-level test, proving the HTTP surface (not just the service method)
+  flips to 404/403. The pre-existing suspension test was also widened: it previously checked
+  only that the storefront header disappeared, which would have missed the primary P1 defect
+  entirely.
+
+### Validation (TASK-005, after the fix pass)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **207 passed (143 unit, 64 integration)**, 0 failed, 0 skipped.
+  `Faed.UnitTests.ListingTests` grew by 6 (defect-evidence rule); `Faed.IntegrationTests`
+  grew by 13 (10 more `PublicMarketplaceServiceTests` + a new 4-test `PublicMarketplaceHttpTests`,
+  net of the pre-existing suspension test being widened in place).
+- No new migration — `dotnet ef migrations has-pending-model-changes` reports no drift (the
+  fix is entirely query/domain-method-signature scoped, no schema change).
+- Manual end-to-end re-verification against LocalDB with a retail listing (Colour option) and
+  a wholesale-only listing (no retail price) seeded directly: Shop's filter panel shows the
+  Colour facet and the corrected "All listings / Retail available / Wholesale available"
+  labels; the wholesale-only card and its detail page both show "JOD 3.250 /unit · wholesale"
+  instead of "Price on request"; its detail page shows only "Wholesale fulfillment", not a
+  retail line; `?Sort=PriceLowToHigh` round-trips correctly; `?Page=9999` returns the real
+  last page instead of an empty one.
+
+### Post-review fixes (second code review — marketplace + moderation)
+
+A second review found ten issues (two High, six Medium, two Low). All are fixed.
+
+- **[High] Required defect evidence could be removed after publication, and approval never
+  re-checked it.** Removing the last packaging photo was not treated as material, so a Grade
+  B/D or `PackagingDamage`/`CosmeticDefect` listing could go (or stay) Live with no visual
+  evidence, and `Listing.Approve` published whatever the listing currently was without
+  re-running the submission checks. `Listing.RemoveMedia` now takes the resolved
+  condition-grade / discount-reason codes and refuses to drop the last `Defect`/`Packaging`
+  photo when `Listing.DisclosesAPhysicalImperfection` is true (same shape as the existing
+  last-product-photo guard); `ListingModerationService` re-runs `DescribeSubmissionBlockers`
+  on approve and returns a conflict if any blocker reappeared. The shared code-resolution
+  helper moved to `ListingQueries.LoadDisclosureCodesAsync`. Covered by 3 new
+  `ListingTests` cases and
+  `ListingServiceTests.RemoveImage_TheLastDisclosurePhotoOfAGradeBListing_IsRejected_*`.
+- **[High] Size/colour filters were not variant-aware.** The filter only checked that the
+  option value existed somewhere on the listing, so "White + M" matched a listing stocking
+  only White/L and Black/M, whose requested SKU cannot be bought. `BrowseListingsAsync` now
+  requires a single active, in-stock `ListingVariant` carrying every requested value together,
+  and the size/colour facets are built the same way (values on a sellable variant only).
+  Covered by
+  `PublicMarketplaceServiceTests.BrowseListingsAsync_SizeAndColour_MustBeSatisfiedByOneSellableVariant_*`.
+- **[Medium] Card hydration could expose a listing after its visibility changed.**
+  `HydrateCardsAsync` loaded the paged ids without re-checking status/merchant approval; it
+  now re-applies `PublicLiveListings()`, so a moderation hide or merchant suspension between
+  the id query and the hydration query drops the card instead of rendering it.
+- **[Medium] The launch-sector root lookup was case-sensitive.**
+  `GetLaunchSectorCategoryIdsAsync` compared the root slug with in-memory `==` after
+  materialization while the seeder matches case-insensitively; a differently-cased existing
+  root made Home and Shop appear empty. Now `StringComparison.OrdinalIgnoreCase`.
+- **[Medium] Paging order was nondeterministic for ties.** Every sort now ends on `l.Id`, a
+  unique final key, so listings tied on price and publication timestamp keep a stable order
+  across page requests.
+- **[Medium] Facet construction loaded the whole catalog into memory.** The size/colour facet
+  query pulled every matching `Listing` and its full option graph; it now projects the
+  distinct `(option name, value)` pairs in the database.
+- **[Medium] Public filter input had no server-side validation.** `ShopFilterModel` gained
+  `[Range]`/`[StringLength]`/`[EnumDataType]` attributes, and `ToQuery` now clamps negative
+  prices, swaps a reversed min/max range, caps search text at 100 characters, and falls back
+  to the default for an undefined `Channel`/`Sort` enum value.
+- **[Medium] Defect evidence sat below the description and all policy content.**
+  `Views/Listing/Details.cshtml` was reordered to the trust-first sequence from
+  faed-commerce-ux: purchase block (with a short fulfillment summary) → disclosed-issue
+  photos → description → details & policies → wholesale block.
+- **[Low] Filter radio groups had no programmatic group label.** The Shop/Store filter panel
+  now uses `<fieldset>`/`<legend>` per group instead of a visual `<span>` heading.
+- **[Low] The mobile filter control showed only a bullet.** `ShopFilterModel.ActiveFilterCount`
+  is rendered as a numeric badge on the "Filters" toggle so one vs several applied filters is
+  visible.
+
+No new migration — the changes are query, view, view-model and domain-method-signature
+scoped, with no schema change.
+
+### Post-review fixes (third pass — three TASK-005 blocking defects)
+
+A follow-up review flagged three blocking defects still inside TASK-005 scope. All are fixed;
+scope was held to these three findings.
+
+- **The Fashion launch-sector restriction was not enforced on direct listing-detail access.**
+  Home and Shop already scoped every query to the `Fashion Overstock` category subtree
+  (`GetLaunchSectorCategoryIdsAsync`), but `PublicMarketplaceService.GetListingBySlugAsync`
+  filtered only on `PublicLiveListings()` (Live + approved merchant). A Live listing filed
+  under a category outside the launch sector — a future, unrelated sector added as data — was
+  therefore a 404 in browse but fully readable by guessing its slug at `/listing/{slug}`, a
+  hole straight through AGENTS.md §3 "Do not expose unrelated sectors in the MVP UI".
+  `GetListingBySlugAsync` now resolves the launch-sector category set and requires
+  `launchCategoryIds.Contains(l.CategoryId)`, exactly as Home/Shop do. Regression-covered by
+  `PublicMarketplaceServiceTests.GetListingBySlugAsync_ForALiveListingOutsideTheLaunchSector_ReturnsNull`
+  (service, with an in-sector control listing proven still reachable) and
+  `PublicMarketplaceHttpTests.ListingDetail_ForALiveListingOutsideTheLaunchSector_Returns404`
+  (real HTTP route, `Listing.Status` confirmed `Live` the whole time).
+
+- **Product-image changes on a published listing bypassed moderation.** `Listing.AddMedia` /
+  `Listing.RemoveMedia` treated only `Defect` photography as material; adding, replacing or
+  removing a publicly visible `Product` photo on a `Live`/`SoldOut` listing only `Touch`ed it
+  and left it public, so a merchant could swap the gallery a buyer judges the item by with no
+  review (AGENTS.md §8 "Do not let a merchant edit a live listing … and bypass review").
+  A new `Listing.IsMaterialMedia` predicate (`Product` **or** `Defect`) now gates both
+  mutators: adding/removing a Product photo routes through `ApplyMaterialChange`, so a
+  `Live`/`SoldOut` listing returns to `PendingReview` with a fresh `ListingModeration` row
+  (preserving the prior approval in history, the same approved/public-version semantics every
+  other material change already uses), and the mutator throws outright while the listing is
+  `PendingReview`. Ordinary `Packaging` shots stay non-material (they keep their existing
+  last-disclosure-photo guard). `ListingModerationService.ApproveAsync` already re-runs
+  `DescribeSubmissionBlockers` on approve, so a re-review cannot publish a gallery that has
+  dropped below one product photo. Regression-covered by `ListingTests`
+  (`AddMedia_ProductPhoto_OnLiveListing_ReturnsToPendingReview_PreservingApprovalHistory`,
+  `RemoveMedia_ProductPhoto_OnLiveListing_WhenAnotherRemains_ReturnsToPendingReview`,
+  `AddMedia_ProductPhoto_WhilePendingReview_Throws`,
+  `AddMedia_PackagingPhoto_OnLiveListing_StaysLive`) and, against real SQL Server + real file
+  storage, `PublicMarketplaceServiceTests.AddImageAsync_AProductPhotoOnALiveListing_ReturnsItToPendingReview_AndDropsItFromPublicView`
+  (listing 404s from the public detail path and the new image is not anonymously served while
+  pending).
+
+- **The variant picker trapped the buyer on disabled option values.** `refreshDisabledStates`
+  in `wwwroot/js/listing-detail.js` marked an option chip unavailable whenever no *sellable*
+  variant matched the chip's value **combined with the current selection in every other
+  option group**. From a valid `Black/M`, every `White` chip then disabled itself against the
+  selected size `M` (because `White/M` is not a real variant), even though `White/L` is
+  perfectly sellable — so the buyer could not move from `Black/M` to `White/L` at all. The
+  rule is now per-value: a chip is disabled only when *no* sellable variant carries that
+  value, independent of the other groups' current selection. Impossible partial combinations
+  (e.g. `White` + `M`) are surfaced by the existing availability line
+  ("That combination is not available.") instead of a dead-end disabled chip. A depleted or
+  deactivated value with no sellable variant left is still disabled, so the earlier
+  "sold-out combinations are selectable" fix is preserved. The same rule is now also computed
+  server-side — `PublicListingDetailView.SellableOptionValueIds` — and rendered into the
+  initial chip markup so a no-JS page is correct too. Regression-covered by
+  `PublicListingDetailViewTests` (the `Black/M` + `White/L` anti-trap case, the
+  depleted/inactive-value exclusion, and the no-options case).
+
+No new migration — every change is query, domain-method, view-model or client-script scoped;
+`dotnet ef migrations has-pending-model-changes` reports no drift.
+
+### Validation (TASK-005, third fix pass)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **222 passed (153 unit, 69 integration)**, 0 failed, 0 skipped,
+  on a workstation with SQL Server LocalDB reachable. New since the previous pass: 7 unit
+  (`ListingTests` ×4, `PublicListingDetailViewTests` ×3) and 3 integration
+  (`PublicMarketplaceServiceTests` ×2, `PublicMarketplaceHttpTests` ×1).
+- `dotnet ef migrations has-pending-model-changes` — no changes to the model since the last
+  migration.
+- Targeted verification only, scoped to the three findings and regressions their changes
+  could cause (per the task instruction) — no fresh broad review.
 
 ## TASK-004 — Listings, Variants, Inventory and Moderation
 
@@ -603,15 +978,18 @@ src/
     │   ├── Listings/        # IMerchantListingService, IInventoryService,
     │   │                    # IListingModerationService, IListingMediaService + implementations,
     │   │                    # ListingOptions, ListingImageValidator, ListingQueries, models
+    │   ├── Marketplace/     # IPublicMarketplaceService + implementation (anonymous-safe reads)
     │   ├── Storage/        # LocalFileStorage
     │   ├── UserRoleService.cs
     │   └── SystemClock.cs
     ├── Authorization/      # FaedPolicies, ApprovedMerchant handler, ClaimsPrincipal ext.
-    ├── Controllers/         # ListingMediaController (public/private image serving)
+    ├── Controllers/         # Home, Shop, Listing, Store (public marketplace),
+    │                        # ListingMediaController (public/private image serving)
     ├── Areas/{Admin,Merchant,Identity}/
     │   ├── Admin/Controllers/       # MerchantVerificationController, ListingModerationController
     │   └── Merchant/Controllers/    # VerificationController, ListingsController, InventoryController
-    ├── ViewModels/         # ErrorViewModel (area-local view models under each Area/ViewModels)
+    ├── ViewModels/         # ErrorViewModel, Marketplace/ (Shop/Store/Listing page + filter
+    │                       # models; area-local view models under each Area/ViewModels)
     ├── Rendering/          # AmmanTime, MerchantStatusDisplay, ListingStatusDisplay (view-only helpers)
     ├── DependencyInjection.cs   # AddFaedPlatform composition helper
     └── Program.cs

@@ -1,0 +1,37 @@
+@model StorePageModel
+@{
+    ViewData["Title"] = Model.Merchant.BusinessName;
+}
+
+<div class="faed-page faed-page--wide">
+    <div class="faed-store-header">
+        <div class="faed-store-header__identity">
+            <h1 class="faed-store-header__name">
+                @Model.Merchant.BusinessName
+                @if (Model.Merchant.IsVerified)
+                {
+                    <span class="faed-badge faed-badge--approved">
+                        <span aria-hidden="true">&#10003;</span> Verified merchant
+                    </span>
+                }
+            </h1>
+            <p class="faed-store-header__meta">
+                Member since @AmmanTime.FormatDate(Model.Merchant.MemberSinceUtc)
+                &middot; @Model.Merchant.LiveListingCount active @(Model.Merchant.LiveListingCount == 1 ? "listing" : "listings")
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Merchant.LiveListingCount == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">This merchant has no active listings right now</div>
+            <p>Check back soon, or continue browsing the marketplace.</p>
+            <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Continue shopping</a>
+        </div>
+    }
+    else
+    {
+        <partial name="_ShopBrowse" model="Model" />
+    }
+</div>

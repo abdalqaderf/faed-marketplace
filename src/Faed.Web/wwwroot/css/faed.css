@@ -673,3 +673,825 @@ body {
 .faed-dialog::backdrop {
     background: rgba(27, 27, 24, 0.45);
 }
+
+/* =====================================================================================
+   Public marketplace (tasks/TASK-005-PUBLIC-MARKETPLACE.md, .claude/skills/faed-ui-direction)
+   ===================================================================================== */
+
+/* ---- Section header (Home) ---- */
+
+.faed-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--faed-space-3);
+    margin-bottom: var(--faed-space-4);
+}
+
+.faed-section-header__title {
+    font-size: 1.2rem;
+    font-weight: 640;
+    margin: 0;
+}
+
+.faed-section-header__link {
+    font-size: 0.88rem;
+    font-weight: 550;
+    color: var(--faed-brand);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.faed-section-header__link:hover {
+    color: var(--faed-brand-strong);
+    text-decoration: underline;
+}
+
+.faed-home-section {
+    margin-bottom: var(--faed-space-6);
+}
+
+/* ---- Hero ---- */
+
+.faed-hero {
+    background: var(--faed-brand);
+    color: #fff;
+}
+
+.faed-hero__inner {
+    padding-block: var(--faed-space-6);
+}
+
+.faed-hero__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: rgba(255, 255, 255, 0.78);
+    margin: 0 0 var(--faed-space-3);
+}
+
+.faed-hero__title {
+    font-size: 2rem;
+    font-weight: 680;
+    line-height: 1.18;
+    max-width: 30ch;
+    margin: 0 0 var(--faed-space-4);
+}
+
+.faed-hero__subtitle {
+    max-width: 55ch;
+    font-size: 1.02rem;
+    color: rgba(255, 255, 255, 0.88);
+    margin: 0 0 var(--faed-space-5);
+}
+
+.faed-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--faed-space-3);
+    margin-bottom: var(--faed-space-5);
+}
+
+.faed-hero .faed-btn--on-tint {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #fff;
+}
+
+.faed-hero .faed-btn--on-tint:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.faed-hero__trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--faed-space-2);
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+@media (max-width: 640px) {
+    .faed-hero__title {
+        font-size: 1.5rem;
+    }
+}
+
+/* ---- Category navigation ---- */
+
+.faed-category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--faed-space-3);
+}
+
+.faed-category-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--faed-space-1);
+    padding: var(--faed-space-4) var(--faed-space-5);
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius);
+    background: var(--faed-surface);
+    text-decoration: none;
+    color: var(--faed-text);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.faed-category-card:hover {
+    border-color: var(--faed-brand);
+    box-shadow: var(--faed-shadow);
+}
+
+.faed-category-card__name {
+    font-weight: 620;
+}
+
+.faed-category-card__count {
+    color: var(--faed-text-muted);
+    font-size: 0.85rem;
+}
+
+/* ---- Product grid & card ---- */
+
+.faed-product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--faed-space-4);
+}
+
+.faed-product-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius);
+    background: var(--faed-surface);
+    overflow: hidden;
+    transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.faed-product-card:hover {
+    border-color: var(--faed-border-strong);
+    box-shadow: var(--faed-shadow);
+}
+
+.faed-product-card__media {
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 5;
+    background: var(--faed-surface-muted);
+}
+
+.faed-product-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.faed-product-card__no-photo {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--faed-text-muted);
+    font-size: 0.85rem;
+}
+
+.faed-product-card__discount {
+    position: absolute;
+    inset-block-start: 0.5rem;
+    inset-inline-start: 0.5rem;
+    background: var(--faed-brand);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 650;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+}
+
+.faed-product-card__stock {
+    position: absolute;
+    inset-block-end: 0.5rem;
+    inset-inline-start: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+}
+
+.faed-product-card__stock--out {
+    background: rgba(27, 27, 24, 0.78);
+    color: #fff;
+}
+
+.faed-product-card__stock--low {
+    background: var(--faed-warning-tint);
+    color: var(--faed-warning);
+}
+
+.faed-product-card__body {
+    padding: var(--faed-space-4);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.faed-product-card__condition {
+    font-size: 0.78rem;
+    color: var(--faed-text-muted);
+}
+
+.faed-product-card__title {
+    font-size: 0.98rem;
+    font-weight: 610;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.faed-product-card__title a {
+    color: var(--faed-text);
+    text-decoration: none;
+}
+
+.faed-product-card__title a:hover {
+    color: var(--faed-brand-strong);
+}
+
+.faed-product-card__merchant {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    color: var(--faed-text-muted);
+    text-decoration: none;
+}
+
+.faed-product-card__merchant:hover {
+    color: var(--faed-text);
+    text-decoration: underline;
+}
+
+.faed-product-card__reason {
+    font-size: 0.78rem;
+    color: var(--faed-text-muted);
+}
+
+.faed-product-card__channels {
+    margin-top: 0.15rem;
+}
+
+.faed-chip--sm {
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
+}
+
+/* ---- Verified badge ---- */
+
+.faed-verified {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 999px;
+    background: var(--faed-success);
+    color: #fff;
+    font-size: 0.68rem;
+    line-height: 1;
+    flex: none;
+}
+
+/* ---- Price blocks ---- */
+
+.faed-price {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.faed-price__current {
+    font-weight: 680;
+    color: var(--faed-text);
+}
+
+.faed-price--sm .faed-price__current {
+    font-size: 1rem;
+}
+
+.faed-price--lg .faed-price__current {
+    font-size: 1.6rem;
+}
+
+.faed-price__qualifier {
+    color: var(--faed-text-muted);
+    font-size: 0.72em;
+    font-weight: 500;
+    margin-left: 0.3em;
+}
+
+.faed-price__reference {
+    color: var(--faed-text-muted);
+    text-decoration: line-through;
+    font-size: 0.88em;
+}
+
+.faed-price__discount {
+    color: var(--faed-success);
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+/* ---- How it works / transparency (Home) ---- */
+
+.faed-steps-grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--faed-space-4);
+    margin: 0;
+    padding: 0;
+}
+
+.faed-steps-grid li {
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius);
+    background: var(--faed-surface);
+    padding: var(--faed-space-4);
+}
+
+.faed-steps-grid__number {
+    display: inline-grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 999px;
+    background: var(--faed-brand-tint);
+    color: var(--faed-brand-strong);
+    font-weight: 650;
+    margin-bottom: var(--faed-space-2);
+}
+
+.faed-steps-grid h3 {
+    font-size: 0.98rem;
+    font-weight: 620;
+    margin: 0 0 var(--faed-space-1);
+}
+
+.faed-steps-grid p {
+    color: var(--faed-text-muted);
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+.faed-transparency__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--faed-space-4);
+}
+
+.faed-transparency .faed-panel {
+    margin-bottom: 0;
+}
+
+/* ---- Merchant acquisition banner (Home) ---- */
+
+.faed-merchant-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--faed-space-4);
+    background: var(--faed-surface-muted);
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius);
+    padding: var(--faed-space-5);
+    margin-bottom: var(--faed-space-6);
+}
+
+.faed-merchant-cta__title {
+    font-size: 1.05rem;
+    font-weight: 630;
+    margin: 0 0 var(--faed-space-1);
+}
+
+.faed-merchant-cta__subtitle {
+    color: var(--faed-text-muted);
+    margin: 0;
+    max-width: 46ch;
+}
+
+/* ---- Breadcrumb ---- */
+
+.faed-breadcrumb {
+    display: flex;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--faed-text-muted);
+    margin-bottom: var(--faed-space-4);
+}
+
+.faed-breadcrumb a {
+    color: var(--faed-text-muted);
+    text-decoration: none;
+}
+
+.faed-breadcrumb a:hover {
+    color: var(--faed-brand-strong);
+    text-decoration: underline;
+}
+
+/* ---- Listing detail layout ---- */
+
+.faed-listing-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: var(--faed-space-6);
+    margin-bottom: var(--faed-space-6);
+}
+
+@media (max-width: 860px) {
+    .faed-listing-layout {
+        grid-template-columns: 1fr;
+        gap: var(--faed-space-5);
+    }
+}
+
+.faed-gallery__hero {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: var(--faed-radius);
+    border: 1px solid var(--faed-border);
+    background: var(--faed-surface-muted);
+    display: block;
+}
+
+.faed-gallery__hero--placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--faed-text-muted);
+}
+
+.faed-gallery__thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--faed-space-2);
+    margin-top: var(--faed-space-3);
+}
+
+.faed-gallery__thumb {
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: var(--faed-radius-sm);
+    overflow: hidden;
+    width: 4rem;
+    height: 4rem;
+    background: none;
+    cursor: pointer;
+}
+
+.faed-gallery__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.faed-gallery__thumb.is-active {
+    border-color: var(--faed-brand);
+}
+
+.faed-listing-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--faed-space-4);
+}
+
+.faed-listing-info__title {
+    font-size: 1.5rem;
+    font-weight: 660;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.faed-trust-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    color: var(--faed-text-muted);
+    text-decoration: none;
+    width: fit-content;
+}
+
+.faed-trust-line:hover {
+    color: var(--faed-text);
+    text-decoration: underline;
+}
+
+.faed-condition-block {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: var(--faed-space-1) var(--faed-space-3);
+    margin: 0;
+    padding: var(--faed-space-4);
+    background: var(--faed-surface-muted);
+    border-radius: var(--faed-radius);
+}
+
+.faed-condition-block dt {
+    color: var(--faed-text-muted);
+    font-weight: 550;
+    font-size: 0.85rem;
+}
+
+.faed-condition-block dd {
+    margin: 0 0 var(--faed-space-2);
+    font-size: 0.92rem;
+}
+
+@media (max-width: 480px) {
+    .faed-condition-block {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- Variant picker ---- */
+
+.faed-variant-picker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--faed-space-3);
+}
+
+.faed-variant-group__label {
+    display: block;
+    font-weight: 560;
+    font-size: 0.85rem;
+    margin-bottom: var(--faed-space-2);
+}
+
+.faed-chip--selectable {
+    border: 1px solid var(--faed-border);
+    cursor: pointer;
+    font: inherit;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.9rem;
+}
+
+.faed-chip--selectable:focus-visible,
+.faed-gallery__thumb:focus-visible {
+    outline: 2px solid var(--faed-brand-strong);
+    outline-offset: 2px;
+}
+
+.faed-chip--selectable.is-selected {
+    background: var(--faed-brand);
+    color: #fff;
+    border-color: var(--faed-brand);
+    font-weight: 650;
+}
+
+/* The checkmark is a shape cue, not only a color cue, for the "selected" state
+   (faed-responsive-accessibility "selected variant state is visible beyond color"). */
+.faed-chip--selectable.is-selected::after {
+    content: " \2713";
+}
+
+.faed-chip--selectable.is-unavailable {
+    opacity: 0.4;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+
+.faed-availability {
+    font-size: 0.88rem;
+    font-weight: 560;
+    color: var(--faed-text-muted);
+    margin: 0;
+}
+
+.faed-availability--in-stock {
+    color: var(--faed-success);
+}
+
+.faed-availability--low {
+    color: var(--faed-warning);
+}
+
+.faed-availability--out {
+    color: var(--faed-danger);
+}
+
+/* ---- CTA row ---- */
+
+.faed-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--faed-space-3);
+    align-items: center;
+}
+
+.faed-cta-row__hint {
+    flex-basis: 100%;
+    color: var(--faed-text-muted);
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+.faed-b2b-block {
+    background: var(--faed-info-tint);
+    border-color: var(--faed-info);
+}
+
+.faed-listing-policies dt {
+    font-size: 0.85rem;
+}
+
+.faed-listing-policies dd {
+    margin-bottom: var(--faed-space-3);
+}
+
+/* ---- Store header ---- */
+
+.faed-store-header {
+    padding: var(--faed-space-5) 0;
+    border-bottom: 1px solid var(--faed-border);
+    margin-bottom: var(--faed-space-5);
+}
+
+.faed-store-header__name {
+    display: flex;
+    align-items: center;
+    gap: var(--faed-space-3);
+    font-size: 1.4rem;
+    font-weight: 650;
+    margin: 0 0 var(--faed-space-2);
+    flex-wrap: wrap;
+}
+
+.faed-store-header__meta {
+    color: var(--faed-text-muted);
+    margin: 0;
+}
+
+/* ---- Shop layout: filters + results ---- */
+
+.faed-shop-layout {
+    display: grid;
+    grid-template-columns: 16rem minmax(0, 1fr);
+    gap: var(--faed-space-5);
+    align-items: start;
+}
+
+@media (max-width: 991.98px) {
+    .faed-shop-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.faed-filter-panel {
+    background: var(--faed-surface);
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius);
+}
+
+.faed-filter-panel__clear {
+    display: inline-block;
+    margin-bottom: var(--faed-space-3);
+    font-size: 0.85rem;
+    color: var(--faed-brand);
+}
+
+.faed-filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--faed-space-4);
+}
+
+/* Filter groups are <fieldset>/<legend> so assistive tech announces the group name with
+   each radio; strip the browser's default fieldset chrome so they still look like the rest
+   of the form. */
+.faed-filter-group {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.faed-filter-group__label {
+    display: block;
+    width: 100%;
+    padding: 0;
+    font-weight: 570;
+    font-size: 0.85rem;
+    margin-bottom: var(--faed-space-2);
+}
+
+.faed-filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.faed-filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.faed-filter-price-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.faed-filter-form__submit {
+    width: 100%;
+}
+
+@media (min-width: 992px) {
+    .faed-filter-panel__body {
+        padding: var(--faed-space-5);
+    }
+
+    .faed-filter-toggle {
+        display: none;
+    }
+
+    /* Bootstrap's offcanvas-header (the drawer title + close button) only makes sense once
+       the panel is actually an offcanvas drawer, which offcanvas-lg only makes it below lg. */
+    .faed-filter-panel .offcanvas-header {
+        display: none;
+    }
+}
+
+.faed-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* The exact number of active filters, not just a dot: "one filter" and "several filters"
+   must look different on mobile (faed-marketplace-pages "clear filter count"). */
+.faed-filter-toggle__count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--faed-brand);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 640;
+    line-height: 1;
+}
+
+/* ---- Sort bar ---- */
+
+.faed-sort-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--faed-space-3);
+    margin-bottom: var(--faed-space-4);
+    flex-wrap: wrap;
+}
+
+.faed-sort-bar__count {
+    color: var(--faed-text-muted);
+    font-size: 0.88rem;
+    margin: 0;
+    flex: 1 1 auto;
+}
+
+.faed-sort-bar__sort {
+    display: flex;
+    align-items: center;
+}
+
+.faed-sort-bar__sort .faed-select {
+    width: auto;
+    min-width: 11rem;
+}
+
+/* ---- Pagination ---- */
+
+.faed-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--faed-space-3);
+    margin-top: var(--faed-space-5);
+}
+
+.faed-pagination__status {
+    color: var(--faed-text-muted);
+    font-size: 0.85rem;
+}

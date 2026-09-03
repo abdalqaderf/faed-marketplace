@@ -69,6 +69,11 @@ else
 }
 
 app.UseHttpsRedirection();
+
+// A guessed/stale public URL (an unknown listing/store slug, a bad shop filter route) gets a
+// branded empty state instead of the framework's bare 404 (docs/07-UI-UX-SPEC.md §12).
+app.UseStatusCodePagesWithReExecute("/status/{0}");
+
 app.UseRouting();
 
 app.UseAuthentication();

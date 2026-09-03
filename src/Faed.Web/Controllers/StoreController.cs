@@ -1,0 +1,27 @@
+using Faed.Web.Services.Marketplace;
+using Faed.Web.ViewModels.Marketplace;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Faed.Web.Controllers;
+
+/// <summary>
+/// The public merchant storefront (tasks/TASK-005-PUBLIC-MARKETPLACE.md). Only an Approved
+/// merchant has a reachable storefront — a Draft/Pending/Rejected/Suspended merchant's slug
+/// 404s, the same way a non-Live listing does (docs/03-BUSINESS-RULES.md §1).
+/// </summary>
+[Route("store")]
+public sealed class StoreController(IPublicMarketplaceService marketplace) : Controller
+{
+    [HttpGet("{slug}")]
+    public async Task<IActionResult> Index(string slug, ShopFilterModel filters, CancellationToken cancellationToken)
+    {
+        var merchant = await marketplace.GetMerchantStoreHeaderBySlugAsync(slug, cancellationToken);
+        if (merchant is null)
+        {
+            return NotFound();
+        }
+
+        var result = await marketplace.BrowseListingsAsync(filters.ToQuery(merchantSlug: slug), cancellationToken);
+        return View(new StorePageModel { Merchant = merchant, Result = result, Filters = filters });
+    }
+}
