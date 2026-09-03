@@ -1,0 +1,20 @@
+@model string
+@{
+    var active = Model ?? string.Empty;
+    (string Section, string Area, string Controller, string Label)[] links =
+    {
+        ("Verification", "Merchant", "Verification", "Verification"),
+        ("Listings", "Merchant", "Listings", "Listings"),
+        ("Inventory", "Merchant", "Inventory", "Inventory"),
+        ("Orders", "Merchant", "Orders", "B2C Orders"),
+        ("Offers", "Merchant", "Offers", "B2B Offers"),
+        ("StoreSettings", "Merchant", "StoreSettings", "Store settings"),
+    };
+}
+<nav class="faed-subnav" aria-label="Merchant sections">
+    @foreach (var link in links)
+    {
+        <a class="@(active == link.Section ? "is-active" : "")"
+           asp-area="@link.Area" asp-controller="@link.Controller" asp-action="Index">@link.Label</a>
+    }
+</nav>

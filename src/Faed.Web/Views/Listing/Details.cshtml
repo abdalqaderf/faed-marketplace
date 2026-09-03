@@ -141,27 +141,33 @@
             <div class="faed-cta-row">
                 @if (Model.AllowB2C)
                 {
-                    <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">
-                        @(Model.IsSoldOut ? "Sold Out" : "Add to Order")
-                    </button>
+                    @if (Model.IsSoldOut)
+                    {
+                        <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold out</button>
+                    }
+                    else
+                    {
+                        <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index" asp-route-slug="@Model.Slug">Order this item</a>
+                    }
                 }
                 @if (Model.AllowB2B)
                 {
-                    <button type="button" class="faed-btn faed-btn--ghost" disabled aria-disabled="true">Make an Offer</button>
+                    <a class="faed-btn faed-btn--ghost" asp-area="Merchant" asp-controller="Offers" asp-action="Create" asp-route-listingSlug="@Model.Slug">Make an Offer</a>
                 }
-                <p class="faed-cta-row__hint">Online ordering isn't switched on yet for this preview — check back soon.</p>
+                @if (Model.AllowB2B)
+                {
+                    <p class="faed-cta-row__hint">Wholesale offers are between verified merchants — sign in as an approved merchant to negotiate.</p>
+                }
             </div>
 
-            @* Fulfillment differs by channel and is not modelled per-merchant yet, so this
-               states the general channel rule rather than asserting specific capabilities
-               (pickup location, delivery zone) this listing has not actually supplied
-               (docs/03-BUSINESS-RULES.md §12). This is the short "fulfillment summary" that
-               closes the purchase block (faed-commerce-ux "Listing detail order"). *@
+            @* Short "fulfillment summary" that closes the purchase block (faed-commerce-ux
+               "Listing detail order"). The exact pickup locations and delivery zones are shown
+               on the checkout page for this merchant (docs/03-BUSINESS-RULES.md §12). *@
             <dl class="faed-details faed-listing-policies">
                 @if (Model.AllowB2C)
                 {
                     <dt>Retail fulfillment</dt>
-                    <dd>Pickup or merchant delivery — options will be shown once ordering opens.</dd>
+                    <dd>Pickup or merchant delivery — choose an option at checkout.</dd>
                 }
                 @if (Model.AllowB2B)
                 {

@@ -1,0 +1,236 @@
+@model CheckoutPageModel
+@{
+    ViewData["Title"] = $"Order — {Model.Checkout.ListingTitle}";
+    var checkout = Model.Checkout;
+    var form = Model.Form;
+}
+
+<div class="faed-page">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
+        <span aria-hidden="true">/</span>
+        <a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">@checkout.ListingTitle</a>
+        <span aria-hidden="true">/</span>
+        <span>Checkout</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Checkout</h1>
+            <p class="faed-page__subtitle">
+                @checkout.ListingTitle — sold by
+                <a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@checkout.MerchantSlug">@checkout.MerchantBusinessName</a>.
+            </p>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">What you're buying</h2>
+        <dl class="faed-details">
+            <dt>Condition</dt>
+            <dd>@checkout.ConditionLabel</dd>
+            <dt>Why discounted</dt>
+            <dd>@(checkout.DiscountReasonNames.Count > 0 ? string.Join(" + ", checkout.DiscountReasonNames) : "Not specified")</dd>
+        </dl>
+        <p class="faed-field__hint">
+            Prices and stock are confirmed by Faed when you place the order — nothing here is trusted from your browser.
+        </p>
+    </div>
+
+    @if (!checkout.CanOrder)
+    {
+        <div class="faed-alert faed-alert--error" role="alert">
+            @if (!checkout.Lines.Any(l => l.IsSellable))
+            {
+                <text>Every variant of this listing is currently sold out.</text>
+            }
+            else
+            {
+                <text>This merchant has not set up a pickup location or delivery zone yet, so it cannot take orders right now.</text>
+            }
+        </div>
+        <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">Back to the listing</a>
+    }
+    else
+    {
+        <form asp-action="Index" method="post" id="checkout-form">
+            <input type="hidden" asp-for="Form.ListingSlug" />
+
+            <div asp-validation-summary="ModelOnly" class="faed-alert faed-alert--error" role="alert"></div>
+
+            <div class="faed-panel">
+                <h2 class="faed-panel__title">Choose your items</h2>
+                <div class="faed-table-wrap">
+                    <table class="faed-table">
+                        <caption class="faed-field__hint" style="text-align:left;caption-side:top;">
+                            Set a quantity for each variant you want. Leave the rest at 0.
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Variant</th>
+                                <th scope="col">Unit price</th>
+                                <th scope="col">Available</th>
+                                <th scope="col">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < checkout.Lines.Count; i++)
+                            {
+                                var line = checkout.Lines[i];
+                                <tr>
+                                    <td>
+                                        @line.Combination
+                                        <input type="hidden" asp-for="Form.Lines[i].VariantId" value="@line.VariantId" />
+                                    </td>
+                                    <td>JOD @line.UnitPrice.ToString("0.000")</td>
+                                    <td>
+                                        @if (line.IsSellable)
+                                        {
+                                            @(line.AvailableQuantity <= 3 ? $"Only {line.AvailableQuantity} left" : line.AvailableQuantity.ToString())
+                                        }
+                                        else
+                                        {
+                                            <span class="faed-badge faed-badge--rejected">Sold out</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <label>
+                                            <span class="faed-field__hint">Quantity for @line.Combination</span>
+                                            <input class="faed-input" style="max-width:6rem;"
+                                                   asp-for="Form.Lines[i].Quantity"
+                                                   type="number" min="0" max="@line.AvailableQuantity"
+                                                   disabled="@(!line.IsSellable)" />
+                                        </label>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="faed-panel">
+                <h2 class="faed-panel__title">How you'll get it</h2>
+
+                <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                    <legend class="faed-field__label">Fulfilment method</legend>
+                    @if (checkout.CanPickup)
+                    {
+                        <label class="faed-checkbox-row">
+                            <input type="radio" asp-for="Form.FulfillmentType" value="@OrderFulfillmentType.Pickup" data-fulfillment="pickup" />
+                            <span>Pickup — collect from the merchant</span>
+                        </label>
+                    }
+                    @if (checkout.CanDeliver)
+                    {
+                        <label class="faed-checkbox-row">
+                            <input type="radio" asp-for="Form.FulfillmentType" value="@OrderFulfillmentType.MerchantDelivery" data-fulfillment="delivery" />
+                            <span>Merchant delivery</span>
+                        </label>
+                    }
+                </fieldset>
+
+                @if (checkout.CanPickup)
+                {
+                    <fieldset class="faed-field" data-section="pickup" style="border:0;padding:0;margin:0;">
+                        <legend class="faed-field__label">Pickup location</legend>
+                        @foreach (var location in checkout.PickupLocations)
+                        {
+                            <label class="faed-checkbox-row">
+                                <input type="radio" asp-for="Form.MerchantLocationId" value="@location.Id" />
+                                <span>
+                                    <strong>@location.Name</strong> — @location.Address
+                                    @if (!string.IsNullOrWhiteSpace(location.Hours))
+                                    {
+                                        <br /><span class="faed-field__hint">Hours: @location.Hours</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(location.Instructions))
+                                    {
+                                        <br /><span class="faed-field__hint">@location.Instructions</span>
+                                    }
+                                </span>
+                            </label>
+                        }
+                    </fieldset>
+                }
+
+                @if (checkout.CanDeliver)
+                {
+                    <fieldset class="faed-field" data-section="delivery" style="border:0;padding:0;margin:0;">
+                        <legend class="faed-field__label">Delivery zone</legend>
+                        @foreach (var zone in checkout.DeliveryZones)
+                        {
+                            <label class="faed-checkbox-row">
+                                <input type="radio" asp-for="Form.DeliveryZoneId" value="@zone.Id" />
+                                <span>
+                                    <strong>@zone.Name</strong> — delivery fee JOD @zone.DeliveryFee.ToString("0.000")
+                                    @if (zone.MinimumOrderValue is { } min)
+                                    {
+                                        <text>, minimum order JOD @min.ToString("0.000")</text>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(zone.Estimate))
+                                    {
+                                        <br /><span class="faed-field__hint">@zone.Estimate</span>
+                                    }
+                                </span>
+                            </label>
+                        }
+                        <label class="faed-field__label" for="Form_DeliveryAddressText">Delivery address</label>
+                        <textarea class="faed-input" asp-for="Form.DeliveryAddressText" rows="2"
+                                  placeholder="Street, building, apartment, and any landmark"></textarea>
+                        <span asp-validation-for="Form.DeliveryAddressText" class="faed-field__error"></span>
+                    </fieldset>
+                }
+            </div>
+
+            <div class="faed-panel">
+                <h2 class="faed-panel__title">Contact details</h2>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="Form_ContactName">Contact name</label>
+                    <input class="faed-input" asp-for="Form.ContactName" autocomplete="name" />
+                    <span asp-validation-for="Form.ContactName" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="Form_ContactPhone">Contact phone</label>
+                    <input class="faed-input" asp-for="Form.ContactPhone" autocomplete="tel" inputmode="tel" />
+                    <span asp-validation-for="Form.ContactPhone" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="Form_BuyerNote">Note for the merchant (optional)</label>
+                    <textarea class="faed-input" asp-for="Form.BuyerNote" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="faed-page__actions">
+                <button type="submit" class="faed-btn faed-btn--primary">Place order</button>
+                <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">Cancel</a>
+            </div>
+            <p class="faed-field__hint">
+                Placing the order reserves the stock for a limited time while the merchant confirms it.
+                You can cancel a pending or confirmed order from your order history.
+            </p>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var form = document.getElementById('checkout-form');
+            if (!form) { return; }
+            var pickup = form.querySelector('[data-section="pickup"]');
+            var delivery = form.querySelector('[data-section="delivery"]');
+            function sync() {
+                var selected = form.querySelector('input[name="Form.FulfillmentType"]:checked');
+                var mode = selected ? selected.getAttribute('data-fulfillment') : null;
+                if (pickup) { pickup.hidden = mode !== 'pickup'; }
+                if (delivery) { delivery.hidden = mode !== 'delivery'; }
+            }
+            form.querySelectorAll('input[name="Form.FulfillmentType"]').forEach(function (el) {
+                el.addEventListener('change', sync);
+            });
+            sync();
+        })();
+    </script>
+}

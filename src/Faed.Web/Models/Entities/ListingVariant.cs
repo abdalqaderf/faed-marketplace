@@ -117,6 +117,82 @@ public class ListingVariant
         return AvailableQuantity;
     }
 
+    /// <summary>
+    /// Moves <paramref name="quantity"/> units from available to reserved for a B2C order
+    /// (docs/03-BUSINESS-RULES.md §7). The caller runs this inside a transaction whose write
+    /// is protected by <see cref="RowVersion"/>, so two orders racing for the last unit
+    /// cannot both succeed (AGENTS.md §7, docs/17-DATA-INVARIANTS.md "No transaction may
+    /// reserve more than current available stock").
+    /// </summary>
+    public void Reserve(int quantity, DateTime nowUtc)
+    {
+        RequirePositive(quantity);
+
+        if (!IsActive)
+        {
+            throw new DomainException("This variant is not available for purchase.");
+        }
+
+        if (quantity > AvailableQuantity)
+        {
+            throw new DomainException(
+                $"Only {AvailableQuantity} unit(s) of {Sku} are available.");
+        }
+
+        AvailableQuantity -= quantity;
+        ReservedQuantity += quantity;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="quantity"/> reserved units to available stock when an order is
+    /// cancelled, expires, or is marked no-show (docs/03-BUSINESS-RULES.md §7). Each
+    /// reservation is released exactly once over its lifecycle
+    /// (docs/17-DATA-INVARIANTS.md "Stock release/consume occurs exactly once").
+    /// </summary>
+    public void ReleaseReservation(int quantity, DateTime nowUtc)
+    {
+        RequirePositive(quantity);
+
+        if (quantity > ReservedQuantity)
+        {
+            throw new DomainException(
+                $"Cannot release {quantity} unit(s) of {Sku}; only {ReservedQuantity} are reserved.");
+        }
+
+        ReservedQuantity -= quantity;
+        AvailableQuantity += quantity;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// Converts <paramref name="quantity"/> reserved units into sold units when an order
+    /// completes (docs/03-BUSINESS-RULES.md §7). Reserved stock never returns to available
+    /// once it is sold.
+    /// </summary>
+    public void ConfirmSale(int quantity, DateTime nowUtc)
+    {
+        RequirePositive(quantity);
+
+        if (quantity > ReservedQuantity)
+        {
+            throw new DomainException(
+                $"Cannot complete {quantity} unit(s) of {Sku}; only {ReservedQuantity} are reserved.");
+        }
+
+        ReservedQuantity -= quantity;
+        SoldQuantity += quantity;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    private static void RequirePositive(int quantity)
+    {
+        if (quantity <= 0)
+        {
+            throw new DomainException("A stock movement must be a positive number of units.");
+        }
+    }
+
     public void Deactivate(DateTime nowUtc)
     {
         IsActive = false;

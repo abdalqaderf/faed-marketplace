@@ -799,6 +799,20 @@ public class Listing
     public void RefreshAvailability(DateTime nowUtc) => RefreshAvailability(AvailableUnits, nowUtc);
 
     /// <summary>
+    /// Records that a B2C order just reserved stock against this listing. It always advances
+    /// the row's concurrency token (<see cref="RowVersion"/>), even when
+    /// <see cref="RefreshAvailability(DateTime)"/> did not change the status: two orders that
+    /// each deplete a <em>different</em> variant of this listing to zero at the same time
+    /// would otherwise both commit against a listing each still believes has stock, leaving a
+    /// fully depleted listing incorrectly <see cref="ListingStatus.Live"/>. Forcing the
+    /// listing row into every reserving transaction's write set makes those orders serialize
+    /// on this row: the loser gets a concurrency conflict and re-reads the true remaining
+    /// stock (docs/17-DATA-INVARIANTS.md "No transaction may reserve more than current
+    /// available stock", docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2).
+    /// </summary>
+    public void RegisterStockReservation(DateTime nowUtc) => Touch(nowUtc);
+
+    /// <summary>
     /// As <see cref="RefreshAvailability(DateTime)"/>, but the caller supplies the current
     /// total available quantity instead of letting it be derived from the loaded
     /// <see cref="Variants"/> collection. Use this when another variant on the same listing

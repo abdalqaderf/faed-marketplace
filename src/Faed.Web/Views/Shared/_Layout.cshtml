@@ -30,6 +30,9 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
+                                <a class="nav-link" asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Merchant Center</a>
                             </li>
                         }

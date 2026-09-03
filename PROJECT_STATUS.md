@@ -9,11 +9,59 @@
 | TASK-003 — Catalog Foundations | 2 | Completed |
 | TASK-004 — Listings, Variants, Inventory and Moderation | 3 | Completed |
 | TASK-005 — Public Marketplace | 4 | Completed |
+| TASK-006 — B2C Orders | 5 | Completed |
+| TASK-007 — B2B Negotiation | 6 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-006 until
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-008 until
 explicitly requested.
 
 ## Current state
+
+**Phase 6 — B2B Negotiation complete (TASK-007).**
+
+Structured merchant-to-merchant offer and counter-offer history sits on top of the
+TASK-004 listing aggregate with no change to inventory. A verified buying merchant opens a
+`B2BNegotiation` from a Live, B2B-enabled listing with its first `B2BOfferRevision`
+(revision 1); the selling merchant and the buyer then strictly alternate — each side may
+accept, reject or counter the offer currently on the table, and every counter is a new
+immutable revision appended to the history (AGENTS.md Rule C, docs/adr/0004). MOQ is
+enforced against `Listing.WholesaleMinQuantity` (per variant, or summed across variants when
+`AllowMixedVariantB2B` is set). Each revision carries its own `OfferExpiresAtUtc`, distinct
+from a deal's reservation expiry; every participant action synchronously expires a lapsed
+current revision before it can be accepted, countered, rejected, or cancelled, while the
+`B2BOfferExpiryService` background worker remains the idle-negotiation backstop. Accepting a
+revision moves the negotiation to `Accepted` and records
+which revision both sides agreed on — **it reserves no stock and creates no fulfillment
+record**; the atomic reservation and the `B2BDeal` are TASK-008
+(tasks/TASK-007 "No stock is permanently consumed by negotiation alone"). Migration
+`20260903121629_AddB2BNegotiation` adds `B2BNegotiations` (`rowversion`, seller/buyer status
+indexes), `B2BOfferRevisions` (unique `(negotiation, revision number)`, `decimal(18,3)`
+money, `CK_B2BOfferRevisions_NonNegativeMoney`) and `B2BOfferLines` (unique
+`(revision, variant)`, `CK_B2BOfferLines_PositiveQuantity`, `Restrict` FK to
+`ListingVariants` so negotiation history is never cascade-deleted). See "TASK-007 — B2B
+Negotiation" below.
+
+Post-review hardening also excludes `Admin` role holders from B2B participation at both the
+MVC policy and service layers, rejects offer unit prices beyond JOD's three-decimal precision
+before an immutable revision is created, and prevents removal of variants referenced by B2B
+offer history (the merchant receives controlled guidance to deactivate the variant instead).
+
+**Phase 5 — B2C Orders complete (TASK-006).**
+
+Single-merchant consumer ordering with variant-level reservation is implemented on top of
+the TASK-004 listing/inventory aggregate and the TASK-005 public read surface. Buyers build
+an order from one listing's variants, pick pickup or merchant delivery, and place it;
+`OrderService.PlaceOrderAsync` re-loads price and stock server-side inside a transaction,
+moves `Available → Reserved` on each `ListingVariant` (protected by its existing
+`rowversion`), and creates the `Order` + `OrderItem` snapshots atomically. Cancellation and
+the reservation-expiry sweep release `Reserved → Available`; completion — by the merchant, or
+by the buyer confirming receipt — moves `Reserved → Sold`. A `ReservationExpiryService`
+background worker runs the sweep on a configurable interval; a merchant cannot confirm an
+order whose window has already lapsed. Administrators cannot place B2C orders
+(`FaedPolicies.CanPlaceB2COrder` + a service recheck). Migration
+`20260903113500_AddB2COrders` adds `Orders` (FK to the Identity user on `BuyerUserId`,
+`OnDelete Restrict`), `OrderItems`, `MerchantLocations` and `MerchantDeliveryZones`. See
+"TASK-006 — B2C Orders" and its "Post-review fixes (Codex review — TASK-006)" below.
 
 **Phase 4 — Public Marketplace complete (TASK-005).**
 
@@ -95,9 +143,348 @@ implemented.
 
 ## Active task
 
-None. TASK-005 is closed.
+None. TASK-007 is closed.
 
-Next: `tasks/TASK-006-B2C-ORDERS.md` (do not start until explicitly requested).
+Next: `tasks/TASK-008-B2B-DEALS.md` (do not start until explicitly requested).
+
+## TASK-007 — B2B Negotiation
+
+### Behaviour implemented
+
+- `Models/Entities/B2BNegotiation` — the negotiation aggregate (AGENTS.md Rule C,
+  docs/04-DOMAIN-MODEL.md §7). Owns an append-only list of `B2BOfferRevision`s through a
+  backing field; the constructor requires the buying merchant's first offer and rejects a
+  negotiation whose buying and selling merchant are the same
+  (docs/17-DATA-INVARIANTS.md "Selling and buying merchants cannot be the same merchant").
+  `Counter` / `Accept` / `Reject` are guarded transitions: they require the negotiation to be
+  `Open` and require the caller to be the merchant the current offer is addressed to — the
+  side that did *not* propose it — so a merchant can neither accept its own offer nor counter
+  twice in a row, and the two sides strictly alternate
+  (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §5). Every participant transition refuses once
+  `CurrentRevision.OfferExpiresAtUtc` has passed and synchronously moves the negotiation to
+  `Expired` (docs/17-DATA-INVARIANTS.md "Only the active non-expired revision can be
+  accepted"). `Cancel` lets either participant withdraw from an unexpired open negotiation.
+  `ExpireIfLapsed` also supports the idempotent background sweep. MOQ
+  (docs/03-BUSINESS-RULES.md §11) is enforced in the
+  aggregate: the summed line quantity when `AllowMixedVariantB2B` is set, otherwise each
+  line independently.
+- `Models/Entities/B2BOfferRevision` + `B2BOfferLine` — immutable proposal records
+  (docs/17-DATA-INVARIANTS.md "Previous revisions are immutable"). No mutators; created once
+  by `B2BNegotiation`. `ProposedTotal` is derived server-side from `ProposedUnitPrice ×`
+  summed line quantities — never accepted from input
+  (docs/08-SECURITY-AND-PRIVACY.md §7). `RevisionNumber` is unique per negotiation, backed by
+  a database unique index.
+- `Services/B2B/B2BNegotiationService` (`IB2BNegotiationService`) — the only path that
+  creates or transitions a negotiation. `StartNegotiationAsync` resolves the buyer's approved
+  merchant, loads the listing by slug, and rejects the offer unless the listing is `Live`,
+  `AllowB2B`, owned by a currently-`Approved` merchant, and not the buyer's own
+  (docs/16-PERMISSIONS-MATRIX.md "Submit B2B offer — verified merchant only"). `CounterOfferAsync`
+  re-loads the negotiation, refuses a caller who is not a participant with a plain "not found"
+  (IDOR, docs/08-SECURITY-AND-PRIVACY.md §9), and lets the aggregate enforce the alternation
+  and MOQ rules. `Accept`/`Reject`/`Cancel` follow the same shape. `GetNegotiationAsync`
+  returns `null` for a non-participant, so a guessed id reveals nothing
+  (docs/16-PERMISSIONS-MATRIX.md "View unrelated B2B negotiation — ❌"). All monetary totals
+  and the offer-expiry timestamp are computed server-side; nothing here is trusted from the
+  request. Variant labels for the history are resolved at read time from the listing options
+  (the offer line only stores the variant id, matching docs/04-DOMAIN-MODEL.md §7).
+- `Services/B2B/B2BOfferExpiryService` — a hosted `BackgroundService` that runs
+  `IB2BNegotiationService.ExpireLapsedNegotiationsAsync` on the configurable
+  `B2BNegotiation:ExpirySweepInterval`. Idempotent (a closed negotiation is skipped); not
+  hosted under the `Testing` environment — the tests drive expiry through the service and a
+  fake clock (docs/09-TEST-STRATEGY.md §1).
+- `Services/B2B/B2BNegotiationOptions` (`B2BNegotiation` config section) —
+  `DefaultOfferValidity` (3 days, the reversible default for docs/13-OPEN-QUESTIONS.md §14),
+  `Min`/`MaxOfferValidity`, `ExpirySweepInterval`, `MaxOfferLineQuantity`, `MaxOfferLines`.
+  Durations live in configuration, never as domain constants.
+- Controllers / views: `Areas/Merchant/Controllers/OffersController` (behind the
+  `FaedPolicies.CanNegotiateB2B` policy — an approved merchant who is **not** an
+  administrator; `B2BNegotiationService` re-checks the caller's Identity role on every write
+  and private read, so an approved merchant profile with the `Admin` role cannot slip past
+  the MVC policy) — the negotiation queue, per-negotiation detail with the full
+  revision history, the "make an offer" builder (`Create`), and the counter/accept/reject/
+  cancel POSTs. Views `Merchant/Offers/{Index,Details,Create}` use the Faed design system
+  (filter tabs, `scope`-annotated tables inside `overflow-x` wrappers, non-colour status
+  badges via `Rendering/B2BNegotiationStatusDisplay`, `role="status"`/`role="alert"`
+  messaging, `<fieldset>`/`<legend>` quantity groups). The merchant sub-navigation gained a
+  "B2B Offers" tab, and the public listing detail's "Make an Offer" button now links to the
+  offer builder instead of being a disabled placeholder.
+- Migration `20260903121629_AddB2BNegotiation` — `B2BNegotiations` (string-valued `Status`,
+  `rowversion`, indexes on `(SellingMerchantProfileId, Status)`, `(BuyingMerchantProfileId,
+  Status)` and `ListingId`; `Restrict` FKs to `Listings` and to `MerchantProfiles` ×2 so a
+  populated listing or merchant can never take negotiation history with it,
+  docs/04-DOMAIN-MODEL.md §12). `B2BOfferRevisions` — unique `(B2BNegotiationId,
+  RevisionNumber)`, `decimal(18,3)` money, `CK_B2BOfferRevisions_NonNegativeMoney`, `Cascade`
+  from its parent negotiation, `Restrict` to `MerchantProfiles`. `B2BOfferLines` — unique
+  `(B2BOfferRevisionId, ListingVariantId)`, `CK_B2BOfferLines_PositiveQuantity`, `Cascade`
+  from its parent revision, `Restrict` FK to `ListingVariants`. `dotnet ef migrations
+  has-pending-model-changes` reports no drift.
+
+### Must-have-test coverage (docs/09-TEST-STRATEGY.md §3 "B2B negotiation")
+
+| Must-have test | Covered by |
+|---|---|
+| Counter-offer preserves old revisions | `B2BNegotiationTests.Counter_CreatesANewImmutableRevision_AndLeavesTheEarlierOnesUntouched`; `B2BNegotiationServiceTests.StartNegotiation_ThenACounterOfferChain_PersistsEveryRevisionImmutably` (SQL Server — three revisions reloaded, revision 1's price/message intact) |
+| Expired revision cannot be accepted (or countered / rejected / cancelled) | `B2BNegotiationTests.Accept_WhenTheCurrentOfferHasExpired_IsRejected_AndExpiresTheNegotiation` and `B2BNegotiationTests.CounterAndReject_WhenTheCurrentOfferHasExpired_AreRejectedWithoutCreatingARevision` (the aggregate itself moves the negotiation to `Expired` on the lapsed action, with no new revision); `B2BNegotiationServiceTests.AcceptingAnExpiredOffer_IsRejected_AndSynchronouslyExpiresTheNegotiation` and `B2BNegotiationServiceTests.CounteringOrRejectingAnExpiredOffer_IsBlockedAndSynchronouslyExpiresIt` (SQL Server — the participant action itself returns `Conflict` and persists `Expired` in the same call; a subsequent `ExpireLapsedNegotiationsAsync` sweep is a no-op) |
+| Seller cannot accept a negotiation it does not own | `B2BNegotiationServiceTests.ANegotiationIsInvisibleAndUntouchableByAMerchantThatIsNotAParticipant` (accept/counter by a stranger → `NotFound`; `GetNegotiationAsync` → `null`); `B2BOfferHttpTests.OfferPages_RenderForAParticipant_ButAnUnrelatedMerchantGets404OnTheDetail` |
+| Buyer cannot buy from itself | `B2BNegotiationTests.Ctor_WhenBuyingMerchantIsTheSellingMerchant_IsRejected`; `B2BNegotiationServiceTests.StartNegotiation_OnYourOwnListing_IsRejected` (SQL Server — no negotiation row) |
+
+### Additional coverage
+
+- `Faed.UnitTests.B2BNegotiationTests` (22) — the aggregate: first revision is by the buyer;
+  server-calculated `ProposedTotal`; strict alternation and "cannot counter twice"; accept by
+  the proposer rejected; reject/cancel rules; commands on a closed negotiation rejected; MOQ
+  in both mixed and per-variant modes; past-expiry / duplicate-variant / non-positive-price /
+  over-three-decimal-place offers rejected; every participant action on a lapsed offer
+  (accept, counter, reject, cancel) rejected while moving the negotiation to `Expired` with no
+  new revision; `ExpireIfLapsed` idempotency; strictly increasing revision numbers.
+- `Faed.IntegrationTests.B2BNegotiationServiceTests` (11, SQL Server) — the counter-offer
+  chain alternation and "seller cannot accept its own counter"; acceptance records the
+  agreement but leaves `AvailableQuantity`/`ReservedQuantity`/`SoldQuantity` untouched
+  (no stock consumed); MOQ enforced at the service; synchronous expiry on accept / counter /
+  reject; the `Admin`-role exclusion and JOD-precision / variant-removal regressions listed
+  under "Post-review fixes" below.
+- `Faed.IntegrationTests.B2BOfferHttpTests` (4) — the offer queue challenges an anonymous
+  request, is forbidden to a user without an approved merchant profile, and the create page /
+  detail render for a participant while an unrelated merchant gets 404 on the detail route.
+
+### Post-review fixes (Codex review — TASK-007)
+
+- A lapsed active offer is expired and persisted synchronously before any participant
+  transition. Accept, counter, reject, and cancel all return a controlled conflict; counter
+  cannot append another revision and the background sweep remains idempotent.
+- `FaedPolicies.CanNegotiateB2B` excludes the `Admin` role before the Offers controller is
+  entered. `B2BNegotiationService` independently checks the current Identity role for every
+  write and private read, so an approved merchant profile cannot bypass the restriction.
+- Proposed unit prices with more than three decimal places are rejected before revision
+  construction. Accepted prices and server-derived totals therefore persist exactly at
+  `decimal(18,3)` and remain mathematically consistent.
+- `MerchantListingService.RemoveVariantAsync` checks immutable B2B offer-line history and
+  returns validation guidance to deactivate a referenced variant. The existing `Restrict`
+  foreign key remains the database backstop, and a named-FK race is translated instead of
+  leaking `DbUpdateException`.
+- Focused regressions cover aggregate/service expiry, HTTP and service Admin exclusion,
+  JOD precision plus persisted total consistency, and referenced-variant preservation with
+  successful deactivation.
+
+### Not implemented (correctly deferred)
+
+- The accepted `B2BDeal`, its atomic multi-line stock reservation, its separate
+  `ReservationExpiresAt`, pickup / seller-arranged shipping, the shipment reference and the
+  fulfillment state machine — all TASK-008 (docs/adr/0004, docs/10-IMPLEMENTATION-PLAN.md
+  Phase 7). Acceptance in TASK-007 only sets `B2BNegotiationStatus.Accepted`.
+- B2B reviews and disputes (TASK-009), B2B analytics (TASK-010). No such code was scaffolded.
+- A hard cap on counter-offer rounds (docs/13-OPEN-QUESTIONS.md §17) — left unbounded, the
+  safe reversible default.
+
+### Validation (TASK-007)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **300 passed (196 unit, 104 integration)**, 0 failed, 0 skipped,
+  on a workstation with SQL Server LocalDB reachable. Targeted post-review verification:
+  `B2BNegotiationTests` 22/22 and the B2B service/HTTP suites 15/15.
+- `20260903121629_AddB2BNegotiation` applies from the existing schema
+  (`dotnet ef database update`); the web integration host recreates the database from empty
+  every run, so all migrations apply from scratch, and
+  `dotnet ef migrations has-pending-model-changes` reports no drift.
+- No new migration was required for the four post-review fixes; `dotnet ef database update`
+  reports the configured development database already current.
+- No broad post-implementation review was performed (per the task instruction).
+
+## TASK-006 — B2C Orders
+
+### Behaviour implemented
+
+- `Models/Entities/Order` + `OrderItem` — the B2C order aggregate (AGENTS.md Rule D). One
+  buyer, one selling merchant, one or more variant lines from that merchant; a second
+  merchant's variant on the same order is rejected. `Order` owns the explicit status state
+  machine (`Pending → Confirmed → ReadyForPickup|OutForDelivery → Completed`, plus
+  `Cancelled` and `NoShow`); every transition is a guarded aggregate method, never a status
+  assigned from controller input (docs/03-BUSINESS-RULES.md §8). `Subtotal`/`Total` are
+  recomputed on the aggregate from the line snapshots plus the fulfilment-fee snapshot —
+  no price is ever accepted from the request (`PlaceOrderInput` has no price field;
+  docs/08-SECURITY-AND-PRIVACY.md §6-7). `OrderItem` stores immutable snapshots of the
+  listing title, variant combination, unit price, condition grade and discount reasons
+  (docs/17-DATA-INVARIANTS.md "Order price snapshots never change after creation") — proven
+  by `OrderServiceTests.PlaceOrder_ComputesTotalsServerSide_AndSnapshotsSurviveAListingRepricing`.
+- `Models/Entities/ListingVariant` gains `Reserve` / `ReleaseReservation` / `ConfirmSale` —
+  the `Available ↔ Reserved ↔ Sold` movements the order lifecycle needs, each preserving the
+  `Initial = Available + Reserved + Sold` accounting invariant (docs/03-BUSINESS-RULES.md §5)
+  and each running under the variant's existing SQL Server `rowversion` (AGENTS.md §7). No
+  schema change to the variant — the token has been present since the first variant
+  migration.
+- `Services/Ordering/OrderService` (`IOrderService`) — the only path that creates or
+  transitions an order. `PlaceOrderAsync` opens a transaction, re-loads every requested
+  variant and its listing, revalidates (listing `Live`, merchant `Approved`, `AllowB2C`,
+  retail price present, requested quantity ≤ available, single merchant, delivery-zone
+  minimum), reserves each variant, creates the order and items, refreshes each listing's
+  publication (`Live → SoldOut` when a listing runs out), and commits — or rolls back with a
+  friendly conflict message on a `rowversion` collision (docs/06-ARCHITECTURE.md §9). Buyer
+  and merchant transition methods each pair the status change with its stock movement
+  (`Cancel`/`NoShow`/expiry → release, `Complete` → confirm sale) in one transaction. Every
+  read/action re-resolves the caller's buyer identity or approved-merchant ownership from the
+  database, so guessing another order id reveals nothing (docs/08-SECURITY-AND-PRIVACY.md §9).
+- `Services/Ordering/ReservationExpiryService` — a hosted `BackgroundService` that runs
+  `IOrderService.ReleaseExpiredReservationsAsync` on the configurable
+  `Ordering:ExpirySweepInterval`. The sweep only touches `Pending` orders past their
+  reservation window, releases their stock and cancels them, and is idempotent — a second
+  run (or one racing a merchant confirmation) does nothing
+  (docs/09-TEST-STRATEGY.md "repeated expiry job is idempotent"). It is not hosted under the
+  `Testing` environment; the integration tests drive expiry deterministically through the
+  service and a fake clock.
+- `Services/Ordering/OrderingOptions` (`Ordering` config section) — `ReservationWindow`
+  (default 1 hour, the reversible default for docs/13-OPEN-QUESTIONS.md §8),
+  `ExpirySweepInterval` (default 5 minutes) and `MaxUnitsPerLine`. Durations live in
+  configuration, never as domain constants (docs/13-OPEN-QUESTIONS.md "Important").
+- `Services/Ordering/MerchantStoreService` (`IMerchantStoreService`) — merchant CRUD for
+  `MerchantLocation` (pickup) and `MerchantDeliveryZone` (delivery fee + optional minimum
+  order value). Without at least one active option a merchant's listings cannot be ordered.
+- Controllers / Areas:
+  - `Areas/Buyer` (new area) — `CheckoutController` (`[Authorize]`; the single-listing order
+    builder, GET `/Buyer/Checkout?slug=…` and the placing POST) and `OrdersController`
+    (order history, detail, buyer cancellation). An anonymous visitor hitting checkout is
+    challenged to sign in.
+  - `Areas/Merchant/Controllers/OrdersController` — the selling merchant's order queue with
+    filters and the fulfilment transition POSTs (confirm, ready-for-pickup, out-for-delivery,
+    complete, no-show, cancel), behind the `ApprovedMerchant` policy.
+  - `Areas/Merchant/Controllers/StoreSettingsController` — pickup locations and delivery
+    zones.
+  - `Controllers`-level `Listing/Details` "Order this item" CTA now links to the real
+    checkout instead of the disabled TASK-005 placeholder button; the merchant sub-navigation
+    gained "B2C Orders" and "Store settings" (shared `_MerchantSubnav` partial), and the
+    top nav gained "My Orders" for signed-in users.
+- Views (Faed design system, no raw Bootstrap components): `Buyer/Checkout/Index`
+  (variant quantity table, pickup/delivery `<fieldset>`/`<legend>` radio groups with a
+  progressive-enhancement toggle, contact block, server-authoritative totals note),
+  `Buyer/Orders/{Index,Details}`, `Merchant/Orders/{Index,Details}`,
+  `Merchant/StoreSettings/Index`. Empty states, `role="status"`/`role="alert"` messaging,
+  `scope`-annotated tables inside `overflow-x` wrappers, and non-colour status badges
+  (`Rendering/OrderStatusDisplay`) throughout (docs/07-UI-UX-SPEC.md §10-12).
+- Migration `20260903113500_AddB2COrders` — `Orders` (string-valued `Status`/`FulfillmentType`,
+  `rowversion`, `CK_Orders_NonNegativeMoney`, indexes on `(BuyerUserId, CreatedAtUtc)`,
+  `(MerchantProfileId, Status)` and `(Status, ReservationExpiresAtUtc)` for the sweep),
+  `OrderItems` (`CK_OrderItems_PositiveQuantityAndMoney`, unique `(OrderId, ListingVariantId)`,
+  `Restrict` FKs to `Listings`/`ListingVariants` so order history is never cascade-deleted),
+  `MerchantLocations`, `MerchantDeliveryZones` (`decimal(18,3)` money,
+  `CK_MerchantDeliveryZones_NonNegativeMoney`). `dotnet ef migrations
+  has-pending-model-changes` reports no drift.
+
+### Mandatory-test coverage (tasks/TASK-006)
+
+| Mandatory test | Covered by |
+|---|---|
+| Forged price rejected / recomputed | `OrderServiceTests.PlaceOrder_ComputesTotalsServerSide_AndSnapshotsSurviveAListingRepricing` (price is not in `PlaceOrderInput`; `Total` is the server calc and the item snapshot is unchanged by a later listing repricing) |
+| Multi-merchant order rejected | `OrderServiceTests.PlaceOrder_WithVariantsFromTwoMerchants_IsRejected` (no order row is created) |
+| Two buyers compete for last unit: one succeeds | `OrderServiceTests.PlaceOrder_TwoBuyersCompeteForTheLastUnit_TheLoserGetsAConcurrencyConflict` — **deterministic** interleave via `GatedApplicationDbContext`: order A pauses immediately before its write, order B runs to completion and commits against the *same* original stock state, then A's write is released and fails on the moved token (final `Available = 0`, `Reserved = 1`, one order row) |
+| Cancellation releases | `OrderServiceTests.CancelOrder_ReleasesReservedStock`; `ExpiredReservation_IsReleasedByTheSweep_ExactlyOnce` (also asserts the second sweep is a no-op) |
+| Completion moves Reserved → Sold | `OrderServiceTests.CompleteOrder_MovesReservedStockToSold` |
+| Unauthorized order access blocked | `OrderServiceTests.OrderDetail_IsPrivateToItsBuyer_AndItsSellingMerchant`; `OrderHttpTests.BuyerOrderDetails_ForSomeoneElsesOrder_Returns404`; `OrderHttpTests.MerchantOrderPages_RenderForTheOwner_ButAnotherMerchantGets404OnTheDetail` |
+
+### Additional coverage
+
+- `Faed.UnitTests.OrderTests` — the order state machine: totals from lines + fee,
+  delivery-without-address rejected, duplicate variant line rejected, `Confirm` clears the
+  reservation expiry / is single-shot / is refused once the window lapses, the fulfilment
+  snapshot truncates instead of throwing, the pickup and delivery happy paths, invalid
+  transitions (`Complete` before fulfilment, `Cancel`/`MarkNoShow` from the wrong state), and
+  the buyer-vs-merchant cancellation windows.
+- `Faed.UnitTests.ListingVariantReservationTests` (7) — `Reserve`/`ReleaseReservation`/
+  `ConfirmSale` guards and the preserved stock-accounting invariant.
+- `OrderServiceTests.MerchantDelivery_AddsTheZoneFeeToTheTotal_AndEnforcesTheZoneMinimum`
+  (fee snapshot, `Total = Subtotal + fee`, sub-minimum order rejected) and
+  `PlaceOrder_AgainstASuspendedMerchant_IsRejected`.
+- `OrderHttpTests` — checkout challenges an anonymous request, is forbidden to
+  administrators, renders the order builder for a signed-in buyer, and the merchant order
+  queue / store settings / order detail pages render for the owner while another merchant
+  gets a 404 on the detail route.
+- The Codex-review fixes each carry their own regression test — see "Post-review fixes
+  (Codex review — TASK-006)" below.
+
+### Not implemented (correctly deferred)
+
+- A cross-listing "cart" — the domain and `OrderService` already accept multi-listing,
+  single-merchant orders, but the checkout UI is scoped to one listing at a time
+  (docs/13-OPEN-QUESTIONS.md §13 explicitly permits simplifying the UI initially).
+- B2B negotiation / offers / deals (TASK-007/008), disputes and reviews (TASK-009), the
+  `Disputed` order status and the admin order-monitoring screens (TASK-010). No B2B, dispute
+  or review code was scaffolded.
+
+### Post-review fixes (Codex review — TASK-006)
+
+A review of the initial TASK-006 implementation raised seven blocking findings. All are
+fixed, scoped to TASK-006; the schema fix regenerated the single `AddB2COrders` migration
+in place (nothing was committed or deployed).
+
+- **A merchant could confirm an order whose stock reservation had already expired.**
+  `Order.Confirm` only checked the status, so between an order's window lapsing and the
+  expiry sweep running, a merchant could confirm it and hold the stock indefinitely on the
+  strength of a passed deadline. `Order.Confirm(nowUtc)` now rejects when
+  `ReservationExpiresAtUtc <= nowUtc`; the order stays `Pending` and the sweep cancels it and
+  releases the stock. Covered by `OrderTests.Confirm_WhenTheReservationHasAlreadyExpired_*`,
+  `Confirm_ExactlyAtTheExpiryInstant_IsRejected` and
+  `OrderServiceTests.Confirm_WhenTheReservationHasExpired_IsRejected_AndTheSweepThenReleasesTheStock`.
+- **Concurrent orders depleting different variants of one listing could leave it wrongly
+  `Live`.** Each `PlaceOrderAsync` computed `RefreshAvailability` from the variants it loaded,
+  so two simultaneous orders — each emptying a *different* single-unit variant — each saw the
+  other variant still in stock, and both committed against a listing neither transaction
+  touched. New `Listing.RegisterStockReservation(nowUtc)` always advances the listing's
+  `RowVersion`, and `OrderService.PlaceOrderAsync` calls it for every affected listing:
+  concurrent orders now serialize on the listing row, the loser gets a conflict and re-reads
+  the true remaining stock. Covered by the deterministic
+  `OrderServiceTests.PlaceOrder_TwoConcurrentOrdersDepletingDifferentVariants_LeaveTheListingSoldOut_NotLive`.
+- **Administrators could place B2C orders.** New policy `FaedPolicies.CanPlaceB2COrder`
+  (authenticated **and** not in the `Admin` role) now guards both `Buyer` area controllers,
+  and `OrderService.GetCheckoutAsync` / `PlaceOrderAsync` re-check it via `IUserRoleService`
+  as defence in depth (docs/16-PERMISSIONS-MATRIX.md "Create B2C order — Admin ❌",
+  docs/08-SECURITY-AND-PRIVACY.md §2). Covered by
+  `OrderServiceTests.PlaceOrder_ByAnAdministrator_IsForbidden_ServerSide` and
+  `OrderHttpTests.BuyerRoutes_AreForbiddenToAdministrators` (403 at the route).
+- **`Order.BuyerUserId` had no referential integrity.** Verified against docs/17
+  ("Order has exactly one Buyer"), docs/04 §12 ("Do not cascade-delete completed Orders",
+  "Carefully configure FK delete behavior") and the existing `MerchantProfile →
+  ApplicationUser` precedent — the docs call for it. Added
+  `Order → ApplicationUser` on `BuyerUserId` with `OnDelete(DeleteBehavior.Restrict)` (a
+  buyer with order history can never be hard-deleted). `AddB2COrders` regenerated with
+  `FK_Orders_AspNetUsers_BuyerUserId`. Covered by
+  `OrderServiceTests.Order_BuyerUserId_IsReferentiallyBoundToAnIdentityUser`.
+- **The documented buyer "confirm receipt" completion flow was missing.** docs/01-PRD.md §4
+  lists "confirm receipt" as an individual-buyer capability. Added
+  `IOrderService.ConfirmReceiptAsync` (buyer-owned order, `ReadyForPickup`/`OutForDelivery`
+  → `Completed`, `Reserved → Sold` — the same transition the merchant's "mark completed"
+  uses), a `Buyer/Orders/ConfirmReceipt` POST and an "I've received this order" button on the
+  buyer order detail. Covered by
+  `OrderServiceTests.ConfirmReceipt_ByTheBuyer_CompletesTheOrder_AndMovesReservedStockToSold`
+  (with the too-early and wrong-buyer negative cases).
+- **A long-but-valid pickup location could make checkout throw.** The composed fulfilment
+  snapshot (name + address + area + city + hours + instructions ≈ 1.4k) exceeded the
+  600-char column and `Order`'s constructor rejected it, failing every checkout against that
+  location. `Order.MaxFulfillmentSnapshotLength` is now 2000 (above the largest string the
+  maximum-length `MerchantLocation` fields can produce) and the constructor truncates rather
+  than throwing for this server-composed field. Covered by
+  `OrderTests.NewOrder_WithAnOverLongFulfilmentSnapshot_TruncatesRatherThanThrowing` and
+  `OrderServiceTests.Checkout_AndPlaceOrder_WithAMaximumLengthPickupLocation_DoNotFail`.
+- **The last-unit concurrency test used `Task.WhenAll`, not a deterministic interleave.**
+  Replaced with `GatedApplicationDbContext` (a shared test-support `IApplicationDbContext`
+  decorator that runs a hook once, immediately before the first `SaveChangesAsync`): the two
+  competing `PlaceOrderAsync` calls now provably read the same original stock state and
+  rowversion before either writes, and exactly one write wins. Both the last-unit and the
+  multi-variant race tests use it.
+
+### Validation (TASK-006, after the fix pass)
+
+- `dotnet build Faed.slnx` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **263 passed (174 unit, 89 integration)**, 0 failed, 0 skipped,
+  on a workstation with SQL Server LocalDB reachable.
+- `AddB2COrders` regenerated (`20260903113500_AddB2COrders`) with the `BuyerUserId` FK and
+  the widened `FulfillmentSnapshot` column; the web integration test host recreates the
+  database from scratch (`EnsureDeleted` + `Migrate`) every run, so all migrations apply from
+  empty, and `dotnet ef migrations has-pending-model-changes` reports no drift.
+- SQL Server concurrency exit criterion met and strengthened: both
+  `PlaceOrder_TwoBuyersCompeteForTheLastUnit_TheLoserGetsAConcurrencyConflict` and
+  `PlaceOrder_TwoConcurrentOrdersDepletingDifferentVariants_LeaveTheListingSoldOut_NotLive`
+  run a deterministic interleave against real SQL Server, not InMemory/SQLite
+  (docs/09-TEST-STRATEGY.md §2).
+- Targeted verification only, scoped to the seven findings and the regressions their fixes
+  could cause — no fresh broad review.
 
 ## TASK-005 — Public Marketplace
 

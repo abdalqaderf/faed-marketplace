@@ -1,0 +1,138 @@
+@model BuyerOrderDetailPageModel
+@{
+    var order = Model.Order;
+    ViewData["Title"] = $"Order — {order.MerchantBusinessName}";
+}
+
+<div class="faed-page">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-action="Index">My orders</a>
+        <span aria-hidden="true">/</span>
+        <span>@AmmanTime.FormatDate(order.CreatedAtUtc)</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Order from @order.MerchantBusinessName</h1>
+            <p class="faed-page__subtitle">Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) (Amman time).</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span>
+        </div>
+    </div>
+
+    @if (order.Status == OrderStatus.Pending && order.ReservationExpiresAtUtc is { } expires)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            Your items are reserved until about @AmmanTime.FormatDateTime(expires). If the merchant hasn't
+            confirmed by then, the order is cancelled automatically and the stock is released.
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(order.StatusReason) && order.Status is OrderStatus.Cancelled or OrderStatus.NoShow)
+    {
+        <div class="faed-alert faed-alert--error" role="status">@order.StatusReason</div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Items</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Condition</th>
+                        <th scope="col">Unit price</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Line total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in order.Items)
+                    {
+                        <tr>
+                            <td>
+                                @if (item.ListingSlug is { } slug)
+                                {
+                                    <a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@slug">@item.ListingTitle</a>
+                                }
+                                else
+                                {
+                                    @item.ListingTitle
+                                }
+                                <div class="faed-field__hint">@item.VariantSnapshot</div>
+                                @if (!string.IsNullOrEmpty(item.DiscountReasonSnapshot))
+                                {
+                                    <div class="faed-field__hint">Why discounted: @item.DiscountReasonSnapshot</div>
+                                }
+                            </td>
+                            <td>@item.ConditionSnapshot</td>
+                            <td>JOD @item.UnitPrice.ToString("0.000")</td>
+                            <td>@item.Quantity</td>
+                            <td>JOD @item.LineTotal.ToString("0.000")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr><th scope="row" colspan="4">Subtotal</th><td>JOD @order.Subtotal.ToString("0.000")</td></tr>
+                    <tr><th scope="row" colspan="4">@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType) fee</th><td>JOD @order.DeliveryFeeSnapshot.ToString("0.000")</td></tr>
+                    <tr><th scope="row" colspan="4">Total</th><td><strong>JOD @order.Total.ToString("0.000")</strong></td></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Fulfilment &amp; contact</h2>
+        <dl class="faed-details">
+            <dt>Method</dt>
+            <dd>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</dd>
+            <dt>Details</dt>
+            <dd>@order.FulfillmentSnapshot</dd>
+            @if (!string.IsNullOrWhiteSpace(order.DeliveryAddressText))
+            {
+                <dt>Delivery address</dt>
+                <dd>@order.DeliveryAddressText</dd>
+            }
+            <dt>Contact</dt>
+            <dd>@order.ContactName · @order.ContactPhone</dd>
+            @if (!string.IsNullOrWhiteSpace(order.BuyerNote))
+            {
+                <dt>Your note</dt>
+                <dd>@order.BuyerNote</dd>
+            }
+        </dl>
+    </div>
+
+    @if (order.BuyerCanConfirmReceipt)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Confirm receipt</h2>
+            <p class="faed-panel__hint">
+                Once you have collected or received your order, confirm it here. This completes the
+                order and lets you review the merchant.
+            </p>
+            <form asp-action="ConfirmReceipt" asp-route-id="@order.Id" method="post">
+                <button type="submit" class="faed-btn faed-btn--primary">I've received this order</button>
+            </form>
+        </div>
+    }
+
+    @if (order.BuyerCanCancel)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Cancel this order</h2>
+            <p class="faed-panel__hint">
+                You can cancel while the order is still awaiting confirmation or just confirmed. The reserved
+                stock is released straight away.
+            </p>
+            <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
+                <div class="faed-field">
+                    <label class="faed-field__label" for="cancel-reason">Reason (optional)</label>
+                    <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" />
+                </div>
+                <button type="submit" class="faed-btn faed-btn--danger">Cancel order</button>
+            </form>
+        </div>
+    }
+</div>

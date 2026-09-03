@@ -21,6 +21,7 @@ public sealed class MerchantListingService(
     private const string MediaContainer = "listing-media";
     private const string EvidenceContainer = "listing-evidence";
     private const string ListingSlugIndex = "IX_Listings_Slug";
+    private const string B2BOfferLineVariantForeignKey = "FK_B2BOfferLines_ListingVariants_ListingVariantId";
     private const int MaxSlugAttempts = 5;
 
     private readonly ListingOptions _options = options.Value;
@@ -270,6 +271,13 @@ public sealed class MerchantListingService(
                     "This variant has a stock adjustment history. Deactivate it instead of removing it.");
             }
 
+            if (listing.Variants.Any(v => v.Id == variantId)
+                && await db.B2BOfferLines.AnyAsync(l => l.ListingVariantId == variantId, cancellationToken))
+            {
+                return Result.Validation(
+                    "This variant is part of wholesale offer history. Deactivate it instead of removing it.");
+            }
+
             listing.RemoveVariant(variantId, now);
             return Result.Success();
         }, cancellationToken);
@@ -517,6 +525,11 @@ public sealed class MerchantListingService(
             // concurrent requests adding the same combination (docs/17-DATA-INVARIANTS.md).
             return Result.Conflict("A variant with this combination already exists on this listing.");
         }
+        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex, B2BOfferLineVariantForeignKey))
+        {
+            return Result.Validation(
+                "This variant is part of wholesale offer history. Deactivate it instead of removing it.");
+        }
 
         return Result.Success();
     }
@@ -715,6 +728,21 @@ public sealed class MerchantListingService(
                 {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsForeignKeyViolation(DbUpdateException exception, string constraintName)
+    {
+        for (var current = exception.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current is SqlException sqlException
+                && sqlException.Number == 547
+                && sqlException.Message.Contains(constraintName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
             }
         }
 

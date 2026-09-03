@@ -1,0 +1,54 @@
+@model BuyerOrderListPageModel
+@{
+    ViewData["Title"] = "My orders";
+}
+
+<div class="faed-page">
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">My orders</h1>
+            <p class="faed-page__subtitle">Everything you've ordered on Faed.</p>
+        </div>
+        <div class="faed-page__actions">
+            <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Shop" asp-action="Index">Keep shopping</a>
+        </div>
+    </div>
+
+    @if (Model.Orders.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No orders yet</div>
+            <div>When you buy something, it will show up here so you can track it.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Placed</th>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Items</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model.Orders)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@order.Id">@AmmanTime.FormatDate(order.CreatedAtUtc)</a></td>
+                            <td>@order.Counterparty</td>
+                            <td>@order.TotalUnits</td>
+                            <td>JOD @order.Total.ToString("0.000")</td>
+                            <td>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</td>
+                            <td><span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -1,0 +1,169 @@
+@model StoreSettingsPageModel
+@{
+    ViewData["Title"] = "Store settings";
+    var settings = Model.Settings;
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("StoreSettings")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Store settings</h1>
+            <p class="faed-page__subtitle">
+                Pickup locations and delivery zones. Buyers can only order once you have at least one active option.
+            </p>
+        </div>
+    </div>
+
+    @if (!settings.HasActiveFulfillment)
+    {
+        <div class="faed-alert faed-alert--error" role="alert">
+            You have no active pickup location or delivery zone, so your listings cannot take B2C orders yet.
+        </div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="faed-alert faed-alert--error" role="alert"></div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Pickup locations</h2>
+        @if (settings.Locations.Count == 0)
+        {
+            <p class="faed-panel__hint">No pickup locations yet.</p>
+        }
+        else
+        {
+            <div class="faed-table-wrap">
+                <table class="faed-table">
+                    <thead>
+                        <tr><th scope="col">Name</th><th scope="col">Address</th><th scope="col">Hours</th><th scope="col">Status</th><th scope="col">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var location in settings.Locations)
+                        {
+                            <tr>
+                                <td>@location.Name</td>
+                                <td>@location.AddressLine, @location.Area, @location.City</td>
+                                <td>@(location.PickupHoursText ?? "—")</td>
+                                <td>
+                                    <span class="faed-badge @(location.IsActive ? "faed-badge--approved" : "faed-badge--draft")">
+                                        @(location.IsActive ? "Active" : "Disabled")
+                                    </span>
+                                </td>
+                                <td>
+                                    <form asp-action="SetLocationActive" asp-route-id="@location.Id" asp-route-isActive="@(!location.IsActive)" method="post">
+                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">
+                                            @(location.IsActive ? "Disable" : "Enable")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <h3 class="faed-panel__title" style="font-size:0.95rem;margin-top:1rem;">Add a pickup location</h3>
+        <form asp-action="SaveLocation" method="post">
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_Name">Name</label>
+                <input class="faed-input" asp-for="LocationForm.Name" placeholder="e.g. Main store" />
+                <span asp-validation-for="LocationForm.Name" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_AddressLine">Street address</label>
+                <input class="faed-input" asp-for="LocationForm.AddressLine" />
+                <span asp-validation-for="LocationForm.AddressLine" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_Area">Area</label>
+                <input class="faed-input" asp-for="LocationForm.Area" placeholder="e.g. Abdali" />
+                <span asp-validation-for="LocationForm.Area" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_City">City</label>
+                <input class="faed-input" asp-for="LocationForm.City" />
+                <span asp-validation-for="LocationForm.City" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_PickupHoursText">Pickup hours (optional)</label>
+                <input class="faed-input" asp-for="LocationForm.PickupHoursText" placeholder="e.g. Sun–Thu 10:00–18:00" />
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="LocationForm_PickupInstructions">Instructions (optional)</label>
+                <textarea class="faed-input" asp-for="LocationForm.PickupInstructions" rows="2"></textarea>
+            </div>
+            <button type="submit" class="faed-btn faed-btn--primary">Add location</button>
+        </form>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Delivery zones</h2>
+        @if (settings.DeliveryZones.Count == 0)
+        {
+            <p class="faed-panel__hint">No delivery zones yet.</p>
+        }
+        else
+        {
+            <div class="faed-table-wrap">
+                <table class="faed-table">
+                    <thead>
+                        <tr><th scope="col">Name</th><th scope="col">Fee</th><th scope="col">Minimum order</th><th scope="col">Estimate</th><th scope="col">Status</th><th scope="col">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var zone in settings.DeliveryZones)
+                        {
+                            <tr>
+                                <td>@zone.Name</td>
+                                <td>JOD @zone.DeliveryFee.ToString("0.000")</td>
+                                <td>@(zone.MinimumOrderValue is { } min ? $"JOD {min:0.000}" : "—")</td>
+                                <td>@(zone.EstimatedDeliveryText ?? "—")</td>
+                                <td>
+                                    <span class="faed-badge @(zone.IsActive ? "faed-badge--approved" : "faed-badge--draft")">
+                                        @(zone.IsActive ? "Active" : "Disabled")
+                                    </span>
+                                </td>
+                                <td>
+                                    <form asp-action="SetZoneActive" asp-route-id="@zone.Id" asp-route-isActive="@(!zone.IsActive)" method="post">
+                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">
+                                            @(zone.IsActive ? "Disable" : "Enable")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <h3 class="faed-panel__title" style="font-size:0.95rem;margin-top:1rem;">Add a delivery zone</h3>
+        <form asp-action="SaveZone" method="post">
+            <div class="faed-field">
+                <label class="faed-field__label" for="ZoneForm_Name">Name</label>
+                <input class="faed-input" asp-for="ZoneForm.Name" placeholder="e.g. West Amman" />
+                <span asp-validation-for="ZoneForm.Name" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="ZoneForm_DeliveryFee">Delivery fee (JOD)</label>
+                <input class="faed-input" asp-for="ZoneForm.DeliveryFee" type="number" step="0.001" min="0" />
+                <span asp-validation-for="ZoneForm.DeliveryFee" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="ZoneForm_MinimumOrderValue">Minimum order value (JOD, optional)</label>
+                <input class="faed-input" asp-for="ZoneForm.MinimumOrderValue" type="number" step="0.001" min="0" />
+                <span asp-validation-for="ZoneForm.MinimumOrderValue" class="faed-field__error"></span>
+            </div>
+            <div class="faed-field">
+                <label class="faed-field__label" for="ZoneForm_EstimatedDeliveryText">Delivery estimate (optional)</label>
+                <input class="faed-input" asp-for="ZoneForm.EstimatedDeliveryText" placeholder="e.g. 1–2 days" />
+            </div>
+            <button type="submit" class="faed-btn faed-btn--primary">Add zone</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

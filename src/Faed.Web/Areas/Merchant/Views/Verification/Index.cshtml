@@ -10,6 +10,13 @@
 <div class="faed-page">
     <nav class="faed-subnav" aria-label="Merchant sections">
         <a class="is-active" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        @if (Model.Application?.CanSell == true)
+        {
+            <a asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+            <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+            <a asp-area="Merchant" asp-controller="Orders" asp-action="Index">B2C Orders</a>
+            <a asp-area="Merchant" asp-controller="StoreSettings" asp-action="Index">Store settings</a>
+        }
     </nav>
 
     <div class="faed-page__header">

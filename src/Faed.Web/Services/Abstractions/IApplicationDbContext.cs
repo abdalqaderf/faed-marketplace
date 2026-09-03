@@ -38,6 +38,23 @@ public interface IApplicationDbContext
 
     DbSet<InventoryAdjustment> InventoryAdjustments { get; }
 
+    DbSet<MerchantLocation> MerchantLocations { get; }
+
+    DbSet<MerchantDeliveryZone> MerchantDeliveryZones { get; }
+
+    /// <summary>B2C orders (AGENTS.md Rule D). One buyer, one selling merchant, one or more variant lines.</summary>
+    DbSet<Order> Orders { get; }
+
+    DbSet<OrderItem> OrderItems { get; }
+
+    /// <summary>B2B merchant-to-merchant negotiations (AGENTS.md Rule C, docs/adr/0004). Not a fulfillment record.</summary>
+    DbSet<B2BNegotiation> B2BNegotiations { get; }
+
+    /// <summary>Immutable offer/counter-offer revisions (docs/17-DATA-INVARIANTS.md "Previous revisions are immutable").</summary>
+    DbSet<B2BOfferRevision> B2BOfferRevisions { get; }
+
+    DbSet<B2BOfferLine> B2BOfferLines { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

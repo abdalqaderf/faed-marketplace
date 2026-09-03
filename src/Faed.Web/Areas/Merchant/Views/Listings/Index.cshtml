@@ -14,11 +14,7 @@
 }
 
 <div class="faed-page faed-page--wide">
-    <nav class="faed-subnav" aria-label="Merchant sections">
-        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
-        <a class="is-active" asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
-        <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
-    </nav>
+    <partial name="_MerchantSubnav" model="@("Listings")" />
 
     <div class="faed-page__header">
         <div>

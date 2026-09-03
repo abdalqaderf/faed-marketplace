@@ -1,0 +1,77 @@
+@model MerchantOrderListPageModel
+@{
+    ViewData["Title"] = "B2C Orders";
+
+    var tabs = new (MerchantOrderFilter Value, string Label)[]
+    {
+        (MerchantOrderFilter.Open, "Open"),
+        (MerchantOrderFilter.NeedsConfirmation, "Needs confirmation"),
+        (MerchantOrderFilter.InFulfillment, "In fulfilment"),
+        (MerchantOrderFilter.Completed, "Completed"),
+        (MerchantOrderFilter.Cancelled, "Cancelled / no-show"),
+        (MerchantOrderFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Orders")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">B2C orders</h1>
+            <p class="faed-page__subtitle">Confirm, fulfil and complete orders from individual buyers.</p>
+        </div>
+    </div>
+
+    <div class="faed-stat-row">
+        <div class="faed-stat @(Model.NeedsConfirmationCount > 0 ? "faed-stat--attention" : "")">
+            <div class="faed-stat__value">@Model.NeedsConfirmationCount</div>
+            <div class="faed-stat__label">Waiting for your confirmation</div>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter orders">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Orders.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No orders here</div>
+            <div>Nothing matches this filter right now.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Placed</th>
+                        <th scope="col">Buyer</th>
+                        <th scope="col">Units</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model.Orders)
+                    {
+                        <tr class="@(order.Status == OrderStatus.Pending ? "faed-row--attention" : "")">
+                            <td><a asp-action="Details" asp-route-id="@order.Id">@AmmanTime.FormatDateTime(order.CreatedAtUtc)</a></td>
+                            <td>@order.Counterparty</td>
+                            <td>@order.TotalUnits</td>
+                            <td>JOD @order.Total.ToString("0.000")</td>
+                            <td>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</td>
+                            <td><span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

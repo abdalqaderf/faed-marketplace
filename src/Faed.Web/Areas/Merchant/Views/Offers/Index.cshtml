@@ -1,0 +1,85 @@
+@model B2BNegotiationListPageModel
+@{
+    ViewData["Title"] = "B2B Offers";
+
+    var tabs = new (B2BNegotiationFilter Value, string Label)[]
+    {
+        (B2BNegotiationFilter.AwaitingMe, "Awaiting my response"),
+        (B2BNegotiationFilter.AwaitingThem, "Awaiting the other merchant"),
+        (B2BNegotiationFilter.Open, "Open"),
+        (B2BNegotiationFilter.Closed, "Closed"),
+        (B2BNegotiationFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Offers")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">B2B offers</h1>
+            <p class="faed-page__subtitle">
+                Negotiate wholesale quantities and prices with other verified merchants. Accepting an
+                offer records the agreed terms; the reserved deal is confirmed separately.
+            </p>
+        </div>
+    </div>
+
+    <div class="faed-stat-row">
+        <div class="faed-stat @(Model.AwaitingMeCount > 0 ? "faed-stat--attention" : "")">
+            <div class="faed-stat__value">@Model.AwaitingMeCount</div>
+            <div class="faed-stat__label">Waiting for your response</div>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter negotiations">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Negotiations.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No negotiations here</div>
+            <div>
+                Nothing matches this filter. Start a wholesale negotiation from any listing that offers
+                B2B — look for the “Make an offer” button on the listing page.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Updated</th>
+                        <th scope="col">Listing</th>
+                        <th scope="col">Counterparty</th>
+                        <th scope="col">My side</th>
+                        <th scope="col">Current offer</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var n in Model.Negotiations)
+                    {
+                        <tr class="@(n.AwaitingMyResponse ? "faed-row--attention" : "")">
+                            <td><a asp-action="Details" asp-route-id="@n.Id">@AmmanTime.FormatDateTime(n.UpdatedAtUtc)</a></td>
+                            <td>@n.ListingTitle</td>
+                            <td>@n.CounterpartyName</td>
+                            <td>@B2BNegotiationStatusDisplay.PartyLabel(n.MyRole)</td>
+                            <td>
+                                @n.CurrentTotalQuantity units · JOD @n.CurrentUnitPrice.ToString("0.000")/unit
+                                <div class="faed-field__hint">Revision @n.CurrentRevisionNumber · total JOD @n.CurrentTotal.ToString("0.000")</div>
+                            </td>
+                            <td><span class="@B2BNegotiationStatusDisplay.BadgeClass(n.Status)">@B2BNegotiationStatusDisplay.Label(n.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

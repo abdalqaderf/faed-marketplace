@@ -63,6 +63,121 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("AdminActionLogs", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BNegotiation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BuyingMerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentRevisionNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SellingMerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ListingId");
+
+                    b.HasIndex("BuyingMerchantProfileId", "Status");
+
+                    b.HasIndex("SellingMerchantProfileId", "Status");
+
+                    b.ToTable("B2BNegotiations", (string)null);
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BOfferLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("B2BOfferRevisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ListingVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ListingVariantId");
+
+                    b.HasIndex("B2BOfferRevisionId", "ListingVariantId")
+                        .IsUnique();
+
+                    b.ToTable("B2BOfferLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_B2BOfferLines_PositiveQuantity", "[Quantity] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BOfferRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("B2BNegotiationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("OfferExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ProposedByMerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ProposedTotal")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("ProposedUnitPrice")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProposedByMerchantProfileId");
+
+                    b.HasIndex("B2BNegotiationId", "RevisionNumber")
+                        .IsUnique();
+
+                    b.ToTable("B2BOfferRevisions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_B2BOfferRevisions_NonNegativeMoney", "[ProposedUnitPrice] >= 0 AND [ProposedTotal] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.Brand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -617,6 +732,106 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("ListingVariantOptionValues", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantDeliveryZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("EstimatedDeliveryText")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("MinimumOrderValue")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantProfileId", "IsActive");
+
+                    b.ToTable("MerchantDeliveryZones", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MerchantDeliveryZones_NonNegativeMoney", "[DeliveryFee] >= 0 AND ([MinimumOrderValue] IS NULL OR [MinimumOrderValue] >= 0)");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PickupHoursText")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("PickupInstructions")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantProfileId", "IsActive");
+
+                    b.ToTable("MerchantLocations", (string)null);
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -731,6 +946,170 @@ namespace Faed.Web.Data.Migrations
                     b.HasIndex("MerchantProfileId");
 
                     b.ToTable("MerchantVerificationDocuments", (string)null);
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BuyerNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("BuyerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeliveryAddressText")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<decimal>("DeliveryFeeSnapshot")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid?>("DeliveryZoneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FulfillmentSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FulfillmentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("MerchantLocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ReservationExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryZoneId");
+
+                    b.HasIndex("MerchantLocationId");
+
+                    b.HasIndex("BuyerUserId", "CreatedAtUtc");
+
+                    b.HasIndex("MerchantProfileId", "Status");
+
+                    b.HasIndex("Status", "ReservationExpiresAtUtc");
+
+                    b.ToTable("Orders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Orders_NonNegativeMoney", "[Subtotal] >= 0 AND [Total] >= 0 AND [DeliveryFeeSnapshot] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.OrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConditionGradeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("DiscountReasonSnapshot")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<decimal>("LineTotalSnapshot")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ListingTitleSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ListingVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPriceSnapshot")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("VariantSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ListingId");
+
+                    b.HasIndex("ListingVariantId");
+
+                    b.HasIndex("OrderId", "ListingVariantId")
+                        .IsUnique();
+
+                    b.ToTable("OrderItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItems_PositiveQuantityAndMoney", "[Quantity] > 0 AND [UnitPriceSnapshot] >= 0 AND [LineTotalSnapshot] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Faed.Web.Models.Identity.ApplicationUser", b =>
@@ -945,6 +1324,57 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BNegotiation", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("BuyingMerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.Listing", null)
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("SellingMerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BOfferLine", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.B2BOfferRevision", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("B2BOfferRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.ListingVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ListingVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BOfferRevision", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.B2BNegotiation", null)
+                        .WithMany("Revisions")
+                        .HasForeignKey("B2BNegotiationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ProposedByMerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.Category", b =>
                 {
                     b.HasOne("Faed.Web.Models.Entities.Category", "Parent")
@@ -1084,6 +1514,24 @@ namespace Faed.Web.Data.Migrations
                     b.Navigation("OptionValue");
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantDeliveryZone", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantLocation", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
@@ -1098,6 +1546,52 @@ namespace Faed.Web.Data.Migrations
                     b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
                         .WithMany("Documents")
                         .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("BuyerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantDeliveryZone", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryZoneId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantLocation", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.OrderItem", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.Listing", null)
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.ListingVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ListingVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.Order", null)
+                        .WithMany("Items")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1153,6 +1647,16 @@ namespace Faed.Web.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BNegotiation", b =>
+                {
+                    b.Navigation("Revisions");
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.B2BOfferRevision", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.Category", b =>
                 {
                     b.Navigation("Children");
@@ -1186,6 +1690,11 @@ namespace Faed.Web.Data.Migrations
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.Navigation("Documents");
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

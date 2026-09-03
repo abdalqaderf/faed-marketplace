@@ -46,6 +46,20 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(FaedPolicies.ApprovedMerchant, policy =>
         policy.RequireAuthenticatedUser().AddRequirements(new ApprovedMerchantRequirement()));
+
+    // B2B participation is merchant-only even when an approved merchant profile belongs to
+    // an administrator (docs/16-PERMISSIONS-MATRIX.md). The service repeats this check.
+    options.AddPolicy(FaedPolicies.CanNegotiateB2B, policy =>
+        policy.RequireAuthenticatedUser()
+            .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin))
+            .AddRequirements(new ApprovedMerchantRequirement()));
+
+    // B2C ordering is closed to administrators (docs/16-PERMISSIONS-MATRIX.md). The service
+    // layer re-checks this too, so a stale cookie cannot slip past
+    // (docs/08-SECURITY-AND-PRIVACY.md §2).
+    options.AddPolicy(FaedPolicies.CanPlaceB2COrder, policy =>
+        policy.RequireAuthenticatedUser()
+            .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin)));
 });
 
 builder.Services.AddControllersWithViews(options =>

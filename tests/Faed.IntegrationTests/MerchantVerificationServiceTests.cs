@@ -430,6 +430,20 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         public DbSet<InventoryAdjustment> InventoryAdjustments => inner.InventoryAdjustments;
 
+        public DbSet<MerchantLocation> MerchantLocations => inner.MerchantLocations;
+
+        public DbSet<MerchantDeliveryZone> MerchantDeliveryZones => inner.MerchantDeliveryZones;
+
+        public DbSet<Order> Orders => inner.Orders;
+
+        public DbSet<OrderItem> OrderItems => inner.OrderItems;
+
+        public DbSet<B2BNegotiation> B2BNegotiations => inner.B2BNegotiations;
+
+        public DbSet<B2BOfferRevision> B2BOfferRevisions => inner.B2BOfferRevisions;
+
+        public DbSet<B2BOfferLine> B2BOfferLines => inner.B2BOfferLines;
+
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (Interlocked.Exchange(ref _saveStarted, 1) == 0)

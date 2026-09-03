@@ -1,9 +1,11 @@
 using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
+using Faed.Web.Services.B2B;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Merchants;
+using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +47,36 @@ public static class DependencyInjection
         // Anonymous-safe public marketplace browsing (docs/10-IMPLEMENTATION-PLAN.md Phase 4,
         // tasks/TASK-005-PUBLIC-MARKETPLACE.md).
         services.AddScoped<IPublicMarketplaceService, PublicMarketplaceService>();
+
+        // B2C ordering: reservation, fulfilment and the reservation-expiry sweep
+        // (docs/10-IMPLEMENTATION-PLAN.md Phase 5, tasks/TASK-006-B2C-ORDERS.md).
+        services.AddOptions<OrderingOptions>()
+            .Bind(configuration.GetSection(OrderingOptions.SectionName));
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IMerchantStoreService, MerchantStoreService>();
+
+        // The background sweep is not hosted under the "Testing" environment: the web
+        // integration tests drive expiry deterministically through IOrderService and a fake
+        // clock, and a live timer racing them would make those assertions flaky
+        // (docs/09-TEST-STRATEGY.md §1).
+        if (!environment.IsEnvironment("Testing"))
+        {
+            services.AddHostedService<ReservationExpiryService>();
+        }
+
+        // B2B negotiation: immutable offer/counter-offer history and the offer-expiry sweep
+        // (docs/10-IMPLEMENTATION-PLAN.md Phase 6, tasks/TASK-007-B2B-NEGOTIATION.md).
+        services.AddOptions<B2BNegotiationOptions>()
+            .Bind(configuration.GetSection(B2BNegotiationOptions.SectionName));
+        services.AddScoped<IB2BNegotiationService, B2BNegotiationService>();
+
+        if (!environment.IsEnvironment("Testing"))
+        {
+            // Like the B2C reservation sweep, the offer-expiry timer is not hosted under the
+            // test environment: the integration tests drive expiry deterministically through
+            // the service and a fake clock (docs/09-TEST-STRATEGY.md §1).
+            services.AddHostedService<B2BOfferExpiryService>();
+        }
 
         return services;
     }

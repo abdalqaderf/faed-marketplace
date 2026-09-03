@@ -40,6 +40,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
 
+    public DbSet<MerchantLocation> MerchantLocations => Set<MerchantLocation>();
+
+    public DbSet<MerchantDeliveryZone> MerchantDeliveryZones => Set<MerchantDeliveryZone>();
+
+    public DbSet<Order> Orders => Set<Order>();
+
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
+    public DbSet<B2BNegotiation> B2BNegotiations => Set<B2BNegotiation>();
+
+    public DbSet<B2BOfferRevision> B2BOfferRevisions => Set<B2BOfferRevision>();
+
+    public DbSet<B2BOfferLine> B2BOfferLines => Set<B2BOfferLine>();
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
 
