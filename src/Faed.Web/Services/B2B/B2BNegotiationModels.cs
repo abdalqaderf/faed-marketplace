@@ -117,7 +117,8 @@ public sealed record B2BNegotiationDetailView(
     bool CurrentOfferHasExpired,
     bool AwaitingMyResponse,
     IReadOnlyList<B2BOfferRevisionView> Revisions,
-    IReadOnlyList<OfferVariantOption> Variants)
+    IReadOnlyList<OfferVariantOption> Variants,
+    Guid? DealId = null)
 {
     public B2BOfferRevisionView CurrentRevision => Revisions[^1];
 

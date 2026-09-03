@@ -25,9 +25,9 @@ public interface IB2BNegotiationService
     Task<Result> CounterOfferAsync(
         string merchantUserId, Guid negotiationId, CounterOfferInput input, CancellationToken cancellationToken = default);
 
-    /// <summary>Accepts the current offer revision (does not reserve stock — see TASK-008).</summary>
-    Task<Result> AcceptAsync(
-        string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default);
+    // Accepting the current revision is handled by <see cref="IB2BDealService.AcceptOfferAsync"/>:
+    // acceptance atomically reserves stock and creates the B2BDeal in one transaction (TASK-008,
+    // docs/adr/0004). The negotiation aggregate's own Accept transition is driven from there.
 
     Task<Result> RejectAsync(
         string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default);

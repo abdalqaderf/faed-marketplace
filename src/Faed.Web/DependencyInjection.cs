@@ -78,6 +78,20 @@ public static class DependencyInjection
             services.AddHostedService<B2BOfferExpiryService>();
         }
 
+        // B2B accepted deal: atomic reservation on acceptance, the fulfilment state machine
+        // and the deal-reservation-expiry sweep (docs/10-IMPLEMENTATION-PLAN.md Phase 7,
+        // tasks/TASK-008-B2B-DEALS.md).
+        services.AddOptions<B2BDealOptions>()
+            .Bind(configuration.GetSection(B2BDealOptions.SectionName));
+        services.AddScoped<IB2BDealService, B2BDealService>();
+
+        if (!environment.IsEnvironment("Testing"))
+        {
+            // Same reasoning as the other two sweeps: the deal-expiry timer is not hosted
+            // under the test environment (docs/09-TEST-STRATEGY.md §1).
+            services.AddHostedService<B2BDealExpiryService>();
+        }
+
         return services;
     }
 

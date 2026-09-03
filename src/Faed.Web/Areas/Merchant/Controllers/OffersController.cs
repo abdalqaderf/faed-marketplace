@@ -1,5 +1,6 @@
 using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
+using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
 using Faed.Web.Services.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.CanNegotiateB2B)]
-public sealed class OffersController(IB2BNegotiationService negotiations) : Controller
+public sealed class OffersController(IB2BNegotiationService negotiations, IB2BDealService deals) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -100,9 +101,29 @@ public sealed class OffersController(IB2BNegotiationService negotiations) : Cont
     }
 
     [HttpPost]
-    public Task<IActionResult> Accept(Guid id, CancellationToken cancellationToken) =>
-        ActAsync(id, () => negotiations.AcceptAsync(User.RequireUserId(), id, cancellationToken),
-            "Offer accepted. The wholesale deal and stock reservation come next.");
+    public async Task<IActionResult> Accept(Guid id, B2BFulfillmentType fulfillmentType, CancellationToken cancellationToken)
+    {
+        // Accepting the offer atomically reserves every requested variant and creates the
+        // wholesale deal on the agreed terms alone (TASK-008, docs/03-BUSINESS-RULES.md §10).
+        // Shipping information is recorded later by the selling merchant.
+        var result = await deals.AcceptOfferAsync(
+            User.RequireUserId(), id, new AcceptOfferInput(fulfillmentType), cancellationToken);
+
+        if (result.Succeeded)
+        {
+            TempData["StatusMessage"] =
+                "Offer accepted. The stock is reserved for the wholesale deal — arrange fulfilment from B2B Deals.";
+            return RedirectToAction("Details", "Deals", new { id = result.Value });
+        }
+
+        if (result.ErrorKind == ResultErrorKind.NotFound)
+        {
+            return NotFound();
+        }
+
+        TempData["ErrorMessage"] = result.Error;
+        return RedirectToAction(nameof(Details), new { id });
+    }
 
     [HttpPost]
     public Task<IActionResult> Reject(Guid id, CancellationToken cancellationToken) =>

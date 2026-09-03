@@ -444,6 +444,10 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
 
         public DbSet<B2BOfferLine> B2BOfferLines => inner.B2BOfferLines;
 
+        public DbSet<B2BDeal> B2BDeals => inner.B2BDeals;
+
+        public DbSet<B2BDealLine> B2BDealLines => inner.B2BDealLines;
+
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (Interlocked.Exchange(ref _saveStarted, 1) == 0)

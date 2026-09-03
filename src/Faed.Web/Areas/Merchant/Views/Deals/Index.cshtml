@@ -1,0 +1,91 @@
+@model B2BDealListPageModel
+@{
+    ViewData["Title"] = "B2B Deals";
+
+    var tabs = new (B2BDealFilter Value, string Label)[]
+    {
+        (B2BDealFilter.Active, "Active"),
+        (B2BDealFilter.AwaitingFulfillment, "Awaiting fulfilment"),
+        (B2BDealFilter.InFulfillment, "In fulfilment"),
+        (B2BDealFilter.Completed, "Completed"),
+        (B2BDealFilter.Cancelled, "Cancelled"),
+        (B2BDealFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Deals")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">B2B deals</h1>
+            <p class="faed-page__subtitle">
+                Accepted wholesale deals. Stock is reserved the moment an offer is accepted; fulfil each deal
+                by direct pickup or seller-arranged shipping, then complete it to record the sale.
+            </p>
+        </div>
+    </div>
+
+    <div class="faed-stat-row">
+        <div class="faed-stat @(Model.ActionableCount > 0 ? "faed-stat--attention" : "")">
+            <div class="faed-stat__value">@Model.ActionableCount</div>
+            <div class="faed-stat__label">Deals needing action</div>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter deals">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Deals.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No deals here</div>
+            <div>
+                Nothing matches this filter. A deal appears once a wholesale offer is accepted — check
+                <a asp-controller="Offers" asp-action="Index">B2B offers</a>.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Updated</th>
+                        <th scope="col">Listing</th>
+                        <th scope="col">Counterparty</th>
+                        <th scope="col">My side</th>
+                        <th scope="col">Deal</th>
+                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Deals)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDateTime(d.UpdatedAtUtc)</a></td>
+                            <td>@d.ListingTitle</td>
+                            <td>@d.CounterpartyName</td>
+                            <td>@B2BNegotiationStatusDisplay.PartyLabel(d.MyRole)</td>
+                            <td>
+                                @d.TotalUnits units · JOD @d.Total.ToString("0.000")
+                                @if (d.Status == B2BDealStatus.AwaitingFulfillment && d.ReservationExpiresAtUtc is { } expires)
+                                {
+                                    <div class="faed-field__hint">Reserved until @AmmanTime.FormatDateTime(expires)</div>
+                                }
+                            </td>
+                            <td>@B2BDealStatusDisplay.FulfillmentLabel(d.FulfillmentType)</td>
+                            <td><span class="@B2BDealStatusDisplay.BadgeClass(d.Status)">@B2BDealStatusDisplay.Label(d.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

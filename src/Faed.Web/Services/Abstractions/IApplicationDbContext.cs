@@ -55,6 +55,11 @@ public interface IApplicationDbContext
 
     DbSet<B2BOfferLine> B2BOfferLines { get; }
 
+    /// <summary>Accepted B2B deals: the fulfillment record with its own reservation and stock (docs/adr/0004, TASK-008).</summary>
+    DbSet<B2BDeal> B2BDeals { get; }
+
+    DbSet<B2BDealLine> B2BDealLines { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

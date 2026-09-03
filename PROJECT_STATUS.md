@@ -11,13 +11,64 @@
 | TASK-005 — Public Marketplace | 4 | Completed |
 | TASK-006 — B2C Orders | 5 | Completed |
 | TASK-007 — B2B Negotiation | 6 | Completed |
+| TASK-008 — B2B Deal and Fulfillment | 7 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-008 until
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-009 until
 explicitly requested.
 
 ## Current state
 
+**Phase 7 — B2B Deal and Fulfillment complete (TASK-008).**
+
+Accepting a B2B offer revision now atomically reserves every requested variant and creates a
+`B2BDeal` fulfillment record in one transaction (AGENTS.md Rule C, docs/adr/0004). The
+accept use case moved from `IB2BNegotiationService` to the new `IB2BDealService`
+(`B2BDealService.AcceptOfferAsync`); the negotiation aggregate's own `Accept` transition is
+driven from there. `B2BDealService` re-loads the negotiation and listing tracked inside a
+transaction, moves the negotiation to `Accepted`, then reserves each `B2BOfferLine`'s variant
+(`ListingVariant.Reserve`, protected by its `rowversion`); if any line cannot be reserved the
+`DomainException` rolls the whole transaction back, so no variant is reserved, no deal is
+created, and the negotiation stays `Open` in the database
+(docs/05-USER-FLOWS-AND-STATE-MACHINES.md §6). Acceptance also re-checks that **both**
+merchants are still `Approved` and non-admin — a suspension after the negotiation opened
+blocks the deal. The listing row is forced into the write set (`Listing.RegisterStockReservation`
+on acceptance, `Listing.RegisterStockRelease` on a cancellation/expiry) so a B2B acceptance
+or release and a competing B2C order — or a second acceptance — serialize on it. The deal
+snapshots the agreed terms only: `AcceptedUnitPriceSnapshot` and `SubtotalSnapshot` (the
+accepted revision's server-derived `ProposedTotal`), and `TotalSnapshot` is derived from
+`SubtotalSnapshot + (ShippingCostSnapshot ?? 0)` — a caller cannot pass a standalone total.
+No shipping charge is agreed during negotiation, so acceptance adds none: `AcceptOfferInput`
+is just the `FulfillmentType`.
+
+The `B2BDeal` aggregate owns the fulfillment state machine
+(`AwaitingFulfillment → ReadyForPickup|Shipped → Delivered → Completed`, plus `Cancelled`;
+`Disputed` is deferred to TASK-009 like the B2C `Order` enum). `B2BFulfillmentType` is
+`Pickup` or `SellerArrangedShipping`; the seller records an optional `ShipmentReference`
+later, through its own fulfilment steps — a `Pickup` deal may carry neither a reference nor a
+shipping cost (Faed neither books nor prices shipping, docs/03-BUSINESS-RULES.md §12). The
+deal carries its own `ReservationExpiresAtUtc`, distinct from a revision's `OfferExpiresAtUtc`
+(docs/adr/0004): it lapses only while the deal is `AwaitingFulfillment`, is cleared once the
+seller starts fulfilling, and `MarkReadyForPickup` / `MarkShipped` refuse synchronously once
+it has passed (the deal stays `AwaitingFulfillment` for the sweep to release). The
+`B2BDealExpiryService` background worker releases lapsed reservations and cancels the deal
+idempotently. Cancellation before delivery releases `Reserved → Available`; completion
+(either participant, once `Delivered`) moves `Reserved → Sold`. Seller-only steps
+(ready-for-pickup, shipped, shipment reference) are enforced in the service; `Admin` role
+holders are excluded at the `CanNegotiateB2B` policy and re-checked in `B2BDealService`.
+Migration `20260903141524_AddB2BDeal` adds `B2BDeals` (`rowversion`, string-valued
+`Status`/`FulfillmentType`, `decimal(18,3)` money, `CK_B2BDeals_NonNegativeMoney`, unique
+`B2BNegotiationId` so an accepted negotiation backs at most one deal, seller/buyer status
+indexes, `(Status, ReservationExpiresAtUtc)` sweep index, `Restrict` FKs to `B2BNegotiations`,
+`B2BOfferRevisions` and `MerchantProfiles` ×2) and `B2BDealLines` (unique
+`(B2BDealId, ListingVariantId)`, `CK_B2BDealLines_PositiveQuantityAndMoney`, `Cascade` from
+its deal, `Restrict` to `ListingVariants`). See "TASK-008 — B2B Deal and Fulfillment" below.
+
 **Phase 6 — B2B Negotiation complete (TASK-007).**
+
+> TASK-008 note: acceptance is no longer stock-neutral. `IB2BNegotiationService.AcceptAsync`
+> was removed and replaced by `IB2BDealService.AcceptOfferAsync`, which reserves stock and
+> creates the `B2BDeal` (see the Phase 7 summary above). The negotiation-only test that
+> asserted acceptance reserved no stock was updated accordingly.
 
 Structured merchant-to-merchant offer and counter-offer history sits on top of the
 TASK-004 listing aggregate with no change to inventory. A verified buying merchant opens a
@@ -143,9 +194,193 @@ implemented.
 
 ## Active task
 
-None. TASK-007 is closed.
+None. TASK-008 is closed.
 
-Next: `tasks/TASK-008-B2B-DEALS.md` (do not start until explicitly requested).
+Next: `tasks/TASK-009-TRUST.md` (do not start until explicitly requested).
+
+## TASK-008 — B2B Deal and Fulfillment
+
+### Behaviour implemented
+
+- `Models/Entities/B2BDeal` + `B2BDealLine` — the accepted-deal aggregate
+  (docs/04-DOMAIN-MODEL.md §8, docs/adr/0004). `B2BDeal` owns the fulfillment state machine as
+  guarded transitions (`MarkReadyForPickup` requires `Pickup`; `MarkShipped` requires
+  `SellerArrangedShipping`; `MarkDelivered` from `ReadyForPickup`/`Shipped`; `Complete` only
+  from `Delivered`; `Cancel` only before delivery), never a status assigned from input. It
+  holds no stock: it records the transition and the deal service moves the variant quantities
+  in the same transaction. `MarkReadyForPickup` / `MarkShipped` also refuse an already-lapsed
+  reservation. Money is snapshotted at creation (`AcceptedUnitPriceSnapshot`, `SubtotalSnapshot`,
+  `ShippingCostSnapshot` — nullable, docs/04-DOMAIN-MODEL.md §8, never populated in this phase)
+  and never recomputed from the listing; the constructor **derives** `TotalSnapshot` from
+  `SubtotalSnapshot + (ShippingCostSnapshot ?? 0)` rather than accepting a standalone total,
+  and rejects a shipment reference or shipping cost on a `Pickup` deal. `B2BDealLine` stores
+  an immutable unit-price and variant-combination snapshot; `LineTotalSnapshot` is
+  server-derived.
+- `Models/Enums/B2BDealStatus` (`AwaitingFulfillment`, `ReadyForPickup`, `Shipped`,
+  `Delivered`, `Completed`, `Cancelled` — `Disputed` deferred to TASK-009) and
+  `B2BFulfillmentType` (`Pickup`, `SellerArrangedShipping`).
+- `Services/B2B/B2BDealService` (`IB2BDealService`) — the only path that accepts an offer or
+  transitions a deal. `AcceptOfferAsync` opens a transaction, re-loads the negotiation
+  (revisions + lines) and listing (variants) tracked, synchronously expires a lapsed offer,
+  calls `B2BNegotiation.Accept`, then reserves every `B2BOfferLine`'s variant; a
+  `DomainException` (stale `rowversion` or insufficient stock) returns `Conflict` and the
+  transaction rolls back — **all lines reserve atomically or none do**, and the negotiation
+  stays `Open` in the database (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §6,
+  docs/17-DATA-INVARIANTS.md "Inventory for all deal lines reserves atomically or not at
+  all"). Acceptance also re-checks that **both** merchants are still `Approved` and non-admin.
+  `Listing.RegisterStockReservation` (acceptance) and `Listing.RegisterStockRelease`
+  (cancellation/expiry) force the listing row into the write set so a B2B acceptance or
+  release serializes against a competing B2C reservation or a second acceptance on a
+  different variant of the same listing. Fulfilment transitions pair each status change with
+  its stock movement (`Cancel` → release, `Complete` → confirm sale) in one transaction;
+  seller-only steps are enforced in the service; every read/action re-resolves the caller's
+  approved merchant and re-checks participation, so a guessed deal id reveals nothing
+  (docs/08-SECURITY-AND-PRIVACY.md §9).
+  `ReleaseExpiredDealReservationsAsync` releases lapsed `AwaitingFulfillment` reservations and
+  cancels the deal; idempotent — a second run is a no-op
+  (docs/17-DATA-INVARIANTS.md "Reservation release is idempotent").
+- `Services/B2B/B2BDealExpiryService` — a hosted `BackgroundService` on the configurable
+  `B2BDeal:ExpirySweepInterval`; not hosted under the `Testing` environment
+  (docs/09-TEST-STRATEGY.md §1).
+- `Services/B2B/B2BDealOptions` (`B2BDeal` config section) — `ReservationWindow` (default
+  7 days, the reversible default for docs/13-OPEN-QUESTIONS.md §15) and `ExpirySweepInterval`.
+  Durations live in configuration, never as domain constants.
+- `IB2BNegotiationService.AcceptAsync` was **removed**; `B2BNegotiationService` keeps
+  reject/cancel/counter. `B2BNegotiationDetailView` gained `DealId` so the offer detail page
+  links straight to the fulfilment record once accepted.
+- Controllers / views: `Areas/Merchant/Controllers/DealsController` (behind
+  `FaedPolicies.CanNegotiateB2B`) — the deal queue with filters, per-deal detail, and the
+  fulfilment POSTs (ready-for-pickup, shipped, shipment-reference, delivered, complete,
+  cancel). `OffersController.Accept` takes only a `B2BFulfillmentType`, calls
+  `B2BDealService.AcceptOfferAsync`, and redirects to the deal on success. Views `Merchant/Deals/{Index,Details}` use the Faed design system
+  (filter tabs, `scope`-annotated tables in `overflow-x` wrappers, non-colour status badges
+  via `Rendering/B2BDealStatusDisplay`, `role="status"`/`role="alert"` messaging,
+  `<fieldset>`/`<legend>` groups). The merchant sub-navigation gained a "B2B Deals" tab; the
+  offer detail's "Accept" panel gained the fulfilment-type choice.
+- Migration `20260903141524_AddB2BDeal` — see the Phase 7 summary above.
+  `dotnet ef migrations has-pending-model-changes` reports no drift.
+
+### Mandatory-test coverage (tasks/TASK-008 "Mandatory tests")
+
+| Mandatory test | Covered by |
+|---|---|
+| All requested variants reserve atomically or none do | `B2BDealServiceTests.AcceptOffer_ReservesEveryLineAtomically_AndCreatesTheDeal` (multi-line reserve) and `AcceptOffer_WhenOneLineCannotReserve_ReservesNothing_AndLeavesTheNegotiationOpen` (SQL Server — one short line → no reservation, no deal, negotiation `Open`) |
+| B2C vs B2B competition is safe | `B2BDealServiceTests.AB2COrderAndAB2BAcceptance_CompetingForTheLastUnits_AreSafe` — deterministic interleave via `GatedApplicationDbContext`: the B2C order commits inside the acceptance's pre-write gate; the acceptance loses on the moved `rowversion`, no oversell, no deal |
+| Two B2B accept attempts cannot oversell | `B2BDealServiceTests.TwoB2BAcceptances_CompetingForTheSameStock_CannotOversell` — deterministic interleave; exactly one deal, final `Available = 0` / `Reserved = 10` |
+| Repeated expiry processing does not double-release | `B2BDealServiceTests.ExpiredDealReservation_IsReleasedByTheSweep_ExactlyOnce` (first sweep 1, second 0; stock released once; deal `Cancelled`) |
+| Completion moves Reserved → Sold | `B2BDealServiceTests.Completion_MovesReservedStockToSold` |
+
+### Additional coverage
+
+- `Faed.UnitTests.B2BDealTests` (17) — the aggregate: starts `AwaitingFulfillment` with lines
+  and a reservation window; same-merchant deal rejected; duplicate variant line rejected;
+  pickup and shipping happy paths through to `Completed`; wrong-type transitions rejected;
+  `SetShipmentReference` only for shipping deals and requires a value; `Complete` before
+  delivery rejected; `Cancel` allowed before delivery only; cancel clears the reservation
+  window and records the reason; the total is derived from the subtotal plus any shipping
+  cost (not a caller-supplied total); a `Pickup` deal cannot carry a shipment reference or a
+  shipping cost; `MarkReadyForPickup` / `MarkShipped` reject an already-lapsed reservation.
+- `Faed.IntegrationTests.B2BDealServiceTests` (15, SQL Server) — the five mandatory tests plus
+  cancellation releasing reserved stock, seller-arranged-shipping storing the shipment
+  reference (and the buyer being forbidden the seller's steps), a non-participant merchant
+  finding the deal invisible and untouchable, and the four post-review regressions (both
+  merchants re-checked on acceptance, expired deal cannot advance to fulfilment, B2B release
+  vs B2C reservation on different variants stays consistent, acceptance snapshots exactly the
+  agreed terms).
+- `Faed.IntegrationTests.B2BDealHttpTests` (4) — the deal queue challenges an anonymous
+  request, is forbidden to a user without an approved merchant profile and to an approved
+  merchant with the `Admin` role, and the detail route renders for both participants while an
+  unrelated merchant gets 404.
+- `B2BNegotiationServiceTests` was updated for the relocated accept path: acceptance now
+  asserts the negotiation moves to `Accepted`, the stock is reserved and a `B2BDeal` exists
+  (`AcceptingAnOffer_MovesTheNegotiationToAccepted_AndTheDealReservesTheStock`).
+
+### Not implemented (correctly deferred)
+
+- B2B reviews and disputes, the `Disputed` deal status and the dispute path from a deal — all
+  TASK-009 (docs/10-IMPLEMENTATION-PLAN.md Phase 8). No such code was scaffolded.
+- B2B analytics / recovered-value from completed deals — TASK-010.
+- Admin B2B deal monitoring screens — TASK-010 (docs/07-UI-UX-SPEC.md §7).
+- Faed booking or pricing shipping — out of scope by docs/03-BUSINESS-RULES.md §12. The
+  `B2BDeal.ShippingCostSnapshot` column exists (docs/04-DOMAIN-MODEL.md §8) but is never
+  populated in this phase; only a seller-entered `ShipmentReference` is recorded, via the
+  seller's own fulfilment steps. There is no negotiated or acceptance-time shipping charge.
+
+### Post-review fixes (Codex review — TASK-008)
+
+A review of the initial TASK-008 implementation raised four blocking findings. All are fixed,
+scoped to TASK-008; no schema change was needed (all four are logic / constructor-signature
+changes) so `20260903141524_AddB2BDeal` is unchanged.
+
+- **Acceptance did not re-check that both merchants were still eligible to trade.**
+  `B2BDealService.AcceptOfferAsync` verified only the caller. A seller or buyer suspended
+  (or made an administrator) after the negotiation opened could still be pulled into a newly
+  created, stock-reserving `B2BDeal` (docs/03-BUSINESS-RULES.md §1,
+  docs/16-PERMISSIONS-MATRIX.md). New `CounterpartyIneligibleAsync` loads both merchant
+  profiles inside the acceptance transaction and refuses the deal unless **both** are
+  `Approved` and neither holds the `Admin` role — mirroring `OrderService` re-checking the
+  selling merchant at `PlaceOrderAsync`. Covered by
+  `B2BDealServiceTests.AcceptOffer_WhenTheSellingMerchantHasBeenSuspended_IsRejected_AndReservesNothing`
+  and `…WhenTheBuyingMerchantHasBeenSuspended_IsRejected` (SQL Server — no deal row, negotiation
+  stays `Open`, no stock reserved).
+- **An expired deal reservation could be advanced to a fulfilment state.** `B2BDeal.MarkReadyForPickup`
+  / `MarkShipped` checked only the status, so between a deal's window lapsing and the sweep
+  running, the seller could advance it — which clears `ReservationExpiresAtUtc` and holds the
+  stock indefinitely on a passed deadline (the same defect `Order.Confirm` was hardened
+  against in TASK-006). Both transitions now reject when `ReservationExpiresAtUtc <= nowUtc`;
+  the deal stays `AwaitingFulfillment` and `ReleaseExpiredDealReservationsAsync` releases the
+  stock exactly once and cancels it. Covered by `B2BDealTests.MarkReadyForPickup_WhenTheReservationHasAlreadyExpired_*`,
+  `MarkShipped_WhenTheReservationHasAlreadyExpired_*` and
+  `B2BDealServiceTests.AdvancingAnExpiredDealToFulfillment_IsRejected_AndTheSweepThenReleasesTheStockExactlyOnce`
+  / `…SellerArrangedShippingDealToShipped_IsAlsoRejected` (SQL Server).
+- **A B2B stock release racing a B2C reservation on a different variant could leave the
+  listing status wrong.** `B2BDealService.ApplyTransitionAsync` refreshed listing availability
+  from its loaded variants but never forced the listing row into the write set, so a deal
+  cancellation/expiry releasing variant X and a concurrent B2C order depleting variant Y each
+  committed against a stale view — leaving the listing wrongly `SoldOut` (or wrongly `Live`).
+  New `Listing.RegisterStockRelease(nowUtc)` (sibling of the TASK-006 `RegisterStockReservation`)
+  always advances the listing `RowVersion`; `ApplyTransitionAsync` calls it for every affected
+  listing on a `Release` effect, so releases and reservations now serialize on the listing row
+  and the loser re-reads. Covered by the deterministic
+  `B2BDealServiceTests.AB2BReleaseRacingAB2CReservation_OnDifferentVariants_KeepsTheListingStatusConsistent`
+  (real SQL Server interleave via `GatedApplicationDbContext`: the B2C order commits inside the
+  release's pre-write gate; the release conflicts on the listing rowversion, retries, and the
+  listing ends `Live` and consistent).
+- **Acceptance could inject unagreed shipping charges and contradictory fulfilment data.**
+  `AcceptOfferInput` carried a `ShipmentReference` and a `ShippingCost` that the accepting
+  merchant (who may be the buyer) could set; the charge was added to the deal total and the
+  reference was stored even for a `Pickup` deal. Nothing about shipping is agreed during
+  negotiation (docs/03-BUSINESS-RULES.md §12, docs/04-DOMAIN-MODEL.md §7). `AcceptOfferInput`
+  is now just `FulfillmentType`. The `B2BDeal` constructor derives `TotalSnapshot` from
+  `SubtotalSnapshot + (ShippingCostSnapshot ?? 0)` — a caller cannot pass a standalone total —
+  uses the accepted revision's server-derived `ProposedTotal` as the subtotal, and rejects a
+  shipment reference or shipping cost on a `Pickup` deal outright. The shipment reference is
+  recorded later, only by the selling merchant, through the already-seller-only
+  `MarkShipped` / `SetShipmentReference` transitions. `B2BDealOptions.MaxShippingCost` (now
+  unused) was removed. Covered by `B2BDealTests.Ctor_DerivesTheTotalFromTheSubtotalPlusAnyShippingCost_*`,
+  `Ctor_Pickup_WithAShipmentReferenceOrAShippingCost_IsRejected` and
+  `B2BDealServiceTests.AcceptOffer_SnapshotsExactlyTheAgreedTerms_AndAddsNoShippingCharge`
+  (SQL Server — subtotal = accepted `ProposedTotal`, total = subtotal, shipping and reference
+  null); the pre-existing `SellerArrangedShipping_StoresTheShipmentReference` test was updated
+  to assert the total is the subtotal alone and still checks the buyer is forbidden the
+  seller's steps.
+
+### Validation (TASK-008, after the fix pass)
+
+- `dotnet build Faed.slnx` (Debug + Release) — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **335 passed (212 unit, 123 integration)**, 0 failed, 0 skipped,
+  on a workstation with SQL Server LocalDB reachable (net of 4 new unit + 6 new integration
+  regression tests; no existing test was deleted or weakened — two were updated in place to
+  assert the corrected behaviour).
+- `20260903141524_AddB2BDeal` is unchanged (no schema change in the fix pass); it applies
+  incrementally from the existing schema (`dotnet ef database update`), the web integration
+  host recreates the database from empty every run, and
+  `dotnet ef migrations has-pending-model-changes` reports no drift.
+- SQL Server concurrency: the atomic-reservation, two-acceptance, B2C-vs-B2B-acceptance and
+  the new B2B-release-vs-B2C-reservation races all run deterministic interleaves against real
+  SQL Server, not InMemory/SQLite (docs/09-TEST-STRATEGY.md §2).
+- Targeted verification only, scoped to the four findings and the regressions their fixes
+  could cause — no fresh broad review (per the task instruction).
 
 ## TASK-007 — B2B Negotiation
 

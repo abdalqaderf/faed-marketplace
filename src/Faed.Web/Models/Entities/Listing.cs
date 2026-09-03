@@ -813,6 +813,19 @@ public class Listing
     public void RegisterStockReservation(DateTime nowUtc) => Touch(nowUtc);
 
     /// <summary>
+    /// Records that a transaction just released reserved stock back to available against this
+    /// listing (a B2C cancellation/expiry, or a B2B deal cancellation/expiry). Like
+    /// <see cref="RegisterStockReservation"/> it always advances the row's concurrency token,
+    /// so a release and a competing reservation touching <em>different</em> variants of the
+    /// same listing serialize on this row instead of both committing against a stale
+    /// availability view — which could otherwise leave the listing wrongly
+    /// <see cref="ListingStatus.SoldOut"/> or wrongly <see cref="ListingStatus.Live"/>
+    /// (docs/17-DATA-INVARIANTS.md, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2). The loser
+    /// gets a concurrency conflict and re-reads the true remaining stock.
+    /// </summary>
+    public void RegisterStockRelease(DateTime nowUtc) => Touch(nowUtc);
+
+    /// <summary>
     /// As <see cref="RefreshAvailability(DateTime)"/>, but the caller supplies the current
     /// total available quantity instead of letting it be derived from the loaded
     /// <see cref="Variants"/> collection. Use this when another variant on the same listing

@@ -21,6 +21,9 @@ namespace Faed.IntegrationTests;
 [Collection(FaedWebCollection.Name)]
 public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory)
 {
+    private static readonly AcceptOfferInput PickupAccept = new(B2BFulfillmentType.Pickup);
+
+
     [SkippableFact]
     public async Task StartNegotiation_OnYourOwnListing_IsRejected()
     {
@@ -93,9 +96,9 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
             [new B2BOfferLineInput(variantIds[0], 10)], 6m, null, null))).Succeeded);
 
         // The seller made revision 2; the seller cannot accept its own offer.
-        Assert.True((await scope.Negotiations.AcceptAsync(sellerUserId, id)).Failed);
+        Assert.True((await scope.Deals.AcceptOfferAsync(sellerUserId, id, PickupAccept)).Failed);
 
-        Assert.True((await scope.Negotiations.AcceptAsync(buyerUserId, id)).Succeeded);
+        Assert.True((await scope.Deals.AcceptOfferAsync(buyerUserId, id, PickupAccept)).Succeeded);
         var status = await scope.Db.B2BNegotiations.AsNoTracking()
             .Where(n => n.Id == id).Select(n => n.Status).SingleAsync();
         Assert.Equal(B2BNegotiationStatus.Accepted, status);
@@ -122,7 +125,7 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
         // graph — the same pattern the B2C expiry tests use.
         await using (var acceptScope = new NegotiationScope(factory))
         {
-            var accept = await acceptScope.Negotiations.AcceptAsync(sellerUserId, id);
+            var accept = await acceptScope.Deals.AcceptOfferAsync(sellerUserId, id, PickupAccept);
             Assert.True(accept.Failed);
             Assert.Equal(ResultErrorKind.Conflict, accept.ErrorKind);
 
@@ -188,7 +191,7 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
         Assert.NotNull(await scope.Negotiations.GetNegotiationAsync(buyerUserId, id));
         Assert.Null(await scope.Negotiations.GetNegotiationAsync(strangerUserId, id));
 
-        var act = await scope.Negotiations.AcceptAsync(strangerUserId, id);
+        var act = await scope.Deals.AcceptOfferAsync(strangerUserId, id, PickupAccept);
         Assert.True(act.Failed);
         Assert.Equal(ResultErrorKind.NotFound, act.ErrorKind);
 
@@ -198,24 +201,36 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
     }
 
     [SkippableFact]
-    public async Task AcceptingAnOffer_RecordsTheAgreement_ButReservesNoStock()
+    public async Task AcceptingAnOffer_MovesTheNegotiationToAccepted_AndTheDealReservesTheStock()
     {
+        // TASK-008: acceptance is no longer stock-neutral. It atomically reserves every line
+        // and creates the B2BDeal in the same transaction (docs/03-BUSINESS-RULES.md §10).
         Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
         await using var scope = new NegotiationScope(factory);
         var (sellerUserId, _) = await scope.CreateApprovedMerchantAsync();
         var (buyerUserId, _) = await scope.CreateApprovedMerchantAsync();
         var (slug, variantIds) = await scope.CreateLiveB2BListingAsync(sellerUserId, moq: 10, initialQuantity: 40);
 
-        var before = await scope.Db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variantIds[0]);
-
         var start = await scope.Negotiations.StartNegotiationAsync(buyerUserId, new StartNegotiationInput(
             slug, [new B2BOfferLineInput(variantIds[0], 25)], 4m, null, null));
-        Assert.True((await scope.Negotiations.AcceptAsync(sellerUserId, start.Value)).Succeeded);
+        var accept = await scope.Deals.AcceptOfferAsync(sellerUserId, start.Value, PickupAccept);
+        Assert.True(accept.Succeeded, accept.Error);
+
+        var negotiationStatus = await scope.Db.B2BNegotiations.AsNoTracking()
+            .Where(n => n.Id == start.Value).Select(n => n.Status).SingleAsync();
+        Assert.Equal(B2BNegotiationStatus.Accepted, negotiationStatus);
 
         var after = await scope.Db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variantIds[0]);
-        Assert.Equal(before.AvailableQuantity, after.AvailableQuantity);
-        Assert.Equal(0, after.ReservedQuantity);
+        Assert.Equal(15, after.AvailableQuantity);
+        Assert.Equal(25, after.ReservedQuantity);
         Assert.Equal(0, after.SoldQuantity);
+
+        var deal = await scope.Db.B2BDeals.AsNoTracking().Include(d => d.Lines)
+            .SingleAsync(d => d.Id == accept.Value);
+        Assert.Equal(start.Value, deal.B2BNegotiationId);
+        Assert.Equal(B2BDealStatus.AwaitingFulfillment, deal.Status);
+        Assert.Equal(100.000m, deal.SubtotalSnapshot);
+        Assert.Equal(25, deal.Lines.Single().Quantity);
     }
 
     [SkippableFact]
@@ -286,7 +301,7 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
             sellerUserId,
             start.Value,
             new CounterOfferInput([new B2BOfferLineInput(variantIds[0], 10)], 5m, null, null));
-        var forbiddenAccept = await scope.Negotiations.AcceptAsync(sellerUserId, start.Value);
+        var forbiddenAccept = await scope.Deals.AcceptOfferAsync(sellerUserId, start.Value, PickupAccept);
         var forbiddenReject = await scope.Negotiations.RejectAsync(sellerUserId, start.Value);
         var forbiddenCancel = await scope.Negotiations.CancelAsync(sellerUserId, start.Value);
 
@@ -343,6 +358,8 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
         private readonly List<Guid> _merchantProfileIds = [];
 
         public IB2BNegotiationService Negotiations => _scope.ServiceProvider.GetRequiredService<IB2BNegotiationService>();
+
+        public IB2BDealService Deals => _scope.ServiceProvider.GetRequiredService<IB2BDealService>();
 
         public IMerchantListingService Listings => _scope.ServiceProvider.GetRequiredService<IMerchantListingService>();
 
@@ -454,6 +471,11 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
 
                 var merchantIds = _merchantProfileIds;
                 var listingIds = _listingIds;
+
+                cleanupDb.B2BDeals.RemoveRange(
+                    await cleanupDb.B2BDeals.Where(d => merchantIds.Contains(d.SellingMerchantProfileId)
+                        || merchantIds.Contains(d.BuyingMerchantProfileId)).ToListAsync());
+                await cleanupDb.SaveChangesAsync();
 
                 cleanupDb.B2BNegotiations.RemoveRange(
                     await cleanupDb.B2BNegotiations.Where(n => merchantIds.Contains(n.SellingMerchantProfileId)

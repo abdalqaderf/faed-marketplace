@@ -1,0 +1,160 @@
+@model B2BDealDetailPageModel
+@{
+    var d = Model.Deal;
+    ViewData["Title"] = $"Wholesale deal — {d.ListingTitle}";
+    var isShipping = d.FulfillmentType == B2BFulfillmentType.SellerArrangedShipping;
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Deals")" />
+
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-action="Index">B2B deals</a>
+        <span aria-hidden="true">/</span>
+        <span>@d.ListingTitle</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Wholesale deal @d.Id.ToString()[..8]</h1>
+            <p class="faed-page__subtitle">
+                <a asp-controller="Listing" asp-action="Details" asp-area="" asp-route-slug="@d.ListingSlug">@d.ListingTitle</a> ·
+                you are the @B2BNegotiationStatusDisplay.PartyLabel(d.MyRole).ToLower() ·
+                other merchant: @d.CounterpartyName ·
+                <a asp-controller="Offers" asp-action="Details" asp-route-id="@d.NegotiationId">view the negotiation</a>
+            </p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@B2BDealStatusDisplay.BadgeClass(d.Status)">@B2BDealStatusDisplay.Label(d.Status)</span>
+        </div>
+    </div>
+
+    @if (d.Status == B2BDealStatus.AwaitingFulfillment && d.ReservationExpiresAtUtc is { } expires)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            Stock is reserved for this deal until about @AmmanTime.FormatDateTime(expires). Start fulfilment before then,
+            or the reservation is released automatically and the deal is cancelled.
+        </div>
+    }
+    @if (d.Status == B2BDealStatus.Completed)
+    {
+        <div class="faed-alert faed-alert--success" role="status">
+            This deal is complete. The reserved stock has been recorded as sold.
+        </div>
+    }
+    @if (d.Status == B2BDealStatus.Cancelled && !string.IsNullOrWhiteSpace(d.StatusReason))
+    {
+        <div class="faed-alert faed-alert--error" role="status">@d.StatusReason</div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Lines</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Variant</th>
+                        <th scope="col">Unit price</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Line total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in d.Lines)
+                    {
+                        <tr>
+                            <td>@line.VariantCombination</td>
+                            <td>JOD @line.UnitPrice.ToString("0.000")</td>
+                            <td>@line.Quantity</td>
+                            <td>JOD @line.LineTotal.ToString("0.000")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr><th scope="row" colspan="3">Subtotal</th><td>JOD @d.Subtotal.ToString("0.000")</td></tr>
+                    @if (d.ShippingCost is { } shipping)
+                    {
+                        <tr><th scope="row" colspan="3">Shipping</th><td>JOD @shipping.ToString("0.000")</td></tr>
+                    }
+                    <tr><th scope="row" colspan="3">Total</th><td><strong>JOD @d.Total.ToString("0.000")</strong></td></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Fulfilment</h2>
+        <dl class="faed-details">
+            <dt>Method</dt>
+            <dd>@B2BDealStatusDisplay.FulfillmentLabel(d.FulfillmentType)</dd>
+            <dt>Agreed unit price</dt>
+            <dd>JOD @d.AcceptedUnitPrice.ToString("0.000")</dd>
+            @if (isShipping)
+            {
+                <dt>Shipment reference</dt>
+                <dd>@(string.IsNullOrWhiteSpace(d.ShipmentReference) ? "Not recorded yet" : d.ShipmentReference)</dd>
+            }
+            <dt>Created</dt>
+            <dd>@AmmanTime.FormatDateTime(d.CreatedAtUtc)</dd>
+        </dl>
+    </div>
+
+    @if (d.SellerCanMarkReadyForPickup || d.SellerCanMarkShipped || d.CanMarkDelivered || d.CanComplete || d.CanCancel || d.SellerCanSetShipmentReference)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Update this deal</h2>
+            <div class="faed-page__actions">
+                @if (d.SellerCanMarkReadyForPickup)
+                {
+                    <form asp-action="ReadyForPickup" asp-route-id="@d.Id" method="post">
+                        <button type="submit" class="faed-btn faed-btn--primary">Mark ready for pickup</button>
+                    </form>
+                }
+                @if (d.CanMarkDelivered)
+                {
+                    <form asp-action="Delivered" asp-route-id="@d.Id" method="post">
+                        <button type="submit" class="faed-btn faed-btn--primary">
+                            @(d.IsBuyer ? "Confirm I received the goods" : "Mark delivered")
+                        </button>
+                    </form>
+                }
+                @if (d.CanComplete)
+                {
+                    <form asp-action="Complete" asp-route-id="@d.Id" method="post">
+                        <button type="submit" class="faed-btn faed-btn--primary">
+                            @(d.IsBuyer ? "Confirm receipt &amp; complete" : "Mark completed")
+                        </button>
+                    </form>
+                }
+            </div>
+
+            @if (d.SellerCanMarkShipped)
+            {
+                <form asp-action="Shipped" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                    <label class="faed-field__label" for="shipped-reference">Shipment reference (optional)</label>
+                    <input class="faed-input" id="shipped-reference" name="shipmentReference" maxlength="200" />
+                    <button type="submit" class="faed-btn faed-btn--primary" style="margin-top:0.5rem;">Mark shipped</button>
+                </form>
+            }
+
+            @if (d.SellerCanSetShipmentReference && !d.SellerCanMarkShipped)
+            {
+                <form asp-action="ShipmentReference" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                    <label class="faed-field__label" for="reference">Shipment reference</label>
+                    <input class="faed-input" id="reference" name="shipmentReference" maxlength="200"
+                           value="@d.ShipmentReference" required />
+                    <button type="submit" class="faed-btn faed-btn--ghost" style="margin-top:0.5rem;">Save reference</button>
+                </form>
+            }
+
+            @if (d.CanCancel)
+            {
+                <form asp-action="Cancel" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                    <label class="faed-field__label" for="cancel-reason">Cancellation reason</label>
+                    <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" required />
+                    <button type="submit" class="faed-btn faed-btn--danger" style="margin-top:0.5rem;">Cancel deal</button>
+                </form>
+            }
+        </div>
+    }
+</div>

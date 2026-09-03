@@ -165,10 +165,11 @@ public sealed class B2BNegotiationService(
         return await SaveTransitionAsync(negotiation, "countered", cancellationToken);
     }
 
-    // ---- Accept / reject / cancel --------------------------------------------
-
-    public Task<Result> AcceptAsync(string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default) =>
-        TransitionAsync(merchantUserId, negotiationId, (n, m, now) => n.Accept(m, now), "accepted", cancellationToken);
+    // ---- Reject / cancel ----------------------------------------------------
+    //
+    // Accepting the current revision lives in B2BDealService.AcceptOfferAsync: it must
+    // atomically reserve stock and create the B2BDeal in the same transaction (TASK-008,
+    // docs/adr/0004).
 
     public Task<Result> RejectAsync(string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default) =>
         TransitionAsync(merchantUserId, negotiationId, (n, m, now) => n.Reject(m, now), "rejected", cancellationToken);
@@ -372,6 +373,15 @@ public sealed class B2BNegotiationService(
                     .ToList()))
             .ToList();
 
+        // Once accepted, the negotiation is backed by exactly one B2BDeal (docs/17-DATA-INVARIANTS.md);
+        // surface its id so the UI can link straight to the fulfilment record (TASK-008).
+        var dealId = negotiation.Status == B2BNegotiationStatus.Accepted
+            ? await db.B2BDeals.AsNoTracking()
+                .Where(d => d.B2BNegotiationId == negotiation.Id)
+                .Select(d => (Guid?)d.Id)
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
         return new B2BNegotiationDetailView(
             negotiation.Id,
             RoleOf(negotiation, merchantId.Value),
@@ -386,7 +396,8 @@ public sealed class B2BNegotiationService(
             negotiation.CurrentOfferHasExpired(clock.UtcNow),
             negotiation.AwaitingResponseFrom == merchantId,
             revisions,
-            listing is null ? [] : BuildVariantOptions(listing));
+            listing is null ? [] : BuildVariantOptions(listing),
+            dealId);
     }
 
     public async Task<int> ExpireLapsedNegotiationsAsync(CancellationToken cancellationToken = default)

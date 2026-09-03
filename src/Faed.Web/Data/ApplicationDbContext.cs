@@ -54,6 +54,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<B2BOfferLine> B2BOfferLines => Set<B2BOfferLine>();
 
+    public DbSet<B2BDeal> B2BDeals => Set<B2BDeal>();
+
+    public DbSet<B2BDealLine> B2BDealLines => Set<B2BDealLine>();
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
 

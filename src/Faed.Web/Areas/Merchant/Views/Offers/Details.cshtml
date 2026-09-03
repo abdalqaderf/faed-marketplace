@@ -54,7 +54,12 @@
     else if (n.Status == B2BNegotiationStatus.Accepted)
     {
         <div class="faed-alert faed-alert--success" role="status">
-            Both merchants agreed on revision @current.RevisionNumber. The reserved wholesale deal is handled separately.
+            Both merchants agreed on revision @current.RevisionNumber and the stock is reserved.
+            @if (n.DealId is { } dealId)
+            {
+                <a asp-controller="Deals" asp-action="Details" asp-route-id="@dealId">Open the wholesale deal</a>
+                <text> to arrange fulfilment.</text>
+            }
         </div>
     }
 
@@ -109,14 +114,33 @@
     {
         <div class="faed-panel">
             <h2 class="faed-panel__title">Respond to revision @current.RevisionNumber</h2>
-            <div class="faed-page__actions">
-                <form asp-action="Accept" asp-route-id="@n.Id" method="post">
-                    <button type="submit" class="faed-btn faed-btn--primary">Accept this offer</button>
-                </form>
-                <form asp-action="Reject" asp-route-id="@n.Id" method="post">
-                    <button type="submit" class="faed-btn faed-btn--danger">Reject</button>
-                </form>
-            </div>
+            <p class="faed-panel__hint">
+                Accepting reserves @current.TotalQuantity units for the wholesale deal
+                (JOD @current.Total.ToString("0.000") for the goods). The reservation is separate from the offer's expiry.
+            </p>
+            <form asp-action="Accept" asp-route-id="@n.Id" method="post">
+                <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                    <legend class="faed-field__label">How will this deal be fulfilled?</legend>
+                    <label class="faed-checkbox-row">
+                        <input type="radio" name="fulfillmentType" value="@B2BFulfillmentType.Pickup" checked />
+                        <span>Direct pickup — the buying merchant collects the lot</span>
+                    </label>
+                    <label class="faed-checkbox-row">
+                        <input type="radio" name="fulfillmentType" value="@B2BFulfillmentType.SellerArrangedShipping" />
+                        <span>Seller-arranged shipping — the seller arranges a carrier and records a reference later</span>
+                    </label>
+                </fieldset>
+                <p class="faed-field__hint">
+                    The deal total is JOD @current.Total.ToString("0.000") — the agreed unit price and quantities.
+                    Any shipping arrangements are handled by the selling merchant once the deal is reserved.
+                </p>
+                <div class="faed-page__actions">
+                    <button type="submit" class="faed-btn faed-btn--primary">Accept &amp; reserve the deal</button>
+                </div>
+            </form>
+            <form asp-action="Reject" asp-route-id="@n.Id" method="post" style="margin-top:0.75rem;">
+                <button type="submit" class="faed-btn faed-btn--danger">Reject</button>
+            </form>
         </div>
     }
 
