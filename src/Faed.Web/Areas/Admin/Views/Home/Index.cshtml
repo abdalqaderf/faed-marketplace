@@ -1,0 +1,56 @@
+@model AdminOverviewPageModel
+@{
+    ViewData["Title"] = "Admin overview";
+    var d = Model.Dashboard;
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Overview")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Overview</h1>
+            <p class="faed-page__subtitle">What is waiting for an administrator across the marketplace right now.</p>
+        </div>
+    </div>
+
+    <h2 class="faed-section__title">Needs review</h2>
+    <div class="faed-stat-row">
+        <div class="faed-stat@(d.MerchantsAwaitingReview > 0 ? " faed-stat--attention" : "")">
+            <div class="faed-stat__value">@d.MerchantsAwaitingReview</div>
+            <div class="faed-stat__label">
+                <a asp-controller="MerchantVerification" asp-action="Index">Merchants awaiting verification</a>
+            </div>
+        </div>
+        <div class="faed-stat@(d.ListingsAwaitingReview > 0 ? " faed-stat--attention" : "")">
+            <div class="faed-stat__value">@d.ListingsAwaitingReview</div>
+            <div class="faed-stat__label">
+                <a asp-controller="ListingModeration" asp-action="Index">Listings awaiting moderation</a>
+            </div>
+        </div>
+        <div class="faed-stat@(d.OpenDisputes > 0 ? " faed-stat--attention" : "")">
+            <div class="faed-stat__value">@d.OpenDisputes</div>
+            <div class="faed-stat__label"><a asp-controller="Disputes" asp-action="Index">Open disputes</a></div>
+        </div>
+    </div>
+
+    <h2 class="faed-section__title">Marketplace activity</h2>
+    <div class="faed-stat-row">
+        <div class="faed-stat">
+            <div class="faed-stat__value">@d.OrdersInProgress</div>
+            <div class="faed-stat__label"><a asp-controller="Transactions" asp-action="Orders">B2C orders in progress</a></div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@d.DealsAwaitingFulfillment</div>
+            <div class="faed-stat__label"><a asp-controller="Transactions" asp-action="Deals">B2B deals awaiting fulfilment</a></div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@d.OpenNegotiations</div>
+            <div class="faed-stat__label">Open B2B negotiations</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@d.InactiveCatalogItems</div>
+            <div class="faed-stat__label"><a asp-controller="Catalog" asp-action="Index">Deactivated catalog items</a></div>
+        </div>
+    </div>
+</div>

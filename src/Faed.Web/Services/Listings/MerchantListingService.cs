@@ -2,6 +2,7 @@ using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
+using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -30,9 +31,11 @@ public sealed class MerchantListingService(
     {
         // Categories, grades and reasons are admin-managed reference data; the form must read
         // them from the database rather than hard-code the launch taxonomy (TASK-003).
+        var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
+            db, activeOnly: true, includeRoot: false, cancellationToken);
         var categories = await db.Categories
             .AsNoTracking()
-            .Where(c => c.IsActive && c.ParentCategoryId != null)
+            .Where(c => launchCategoryIds.Contains(c.Id))
             .OrderBy(c => c.SortOrder).ThenBy(c => c.Name)
             .Select(c => new CatalogChoice(c.Id, c.Name))
             .ToListAsync(cancellationToken);
@@ -572,8 +575,9 @@ public sealed class MerchantListingService(
         // itself is not a shoppable category (docs/04-DOMAIN-MODEL.md §2), and the reference
         // data offered to the form already excludes it — this rejects a crafted request that
         // posts the root id directly.
-        if (!await db.Categories.AnyAsync(
-            c => c.Id == input.CategoryId && c.IsActive && c.ParentCategoryId != null, cancellationToken))
+        var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
+            db, activeOnly: true, includeRoot: false, cancellationToken);
+        if (!launchCategoryIds.Contains(input.CategoryId))
         {
             return Result.Validation("Choose a category.");
         }

@@ -41,8 +41,7 @@ namespace Faed.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TargetId")
                         .IsRequired()
@@ -425,6 +424,126 @@ namespace Faed.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("DiscountReasons", (string)null);
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Dispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActiveTransactionKey")
+                        .HasMaxLength(48)
+                        .HasColumnType("nvarchar(48)");
+
+                    b.Property<string>("AdminResolution")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid?>("B2BDealId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RaisedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("nvarchar(48)");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResolvedByAdminId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveTransactionKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Disputes_ActiveTransactionKey_Unique")
+                        .HasFilter("[ActiveTransactionKey] IS NOT NULL");
+
+                    b.HasIndex("B2BDealId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("RaisedByUserId");
+
+                    b.HasIndex("Status", "CreatedAtUtc");
+
+                    b.ToTable("Disputes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Disputes_ExactlyOneTransaction", "(CASE WHEN [OrderId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [B2BDealId] IS NULL THEN 0 ELSE 1 END) = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.DisputeEvidence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DisputeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("UploadedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisputeId");
+
+                    b.ToTable("DisputeEvidence", (string)null);
                 });
 
             modelBuilder.Entity("Faed.Web.Models.Entities.InventoryAdjustment", b =>
@@ -1237,6 +1356,59 @@ namespace Faed.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.Review", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("B2BDealId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ReviewedMerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReviewerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("B2BDealId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Reviews_B2BDealId_Unique")
+                        .HasFilter("[B2BDealId] IS NOT NULL");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Reviews_OrderId_Unique")
+                        .HasFilter("[OrderId] IS NOT NULL");
+
+                    b.HasIndex("ReviewerUserId");
+
+                    b.HasIndex("ReviewedMerchantProfileId", "CreatedAtUtc");
+
+                    b.ToTable("Reviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Reviews_ExactlyOneTransaction", "(CASE WHEN [OrderId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [B2BDealId] IS NULL THEN 0 ELSE 1 END) = 1");
+
+                            t.HasCheckConstraint("CK_Reviews_RatingRange", "[Rating] >= 1 AND [Rating] <= 5");
+                        });
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -1552,6 +1724,34 @@ namespace Faed.Web.Data.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.Dispute", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.B2BDeal", null)
+                        .WithMany()
+                        .HasForeignKey("B2BDealId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RaisedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.DisputeEvidence", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.Dispute", null)
+                        .WithMany("Evidence")
+                        .HasForeignKey("DisputeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.InventoryAdjustment", b =>
                 {
                     b.HasOne("Faed.Web.Models.Entities.ListingVariant", null)
@@ -1763,6 +1963,31 @@ namespace Faed.Web.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.Review", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.B2BDeal", null)
+                        .WithMany()
+                        .HasForeignKey("B2BDealId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedMerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1832,6 +2057,11 @@ namespace Faed.Web.Data.Migrations
             modelBuilder.Entity("Faed.Web.Models.Entities.Category", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Dispute", b =>
+                {
+                    b.Navigation("Evidence");
                 });
 
             modelBuilder.Entity("Faed.Web.Models.Entities.Listing", b =>

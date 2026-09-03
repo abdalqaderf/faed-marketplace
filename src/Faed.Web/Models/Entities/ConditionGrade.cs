@@ -46,6 +46,21 @@ public class ConditionGrade
 
     public bool IsActive { get; private set; }
 
+    /// <summary>
+    /// Admin edit of the buyer-facing copy (docs/16-PERMISSIONS-MATRIX.md, docs/07-UI-UX-SPEC.md
+    /// §8 — buyers need the human-readable meaning). The <see cref="Code"/> is the stable
+    /// natural key and is never changed; the grade set stays A–D for the Fashion MVP
+    /// (docs/17-DATA-INVARIANTS.md "Grade E is invalid").
+    /// </summary>
+    public void UpdateDetails(string name, string description, int sortOrder)
+    {
+        Name = Require(name, nameof(name), MaxNameLength);
+        Description = Require(description, nameof(description), MaxDescriptionLength);
+        SortOrder = sortOrder;
+    }
+
+    public void SetActive(bool isActive) => IsActive = isActive;
+
     private static string Require(string value, string name, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -1,0 +1,79 @@
+@model AdminOrderMonitorPageModel
+@{
+    ViewData["Title"] = "Order monitoring";
+    (AdminOrderFilter Value, string Label)[] tabs =
+    {
+        (AdminOrderFilter.InProgress, "In progress"),
+        (AdminOrderFilter.Completed, "Completed"),
+        (AdminOrderFilter.Cancelled, "Cancelled"),
+        (AdminOrderFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Orders")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">B2C orders</h1>
+            <p class="faed-page__subtitle">Monitoring view. Fulfilment stays with the buyer and the selling merchant.</p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter orders">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Orders" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Orders.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">Nothing here</div>
+            <div>No orders match this filter.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Placed</th>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Buyer</th>
+                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Units</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model.Orders.Items)
+                    {
+                        <tr>
+                            <td><a asp-action="OrderDetails" asp-route-id="@o.Id">@AmmanTime.FormatDate(o.CreatedAtUtc)</a></td>
+                            <td>@o.MerchantBusinessName</td>
+                            <td>@o.BuyerContactName</td>
+                            <td>@OrderStatusDisplay.FulfillmentLabel(o.FulfillmentType)</td>
+                            <td>@o.TotalUnits</td>
+                            <td>JOD @o.Total.ToString("0.000")</td>
+                            <td><span class="@OrderStatusDisplay.BadgeClass(o.Status)">@OrderStatusDisplay.Label(o.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
+            {
+                Action = "Orders",
+                Filter = Model.Filter.ToString(),
+                Page = Model.Orders.Page,
+                TotalPages = Model.Orders.TotalPages,
+                TotalCount = Model.Orders.TotalCount,
+                FirstItemNumber = Model.Orders.FirstItemNumber,
+                LastItemNumber = Model.Orders.LastItemNumber,
+            })" />
+    }
+</div>

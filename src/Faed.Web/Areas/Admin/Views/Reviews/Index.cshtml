@@ -1,0 +1,63 @@
+@model AdminReviewMonitorPageModel
+@{
+    ViewData["Title"] = "Review monitoring";
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Reviews")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Reviews</h1>
+            <p class="faed-page__subtitle">
+                Every verified review left after a completed transaction. Reviews are immutable; follow up a
+                problem review through the merchant's disputes or account status.
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Reviews.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No reviews yet</div>
+            <div>Reviews left by buyers and wholesale buyers will appear here.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Rating</th>
+                        <th scope="col">Channel</th>
+                        <th scope="col">Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Reviews.Items)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDate(r.CreatedAtUtc)</td>
+                            <td><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@r.ReviewedMerchantSlug">@r.ReviewedMerchantBusinessName</a></td>
+                            <td><span aria-hidden="true">@DisputeStatusDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
+                            <td>@DisputeStatusDisplay.TransactionLabel(r.TransactionType)</td>
+                            <td>@(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
+            {
+                Action = "Index",
+                Page = Model.Reviews.Page,
+                TotalPages = Model.Reviews.TotalPages,
+                TotalCount = Model.Reviews.TotalCount,
+                FirstItemNumber = Model.Reviews.FirstItemNumber,
+                LastItemNumber = Model.Reviews.LastItemNumber,
+            })" />
+    }
+</div>

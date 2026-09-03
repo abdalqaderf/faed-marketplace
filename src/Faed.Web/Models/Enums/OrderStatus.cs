@@ -4,8 +4,9 @@ namespace Faed.Web.Models.Enums;
 /// B2C order lifecycle (docs/03-BUSINESS-RULES.md §8, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §4).
 /// Allowed transitions are enforced explicitly by the <see cref="Faed.Web.Models.Entities.Order"/>
 /// aggregate — a status is never assigned from controller input (docs/03-BUSINESS-RULES.md §8).
-/// The dispute path (<c>Disputed</c>) is introduced with the trust phase (TASK-009) and is
-/// deliberately absent here.
+/// There is deliberately no <c>Disputed</c> status: the trust phase (TASK-009) models a
+/// dispute as a separate <see cref="Faed.Web.Models.Entities.Dispute"/> aggregate with its
+/// own lifecycle, and never mutates the order status or its stock.
 /// </summary>
 public enum OrderStatus
 {

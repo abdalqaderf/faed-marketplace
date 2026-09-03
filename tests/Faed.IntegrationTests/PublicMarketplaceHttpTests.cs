@@ -117,9 +117,11 @@ public sealed class PublicMarketplaceHttpTests(FaedWebApplicationFactory factory
         scope.TrackCategory(futureRoot.Id);
         scope.TrackCategory(futureChild.Id);
 
-        var listingId = await scope.CreateSubmittableListingAsync(userId, categoryId: futureChild.Id);
+        var listingId = await scope.CreateSubmittableListingAsync(userId);
         Assert.True((await scope.Listings.SubmitForReviewAsync(userId, listingId)).Succeeded);
         Assert.True((await scope.Moderation.ApproveAsync(adminId, listingId, null)).Succeeded);
+        await scope.Db.Listings.Where(l => l.Id == listingId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(l => l.CategoryId, futureChild.Id));
 
         var slug = await scope.Db.Listings.AsNoTracking()
             .Where(l => l.Id == listingId).Select(l => l.Slug).SingleAsync();

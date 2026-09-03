@@ -1,0 +1,52 @@
+@model BuyerDisputeListPageModel
+@{
+    ViewData["Title"] = "My disputes";
+}
+
+<div class="faed-page">
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">My disputes</h1>
+            <p class="faed-page__subtitle">
+                Disputes you have raised about an order. Start one from the order's page if something
+                went wrong.
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Disputes.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No disputes</div>
+            <div>You have not raised any disputes. Open one from an order if you need to.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Raised</th>
+                        <th scope="col">Transaction</th>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Disputes)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
+                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
+                            <td>@d.CounterpartyName</td>
+                            <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
+                            <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

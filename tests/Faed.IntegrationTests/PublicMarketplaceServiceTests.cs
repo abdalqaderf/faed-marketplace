@@ -141,9 +141,11 @@ public sealed class PublicMarketplaceServiceTests(FaedWebApplicationFactory fact
         scope.TrackCategory(futureRoot.Id);
         scope.TrackCategory(futureChild.Id);
 
-        var listingId = await scope.CreateSubmittableListingAsync(userId, categoryId: futureChild.Id);
+        var listingId = await scope.CreateSubmittableListingAsync(userId);
         Assert.True((await scope.Listings.SubmitForReviewAsync(userId, listingId)).Succeeded);
         Assert.True((await scope.Moderation.ApproveAsync(adminId, listingId, null)).Succeeded);
+        await scope.Db.Listings.Where(l => l.Id == listingId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(l => l.CategoryId, futureChild.Id));
 
         var everything = await scope.Marketplace.BrowseListingsAsync(EmptyQuery());
         Assert.DoesNotContain(everything.Items, i => i.Id == listingId);
@@ -176,9 +178,11 @@ public sealed class PublicMarketplaceServiceTests(FaedWebApplicationFactory fact
         scope.TrackCategory(futureRoot.Id);
         scope.TrackCategory(futureChild.Id);
 
-        var outsideId = await scope.CreateSubmittableListingAsync(userId, categoryId: futureChild.Id);
+        var outsideId = await scope.CreateSubmittableListingAsync(userId);
         Assert.True((await scope.Listings.SubmitForReviewAsync(userId, outsideId)).Succeeded);
         Assert.True((await scope.Moderation.ApproveAsync(adminId, outsideId, null)).Succeeded);
+        await scope.Db.Listings.Where(l => l.Id == outsideId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(l => l.CategoryId, futureChild.Id));
 
         var outsideSlug = await scope.Db.Listings.AsNoTracking()
             .Where(l => l.Id == outsideId).Select(l => l.Slug).SingleAsync();

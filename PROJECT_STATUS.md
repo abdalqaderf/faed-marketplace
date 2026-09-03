@@ -12,11 +12,143 @@
 | TASK-006 — B2C Orders | 5 | Completed |
 | TASK-007 — B2B Negotiation | 6 | Completed |
 | TASK-008 — B2B Deal and Fulfillment | 7 | Completed |
+| TASK-009 — Disputes and Reviews | 8 | Completed |
+| TASK-010 — Merchant Analytics and Admin Completion | 9–10 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-009 until
+Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-011 until
 explicitly requested.
 
 ## Current state
+
+**Phases 9–10 — Merchant Analytics and Admin Completion complete (TASK-010).**
+
+Merchant recovery analytics and the consolidated admin operational screens sit entirely on
+top of the finished TASK-001–009 aggregates. No schema change: `dotnet ef migrations
+has-pending-model-changes` reports no drift, and no migration was added.
+
+`IMerchantAnalyticsService` (`Services/Analytics/`) recomputes every figure on `Areas/Merchant`'s
+new **Analytics** page from the merchant's own authoritative order / deal / listing rows on
+each request — nothing is stored and nothing is read from the request
+(docs/03-BUSINESS-RULES.md §15, docs/08-SECURITY-AND-PRIVACY.md §6). Recovered value is the
+sum of `OrderItem.LineTotalSnapshot` over the merchant's `Completed` orders (B2C) and
+`B2BDealLine.LineTotalSnapshot` over its `Completed` deals where it is the seller (B2B); the
+delivery-fee snapshot is deliberately excluded (docs/15-GLOSSARY.md "Recovered Value" — value
+recovered *from inventory*). Units listed follows the stock-accounting invariant exactly:
+`ListingVariant.InitialQuantity + positive InventoryAdjustment.QuantityDelta`; negative
+adjustments remain the separate removed-stock side of the invariant. Units sold is the
+completed-transaction line quantity (equal to `ListingVariant.SoldQuantity`), and sell-through
+is sold units ÷ introduced supply. Average time-to-sale is the sold-unit-weighted duration from
+the listing's `PublishedAtUtc` to the completed order/deal's `CompletedAtUtc`; order/deal
+creation-to-completion is fulfillment duration and is not used. Cancellation count is
+`Cancelled` (and separately `NoShow`) B2C orders plus `Cancelled` B2B deals. Active B2B
+negotiations require both `Open` status and a current revision whose `OfferExpiresAtUtc` is
+strictly later than now, so an unswept expired offer is not counted. Stale listings are the
+merchant's `Live` listings published strictly longer than the exact positive configured
+`Analytics:StaleListingThreshold` (default 30 days) ago that have never sold a unit. Invalid,
+zero, and negative durations fail options validation at startup; the UI displays the complete
+configured duration without rounding it to whole days. The page uses the Faed design-system
+stat tiles and tables (no decorative charts,
+`.claude/skills/faed-dashboard-ux`) with an explicit empty state for a merchant with no
+activity yet (docs/07-UI-UX-SPEC.md §12).
+
+The admin area is consolidated behind a shared `_AdminSubnav` partial (Overview, Merchant
+verification, Listing moderation, Orders, B2B deals, Disputes, Catalog, Reviews, Audit log —
+docs/07-UI-UX-SPEC.md §7); the three existing admin index/detail views were switched to the
+partial. New screens, all behind `FaedPolicies.AdminOnly`:
+
+- **`Areas/Admin/Home`** — the overview: live pending counts across every MVP queue.
+- **`Areas/Admin/Transactions`** — read-only B2C order and B2B deal monitoring
+  (`IAdminOperationsService`, `Services/Admin/`). An administrator sees the full transaction —
+  parties, timeline, line snapshots, money, linked disputes — for support, but the B2C / B2B
+  state machines stay with their participants (docs/16-PERMISSIONS-MATRIX.md "monitoring/support").
+  No admin mutation of an order or a deal was added. Orders and deals use stable 50-row database
+  pages with total counts and filter-preserving Previous/Next navigation; no history is silently
+  cut off.
+- **`Areas/Admin/Catalog`** — management of the taxonomy, condition grades, discount reasons
+  and controlled brands (`IAdminCatalogService`, `Services/Catalog/`). New domain mutators
+  (`Category.UpdateDetails`/`SetActive`, `ConditionGrade.UpdateDetails`/`SetActive`,
+  `DiscountReason.UpdateDetails`/`SetActive`, `Brand.Rename`/`SetActive`) only touch display
+  fields and availability — the stable natural keys (`Code`, `Slug`) the seeder and existing
+  listings depend on are never changed, and reference rows are deactivated, never deleted
+  (docs/04-DOMAIN-MODEL.md §12). Grade set stays A–D (no add). Every write re-checks the
+  `Admin` Identity role in the service and writes an `AdminActionLog` row
+  (`CatalogItemCreated` / `CatalogItemUpdated` / `CatalogItemAvailabilityChanged`) in the same
+  transaction (docs/08-SECURITY-AND-PRIVACY.md §2, §13), mirroring `ListingModerationService`.
+  Category management and merchant listing eligibility are both restricted to descendants of
+  the `fashion-overstock` launch root; new sector roots and parents outside that tree are rejected.
+  SQL Server unique slug/code races are translated from errors 2601/2627 to controlled `Conflict`
+  results, with the failed catalog change and its audit row rolled back together.
+- **`Areas/Admin/Reviews`** — read-only monitoring of every verified review. A verified
+  review is immutable (TASK-009); no spec defines a review takedown and TASK-009's accepted
+  behaviour is that reviews cannot be removed, so this screen is oversight only — an
+  administrator follows a problem review up through the merchant's disputes or account status.
+  Review history is database-paged rather than truncated.
+- **`Areas/Admin/AuditLog`** — a filterable viewer over the append-only `AdminActionLog`
+  (docs/04-DOMAIN-MODEL.md §10). `IApplicationDbContext` gained a read-mostly `Users` set so
+  the viewer can show which administrator performed each action. The append-only history is
+  database-paged and remains reachable beyond the former 200-row boundary.
+
+`AdminActionType` gained `CatalogItemCreated` (13), `CatalogItemUpdated` (14),
+`CatalogItemAvailabilityChanged` (15) — the column is `nvarchar(48)` with a value converter,
+so new members are not a schema change. `Analytics:StaleListingThreshold` was added to
+`appsettings.json`. The merchant sub-navigation gained an **Analytics** tab; the top-nav
+"Admin" link now points at the admin **Overview**.
+
+See "TASK-010 — Merchant Analytics and Admin Completion" below.
+
+**Phase 8 — Disputes and Reviews complete (TASK-009).**
+
+Post-transaction trust controls sit on top of the completed B2C order and B2B deal
+aggregates with no change to either state machine or its stock handling. A `Dispute`
+references exactly one transaction — a B2C `Order` or a B2B `B2BDeal`, enforced by the
+`CK_Disputes_ExactlyOneTransaction` check constraint — and carries its own lifecycle
+(`Open → UnderReview → Resolved | Rejected`, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10)
+that never mutates the order/deal status or its reservation. Only a participant can open one
+(`DisputeService` resolves the transaction and rejects a non-participant with a plain "not
+found", docs/08-SECURITY-AND-PRIVACY.md §9); administrators cannot file disputes
+(docs/16-PERMISSIONS-MATRIX.md). Orders can be disputed only once the merchant has confirmed
+them (docs/05 §4 excludes `Pending`); deals only while not `Cancelled`. At most one active
+(`Open`/`UnderReview`) dispute exists per transaction at a time — enforced by the database,
+not just an application read: `Dispute.ActiveTransactionKey` holds a per-transaction token
+while the dispute is active and is `null` once it closes, and `IX_Disputes_ActiveTransactionKey_Unique`
+(filtered `WHERE [ActiveTransactionKey] IS NOT NULL`) rejects a second concurrent filing. The
+admin lifecycle is strict: an `Open` dispute must be `StartReview`-ed before it can be
+`Resolve`-d or `Reject`-ed — the aggregate refuses to close directly from `Open`, and the
+admin UI only shows the outcome forms once the dispute is `UnderReview`. `DisputeEvidence`
+stores only a protected object key and metadata; the bytes stream from `/dispute-evidence/{id}`
+behind `[Authorize]` and are served only to the dispute's participants and to administrators.
+A non-participant gets exactly the response a non-existent id gets — `NotFound` — so guessing
+ids never confirms which evidence exists; an administrator's access is written to the audit
+log (`DisputeEvidenceAccessed`). Every admin decision (`StartReview`, `Resolve`, `Reject`)
+re-checks the `Admin` role in the service and writes an `AdminActionLog` row inside the same
+transaction as the status change (mirrors `MerchantVerificationService.DecideAsync`); the
+`AdminActionLog.Notes` column is `nvarchar(max)` so a full-length resolution
+(`Dispute.MaxResolutionLength` = 4000) is recorded complete, never truncated.
+
+A `Review` references exactly one **completed** transaction (`CK_Reviews_ExactlyOneTransaction`,
+`CK_Reviews_RatingRange` 1–5). Eligibility — the transaction is `Completed`, the reviewer took
+part (the B2C buyer, or the B2B buying merchant's user), and has not already reviewed it — is
+enforced in `ReviewService`, and the "one review per transaction" rule is also a filtered
+unique index on each transaction FK (`IX_Reviews_OrderId_Unique`,
+`IX_Reviews_B2BDealId_Unique`), so a race that passes the pre-check still loses at the
+database. Reviews are surfaced on the buyer order detail, the merchant deal detail, a new
+merchant "Reviews received" page, and the public merchant storefront (rating average + recent
+reviews). The merchant-side dispute flow is symmetric: an eligible **selling merchant** can
+open a dispute for a B2C order it sells, through `Merchant/DisputesController` and a "Raise a
+dispute" affordance on the merchant order page, subject to the same `DisputeService`
+participant/eligibility checks. Transaction detail pages treat only `Open`/`UnderReview`
+disputes as "active" (which suppresses a new filing); a closed dispute stays visible as
+history and does not block another dispute when the rules allow one.
+
+Migrations `20260903152034_AddDisputesAndReviews` (adds `Disputes` — `rowversion`,
+string-valued `Status`/`ReasonCode`, `(Status, CreatedAtUtc)` queue index, `Restrict` FKs to
+`Orders`, `B2BDeals` and `AspNetUsers`; `DisputeEvidence` — `Cascade` from its dispute;
+`Reviews` — `Restrict` FKs to `MerchantProfiles`, `Orders`, `B2BDeals`, `AspNetUsers`, the two
+filtered unique indexes, `(ReviewedMerchantProfileId, CreatedAtUtc)`) and
+`20260903162224_HardenDisputeInvariants` (adds `Disputes.ActiveTransactionKey` +
+`IX_Disputes_ActiveTransactionKey_Unique`, backfills the key for any already-active dispute,
+widens `AdminActionLogs.Notes` to `nvarchar(max)`). `dotnet ef migrations
+has-pending-model-changes` reports no drift. See "TASK-009 — Disputes and Reviews" below.
 
 **Phase 7 — B2B Deal and Fulfillment complete (TASK-008).**
 
@@ -194,9 +326,259 @@ implemented.
 
 ## Active task
 
-None. TASK-008 is closed.
+None. TASK-010 is closed.
 
-Next: `tasks/TASK-009-TRUST.md` (do not start until explicitly requested).
+Next: `tasks/TASK-011-HARDENING-AND-DEMO.md` (do not start until explicitly requested).
+
+## TASK-010 — Merchant Analytics and Admin Completion
+
+### Behaviour implemented
+
+- `Services/Analytics/MerchantAnalyticsService` (`IMerchantAnalyticsService`) — one
+  `GetForOwnerAsync` that resolves the signed-in user's `MerchantProfile` and returns a
+  `MerchantAnalyticsView` computed entirely from `Orders`/`OrderItems`, `B2BDeals`/`B2BDealLines`,
+  `Listings`/`ListingVariants` and `B2BNegotiations`. Returns an all-zero view (never null)
+  for a user with no merchant profile. Introduced supply is initial quantity plus positive
+  inventory adjustments; average time-to-sale is publication-to-completed-sale per sold unit;
+  expired current offer revisions are excluded from active negotiations. `AnalyticsOptions`
+  holds a validated positive `StaleListingThreshold` (default 30 days), whose exact duration
+  drives both strict "older than" query semantics and UI copy.
+- `Areas/Merchant/Controllers/AnalyticsController` + `Areas/Merchant/Views/Analytics/Index.cshtml`
+  behind `FaedPolicies.ApprovedMerchant` — recovered value (total / B2C / B2B), sell-through
+  rate, units sold / listed, retail-vs-wholesale unit split, average days to sale, active
+  negotiations, stale listings (with a table), cancelled orders / no-shows / cancelled deals.
+  Faed stat tiles + tables, explicit "no analytics yet" empty state. The merchant sub-nav
+  gained an **Analytics** tab.
+- `Services/Admin/AdminOperationsService` (`IAdminOperationsService`) — read-only projections:
+  `GetDashboardAsync` (pending counts), `GetOrdersAsync`/`GetOrderAsync` (B2C monitor + detail),
+  `GetDealsAsync`/`GetDealAsync` (B2B monitor + detail), `GetReviewsAsync` (all reviews),
+  `GetAuditLogAsync` (filterable audit log). Orders, deals, reviews and audit entries use
+  stable 50-row database paging with total counts; records after row 200 remain accessible.
+- `Services/Catalog/AdminCatalogService` (`IAdminCatalogService`) — `GetOverviewAsync` plus
+  create/update/activate for categories, discount reasons and brands, and update/activate for
+  condition grades. Each write: admin-role recheck (`IUserRoleService`), the change and an
+  `AdminActionLog` row in one transaction. Category administration and merchant listing
+  eligibility share the Fashion Overstock launch-root boundary. Concurrent unique slug/code
+  collisions return a controlled `Conflict` and roll back the losing audit row. New entity
+  mutators on `Category`, `ConditionGrade`,
+  `DiscountReason`, `Brand` (display fields + `IsActive` only; natural keys immutable). New
+  `AdminActionType` values `CatalogItemCreated`/`CatalogItemUpdated`/`CatalogItemAvailabilityChanged`.
+- `Areas/Admin` controllers (all `FaedPolicies.AdminOnly`): `HomeController` (Overview),
+  `TransactionsController` (`Orders`/`OrderDetails`/`Deals`/`DealDetails`), `CatalogController`
+  (Index + antiforgery-protected POSTs), `ReviewsController` (Index), `AuditLogController`
+  (Index). `Areas/Admin/Views/Shared/_AdminSubnav.cshtml` shared partial; the existing
+  MerchantVerification / ListingModeration / Disputes index & detail views were switched to it.
+  `Rendering/AdminActivityDisplay` maps `AdminActionType` to plain-English labels.
+- `IApplicationDbContext` gained `DbSet<ApplicationUser> Users` (read-mostly) so the audit-log
+  viewer and the admin order detail can resolve an actor's / buyer's email.
+- `Views/Shared/_Layout.cshtml`: the "Admin" top-nav link now targets `Admin/Home` (Overview).
+
+### Exit-criteria coverage (tasks/TASK-010 "Exit criteria")
+
+| Exit criterion | Covered by |
+|---|---|
+| Analytics reconcile with known completed transactions | `MerchantAnalyticsServiceTests`: completed-channel reconciliation; replenishment included in introduced supply/sell-through; publication-to-completed-sale timing; expired-current-offer exclusion; exact strict stale threshold boundary |
+| Admin can operate all MVP review queues | `Task010HttpTests` (every admin screen: anonymous 401, non-admin 403, admin 200); `AdminOperationsServiceTests` (all monitors surfaced, second-page order/review access, and all 205 audit probes reachable); `AdminCatalogServiceTests` (launch-sector eligibility plus SQL Server slug/code races) |
+
+### Additional coverage
+
+- `Faed.UnitTests.MerchantAnalyticsViewTests` (9) and `AnalyticsOptionsTests` (4) — derived
+  roll-ups, exact duration copy, positive-duration validation, and malformed-duration binding.
+- `Faed.IntegrationTests.MerchantAnalyticsServiceTests` (7, SQL Server) — reconciliation,
+  introduced-supply/sell-through, publication-based weighted time-to-sale, unswept offer
+  expiry, no-profile zero view, and stale threshold boundary behavior.
+- `Faed.IntegrationTests.AdminOperationsServiceTests` (4, SQL Server) — dashboard/all monitors,
+  unknown ids, second-page order/review history, and access beyond the former 200-row audit cap.
+- `Faed.IntegrationTests.AdminCatalogServiceTests` (7, SQL Server) — authorization/auditing,
+  launch-tree administration and merchant eligibility, and deterministic concurrent brand-slug
+  and discount-code collisions returning `Conflict` with exactly one committed row/audit entry.
+- `Faed.IntegrationTests.Task010HttpTests` (15 incl. theory rows) — route authorization for
+  every admin screen and the merchant Analytics page, antiforgery on an admin POST, and the
+  Analytics page rendering for an approved merchant.
+- The three existing public-marketplace launch-boundary tests still verify that even a legacy
+  or directly persisted out-of-sector `Live` listing is absent from browse/detail HTTP surfaces;
+  their fixture now bypasses the newly hardened merchant write path directly.
+
+### Not implemented (correctly deferred / out of scope)
+
+- Any admin mutation of a B2C order or a B2B deal — TASK-010 is "order/deal **monitoring**";
+  the state machines stay with their participants (docs/16-PERMISSIONS-MATRIX.md).
+- A review takedown / hide — no spec defines one and TASK-009's accepted behaviour is that a
+  verified review is immutable; the admin Reviews screen is monitoring only. A safe,
+  reversible assumption: if the product owner later wants a takedown it is a small additive
+  migration (`Review.RemovedByAdminId` + a filtered public query), not a TASK-010 gap.
+- Precomputed / cached analytics aggregates — explicitly deferred by
+  docs/03-BUSINESS-RULES.md §15 ("may be introduced later if needed").
+- The demo transactional seed scenarios in docs/12-SEED-DATA.md — TASK-011.
+
+### Validation (TASK-010)
+
+- `dotnet build Faed.slnx --no-restore -c Release -p:UseAppHost=false` — succeeds, 0 warnings,
+  0 errors. (`UseAppHost=false` avoids replacing the Debug executable held by the developer's
+  already-running Faed process.)
+- Focused TASK-010 tests — **46 passed** (13 unit + 33 SQL Server integration), 0 failed,
+  0 skipped; the three directly affected public launch-boundary regressions also pass.
+- `dotnet test Faed.slnx --no-restore -c Release -p:UseAppHost=false` — **428 passed
+  (247 unit, 181 SQL Server integration)**, 0 failed, 0 skipped.
+- `dotnet ef migrations has-pending-model-changes --project src/Faed.Web --startup-project
+  src/Faed.Web --configuration Release --no-build` — no model drift. **No migration was added**
+  for these fixes.
+
+## TASK-009 — Disputes and Reviews
+
+### Behaviour implemented
+
+- `Models/Entities/Dispute` (+ `DisputeEvidence`) — the complaint aggregate
+  (docs/04-DOMAIN-MODEL.md §9). Constructor requires exactly one of `OrderId` / `B2BDealId`;
+  guarded transitions `StartReview` / `Resolve` / `Reject` require an administrator id and
+  the right prior status, and `AddEvidence` is refused once the dispute is closed. The
+  aggregate holds no transaction state — resolving a dispute is an administrative record, not
+  a fulfilment transition, so the B2C `Order` and B2B `B2BDeal` state machines and their
+  stock handling are unchanged by this phase.
+- `Models/Entities/Review` — rating (1–5, validated in the constructor and by
+  `CK_Reviews_RatingRange`), optional comment, exactly one transaction reference.
+- `Models/Enums`: `DisputeStatus` (`Open`, `UnderReview`, `Resolved`, `Rejected`),
+  `DisputeReasonCode` (`ItemNotAsDescribed`, `UndisclosedDefect`, `MissingItems`,
+  `ItemNotReceived`, `WrongItem`, `Other`), `TrustTransactionType` (`B2COrder`, `B2BDeal`).
+  `AdminActionType` gained `DisputeReviewStarted`, `DisputeResolved`, `DisputeRejected`,
+  `DisputeEvidenceAccessed`.
+- `Services/Trust/DisputeService` (`IDisputeService`) — `FileDisputeAsync` resolves the
+  transaction, rejects a non-participant with `NotFound` (IDOR), refuses administrators
+  (`Forbidden`), refuses a `Pending` order / `Cancelled` deal, refuses a second active
+  dispute, validates and stores evidence (buffered and scanned by
+  `ListingImageValidator.ValidatePayload` before anything is written; orphaned blobs are
+  cleaned up on a persistence failure). `OpenEvidenceAsync` serves the bytes only to a
+  participant or an administrator and audits an administrator's access. The admin workflow
+  (`StartReviewAsync` / `ResolveAsync` / `RejectAsync`) re-checks the `Admin` role and writes
+  an `AdminActionLog` row in the same transaction as the status change.
+- `Services/Trust/ReviewService` (`IReviewService`) — `SubmitReviewAsync` enforces
+  completed-transaction + participant + not-already-reviewed + not-admin; the filtered unique
+  index is the race backstop and a `DbUpdateException` is translated to a friendly conflict.
+  `GetEligibilityAsync` drives the "leave a review" UI; `GetMerchantReviewsAsync` /
+  `GetReviewsForOwnerAsync` produce the rating summary and recent reviews.
+- `Services/Trust/TrustOptions` (`Trust` config section) — `MaxEvidenceFilesPerDispute` (8),
+  `MaxEvidenceBytes` (10 MB). `Program.cs` folds `MaxEvidenceBytes` into the multipart body
+  limit alongside the verification-document and listing-image caps.
+- Controllers / views:
+  - `Areas/Buyer/Controllers/DisputesController` (list, create-from-order, detail,
+    add-evidence) and a `Review` POST on `Areas/Buyer/Controllers/OrdersController` with the
+    review/dispute panels rendered on the buyer order detail.
+  - `Areas/Merchant/Controllers/DisputesController` (list, create-from-deal, detail,
+    add-evidence), `Areas/Merchant/Controllers/ReviewsController` ("Reviews received"), and a
+    `Review` POST on `DealsController` with the panels on the deal detail. The merchant
+    sub-navigation gained "Disputes" and "Reviews".
+  - `Areas/Admin/Controllers/DisputesController` — the dispute queue (filter tabs, open
+    count), review detail with parties / transaction / evidence links, and the
+    start-review / resolve / dismiss POSTs. The admin sub-navigation gained "Disputes".
+  - `Controllers/DisputeEvidenceController` — `[Authorize]` `/dispute-evidence/{id}`,
+    served as an attachment with `no-store`, mirroring the verification-document endpoint.
+  - `StoreController` now shows the merchant's rating average and recent reviews on the
+    public storefront (docs/07-UI-UX-SPEC.md §4). The top nav gained "My Disputes" for
+    signed-in users.
+- Migration `20260903152034_AddDisputesAndReviews` — see the Phase 8 summary above.
+
+### Exit-criteria coverage (tasks/TASK-009 "Exit criteria")
+
+| Exit criterion | Covered by |
+|---|---|
+| Only participants can dispute | `TrustServiceTests.FileDispute_ByTheBuyer_Succeeds_ButByANonParticipant_RevealsNothing`, `…FileDispute_ByAnAdministrator_IsForbidden`; `TrustHttpTests` (anonymous challenged, admin forbidden on `/Buyer/Disputes`) |
+| Review requires Completed transaction | `TrustServiceTests.Review_RequiresACompletedTransaction` (a confirmed-but-not-completed order is rejected; the same order after completion is accepted) |
+| Duplicate review is blocked | `TrustServiceTests.DuplicateReview_IsBlocked` (second submit → `Conflict`, exactly one row); unit `ReviewTests` for the aggregate |
+| Admin resolution is audited | `TrustServiceTests.AdminResolution_MovesTheDisputeToResolved_AndIsWrittenToTheAuditLog` (both `DisputeReviewStarted` and `DisputeResolved` rows), `…DisputeDecisions_ByANonAdministrator_AreForbidden_EvenAtTheServiceLayer` |
+| Public/private evidence permissions are correct | `TrustServiceTests.DisputeEvidence_IsPrivate_ToParticipantsAndAdministrators` (stranger `Forbidden`; buyer, selling merchant and admin all succeed; admin access audited); `TrustHttpTests` (anonymous challenged, guessed id not revealed) |
+
+### Additional coverage
+
+- `Faed.UnitTests.DisputeTests` (12) and `Faed.UnitTests.ReviewTests` (9) — the two
+  aggregates' construction and transition rules.
+- `Faed.IntegrationTests.TrustServiceTests` (11, SQL Server) — the five exit criteria plus
+  the pending-order and one-active-dispute rules, the B2B deal review path (buying merchant
+  only, seller rejected, rating summary), and non-participant review rejection.
+- `Faed.IntegrationTests.TrustHttpTests` (8) — route authorization for the buyer, merchant
+  and admin dispute/review surfaces and the evidence endpoint, plus render checks for the
+  buyer dispute list and the admin dispute queue.
+
+### Not implemented (correctly deferred)
+
+- A `Disputed` status on `OrderStatus` / `B2BDealStatus` and any freeze of the underlying
+  transaction while a dispute is open — TASK-009's deliverables and exit criteria are a
+  separate `Dispute` record with its own lifecycle, and adding an order/deal status with
+  stock-freeze semantics would change previously accepted behaviour. The `OrderStatus` /
+  `B2BDealStatus` doc comments were updated to say the dispute is modelled as its own
+  aggregate rather than as a status.
+- Admin transaction-monitoring screens, the admin reviews screen and the audit-log viewer —
+  TASK-010 (docs/10-IMPLEMENTATION-PLAN.md Phase 10).
+- B2B reviews beyond the buying-merchant-reviews-seller direction, and any merchant reply to
+  a review — not in scope for the MVP (docs/03-BUSINESS-RULES.md §13).
+
+### Post-review fixes (Codex review — TASK-009)
+
+A review of the initial TASK-009 implementation raised six blocking findings. All are fixed,
+scoped to TASK-009; the schema changes are folded into a new
+`20260903162224_HardenDisputeInvariants` migration (nothing committed or deployed).
+
+- **The one-active-dispute rule was not concurrency-safe.** `DisputeService.FileDisputeAsync`
+  did an `AnyAsync` pre-check, so two simultaneous filings for the same order or deal could
+  both pass it and both insert. New `Dispute.ActiveTransactionKey` (`"O:"`/`"D:"` +
+  `Guid.ToString("N")`, held while `Open`/`UnderReview`, cleared on close) is backed by the
+  filtered unique index `IX_Disputes_ActiveTransactionKey_Unique`; the concurrent loser's
+  insert is rejected by the database and translated to a clean `Conflict`. Covered by the
+  deterministic `TrustServiceTests.TwoConcurrentFilings_ForTheSameOrder_OnlyOneSucceeds`
+  (SQL Server interleave via `GatedApplicationDbContext`: the gated call pauses immediately
+  before its INSERT, the competing call commits, the gated call then conflicts on the index).
+- **An `Open` dispute could be resolved or rejected in one step.** `Dispute.Close` accepted
+  `Open` or `UnderReview`; it now requires `UnderReview`, so an administrator must
+  `StartReview` first (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10). `AdminDisputeDetailView.CanClose`
+  and the admin detail view were updated to match. Covered by
+  `DisputeTests.An_open_dispute_cannot_be_resolved_or_rejected_directly` and
+  `TrustServiceTests.AnOpenDispute_CannotBeResolvedOrRejectedDirectly` (both `ResolveAsync`
+  and `RejectAsync` on an `Open` dispute return `Conflict`, the status stays `Open`, and no
+  `DisputeResolved`/`DisputeRejected` audit row is written; the two-step path then works).
+- **Resolution text could exceed the audit column.** `Dispute.MaxResolutionLength` is 4000 but
+  `AdminActionLog.Notes` was `nvarchar(2000)`, so a valid long resolution would fail the save
+  (breaking the atomic status-change + audit write). `AdminActionLog.Notes` is now
+  `nvarchar(max)`; a full-length resolution is stored on the dispute **and** recorded complete
+  on the audit log, in one transaction. Covered by
+  `TrustServiceTests.AResolutionAtTheDocumentedMaxLength_PersistsWithItsCompleteAuditEntry`.
+- **The evidence endpoint leaked id existence.** `OpenEvidenceAsync` returned `Forbidden` for
+  a non-participant hitting a real evidence id but `NotFound` for a missing one. It now
+  returns `NotFound` for both, so guessing ids never confirms which evidence exists;
+  legitimate participant/admin access and the admin audit entry are unchanged. Covered by the
+  updated `TrustServiceTests.DisputeEvidence_IsPrivate_ToParticipantsAndAdministrators` (a
+  stranger's hit and miss both return `NotFound`) and the existing HTTP test.
+- **Transaction detail pages treated closed disputes as active.** The buyer order, merchant
+  deal and merchant order detail controllers matched any dispute on the transaction, so a
+  resolved dispute was shown as active and wrongly suppressed a new filing. They now split on
+  `DisputeSummaryView.IsActive`: an `Open`/`UnderReview` dispute is the active one (and
+  suppresses "raise a dispute"), closed disputes render as a history list and never block a
+  new filing. Covered by `TrustServiceTests.AfterADisputeIsClosed_AFreshDisputeMayBeFiledForTheSameOrder`
+  and `TrustHttpTests.AfterADisputeIsResolved_TheOrderPageOffersANewDispute_AndKeepsTheClosedOneAsHistory`.
+- **The merchant-side B2C dispute flow was missing.** `DisputeService` already permitted a
+  selling merchant to dispute a B2C order, but there was no HTTP/UI path.
+  `Merchant/DisputesController.Create` now takes `type` + `id` and covers both B2C orders and
+  B2B deals (verifying participation via `IOrderService.GetMerchantOrderAsync` /
+  `IB2BDealService.GetDealAsync`, 404 otherwise); the merchant order detail page carries the
+  "Raise a dispute" affordance and the active/past-dispute panel. Covered by
+  `TrustServiceTests.FileDispute_ByTheSellingMerchant_Succeeds` and
+  `TrustHttpTests.SellingMerchant_CanReachTheB2COrderDisputeForm_ButAnUnrelatedMerchantCannot`.
+
+### Validation (TASK-009, after the fix pass)
+
+- `dotnet build Faed.slnx` (Debug + Release) — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **382 passed (234 unit, 148 integration)**, 0 failed, 0 skipped,
+  on a workstation with SQL Server LocalDB reachable. The fix pass added 3 unit + 7 integration
+  regression tests and updated a handful of existing dispute tests in place to assert the
+  corrected state-machine and evidence-privacy behaviour; no existing test was deleted or
+  weakened.
+- `20260903152034_AddDisputesAndReviews` and `20260903162224_HardenDisputeInvariants` apply
+  incrementally from the existing schema (`dotnet ef database update`), the web integration
+  host recreates the database from empty every run, and
+  `dotnet ef migrations has-pending-model-changes` reports no drift.
+- SQL Server concurrency: the one-active-dispute-per-transaction invariant is proven against
+  real SQL Server via a deterministic interleave, not InMemory/SQLite
+  (docs/09-TEST-STRATEGY.md §2).
+- Targeted verification only, scoped to the six findings and the regressions their fixes could
+  cause — no fresh broad review (per the task instruction).
 
 ## TASK-008 — B2B Deal and Fulfillment
 

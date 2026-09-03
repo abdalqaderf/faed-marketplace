@@ -403,6 +403,8 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
     {
         private int _saveStarted;
 
+        public DbSet<Faed.Web.Models.Identity.ApplicationUser> Users => inner.Users;
+
         public DbSet<MerchantProfile> MerchantProfiles => inner.MerchantProfiles;
 
         public DbSet<MerchantVerificationDocument> MerchantVerificationDocuments =>
@@ -447,6 +449,12 @@ public sealed class MerchantVerificationServiceTests(FaedWebApplicationFactory f
         public DbSet<B2BDeal> B2BDeals => inner.B2BDeals;
 
         public DbSet<B2BDealLine> B2BDealLines => inner.B2BDealLines;
+
+        public DbSet<Dispute> Disputes => inner.Disputes;
+
+        public DbSet<DisputeEvidence> DisputeEvidence => inner.DisputeEvidence;
+
+        public DbSet<Review> Reviews => inner.Reviews;
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

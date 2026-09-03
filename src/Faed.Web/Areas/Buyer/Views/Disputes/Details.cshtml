@@ -1,0 +1,79 @@
+@model BuyerDisputeDetailPageModel
+@{
+    var d = Model.Dispute;
+    ViewData["Title"] = $"Dispute — {d.TransactionReference}";
+}
+
+<div class="faed-page">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-action="Index">My disputes</a>
+        <span aria-hidden="true">/</span>
+        <span>@d.TransactionReference</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Dispute — @d.TransactionReference</h1>
+            <p class="faed-page__subtitle">
+                @DisputeStatusDisplay.TransactionLabel(d.TransactionType) with @d.SellingMerchantName ·
+                @DisputeStatusDisplay.ReasonLabel(d.ReasonCode) · raised @AmmanTime.FormatDateTime(d.CreatedAtUtc)
+            </p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">What was reported</h2>
+        <p style="white-space:pre-wrap;">@d.Description</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(d.AdminResolution))
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Administrator's outcome</h2>
+            <div class="faed-alert @(d.Status == DisputeStatus.Resolved ? "faed-alert--success" : "faed-alert--info")" role="status">
+                @d.AdminResolution
+            </div>
+            @if (d.ResolvedAtUtc is { } resolved)
+            {
+                <p class="faed-panel__hint">Closed @AmmanTime.FormatDateTime(resolved) (Amman time).</p>
+            }
+        </div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Evidence</h2>
+        @if (d.Evidence.Count == 0)
+        {
+            <p class="faed-panel__hint">No files attached.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var file in d.Evidence)
+                {
+                    <li>
+                        <a href="/dispute-evidence/@file.Id">@file.OriginalFileName</a>
+                        <span class="faed-field__hint">
+                            @file.ContentType · @(Math.Round(file.SizeBytes / 1024d)) KB ·
+                            @AmmanTime.FormatDate(file.UploadedAtUtc)@(file.UploadedByMe ? " · you" : "")
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (d.CanAddEvidence)
+        {
+            <form asp-action="AddEvidence" asp-route-id="@d.Id" method="post" enctype="multipart/form-data"
+                  class="faed-field" style="margin-top:1rem;">
+                <label class="faed-field__label" for="more-evidence">Add more evidence</label>
+                <input class="faed-input" id="more-evidence" type="file" name="Files" multiple
+                       accept=".jpg,.jpeg,.png,.pdf" />
+                <button type="submit" class="faed-btn faed-btn--ghost" style="margin-top:0.5rem;">Attach</button>
+            </form>
+        }
+    </div>
+</div>

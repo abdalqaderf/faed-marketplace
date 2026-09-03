@@ -10,8 +10,9 @@ namespace Faed.Web.Models.Enums;
 /// <see cref="Faed.Web.Models.Entities.B2BDeal"/> aggregate — a status is never assigned
 /// from controller input.
 ///
-/// The dispute path (<c>Disputed</c>, docs/03-BUSINESS-RULES.md §10) is introduced with the
-/// trust phase (TASK-009) and is deliberately absent here.
+/// There is deliberately no <c>Disputed</c> status (docs/03-BUSINESS-RULES.md §10): the trust
+/// phase (TASK-009) models a dispute as a separate <see cref="Faed.Web.Models.Entities.Dispute"/>
+/// aggregate with its own lifecycle, and never mutates the deal status or its stock.
 /// </summary>
 public enum B2BDealStatus
 {

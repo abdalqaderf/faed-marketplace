@@ -36,6 +36,12 @@ public class Brand
 
     public bool IsActive { get; private set; }
 
+    /// <summary>Admin edit of the brand name (docs/13-OPEN-QUESTIONS.md items 5–6 — brands are
+    /// admin-controlled only). The slug is a stable routing identifier and is not changed.</summary>
+    public void Rename(string name) => Name = Require(name, nameof(name), MaxNameLength);
+
+    public void SetActive(bool isActive) => IsActive = isActive;
+
     private static string Require(string value, string name, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))

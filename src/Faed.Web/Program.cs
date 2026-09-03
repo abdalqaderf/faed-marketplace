@@ -5,6 +5,7 @@ using Faed.Web.Data.Seed;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
+using Faed.Web.Services.Trust;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -28,8 +29,12 @@ var maxDocumentBytes = builder.Configuration.GetValue<long?>(
 var maxImageBytes = builder.Configuration.GetValue<long?>(
     $"{ListingOptions.SectionName}:{nameof(ListingOptions.MaxImageBytes)}")
     ?? new ListingOptions().MaxImageBytes;
+var maxEvidenceBytes = builder.Configuration.GetValue<long?>(
+    $"{TrustOptions.SectionName}:{nameof(TrustOptions.MaxEvidenceBytes)}")
+    ?? new TrustOptions().MaxEvidenceBytes;
 builder.Services.Configure<FormOptions>(options =>
-    options.MultipartBodyLengthLimit = Math.Max(maxDocumentBytes, maxImageBytes) + 1024 * 1024);
+    options.MultipartBodyLengthLimit =
+        Math.Max(Math.Max(maxDocumentBytes, maxImageBytes), maxEvidenceBytes) + 1024 * 1024);
 
 // Identity: Individual Accounts baseline, extended to ApplicationUser and Faed roles.
 builder.Services

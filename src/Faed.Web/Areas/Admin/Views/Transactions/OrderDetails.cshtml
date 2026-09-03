@@ -1,0 +1,111 @@
+@model AdminOrderDetailPageModel
+@{
+    var o = Model.Order;
+    ViewData["Title"] = "Order detail";
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Orders")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Order @o.Id.ToString()[..8]</h1>
+            <p class="faed-page__subtitle">
+                <span class="@OrderStatusDisplay.BadgeClass(o.Status)">@OrderStatusDisplay.Label(o.Status)</span>
+                &middot; placed @AmmanTime.FormatDateTime(o.CreatedAtUtc)
+            </p>
+        </div>
+        <div class="faed-page__actions">
+            <a class="faed-btn faed-btn--ghost" asp-action="Orders">Back to orders</a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(o.StatusReason))
+    {
+        <div class="faed-alert faed-alert--info" role="status">Reason on record: @o.StatusReason</div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Parties</h2>
+        <dl class="faed-details">
+            <dt>Selling merchant</dt>
+            <dd><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@o.MerchantSlug">@o.MerchantBusinessName</a></dd>
+            <dt>Buyer contact</dt>
+            <dd>@o.ContactName &middot; @o.ContactPhone</dd>
+            <dt>Buyer account</dt>
+            <dd>@o.BuyerEmail</dd>
+            <dt>Fulfilment</dt>
+            <dd>@OrderStatusDisplay.FulfillmentLabel(o.FulfillmentType) &middot; @o.FulfillmentSnapshot</dd>
+            @if (!string.IsNullOrWhiteSpace(o.DeliveryAddressText))
+            {
+                <dt>Delivery address</dt>
+                <dd>@o.DeliveryAddressText</dd>
+            }
+        </dl>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Timeline</h2>
+        <dl class="faed-details">
+            <dt>Placed</dt><dd>@AmmanTime.FormatDateTime(o.CreatedAtUtc)</dd>
+            <dt>Confirmed</dt><dd>@(o.ConfirmedAtUtc is { } c ? AmmanTime.FormatDateTime(c) : "—")</dd>
+            <dt>Completed</dt><dd>@(o.CompletedAtUtc is { } cm ? AmmanTime.FormatDateTime(cm) : "—")</dd>
+            <dt>Cancelled</dt><dd>@(o.CancelledAtUtc is { } cn ? AmmanTime.FormatDateTime(cn) : "—")</dd>
+            <dt>Reservation expires</dt><dd>@(o.ReservationExpiresAtUtc is { } re ? AmmanTime.FormatDateTime(re) : "—")</dd>
+        </dl>
+    </div>
+
+    <div class="faed-table-wrap">
+        <table class="faed-table">
+            <thead>
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col">Variant</th>
+                    <th scope="col">Condition</th>
+                    <th scope="col">Qty</th>
+                    <th scope="col">Unit</th>
+                    <th scope="col">Line total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in o.Items)
+                {
+                    <tr>
+                        <td>@i.ListingTitle</td>
+                        <td>@i.VariantSnapshot</td>
+                        <td>@i.ConditionSnapshot</td>
+                        <td>@i.Quantity</td>
+                        <td>JOD @i.UnitPrice.ToString("0.000")</td>
+                        <td>JOD @i.LineTotal.ToString("0.000")</td>
+                    </tr>
+                }
+                <tr><th scope="row" colspan="5">Subtotal</th><td>JOD @o.Subtotal.ToString("0.000")</td></tr>
+                <tr><th scope="row" colspan="5">Fulfilment fee</th><td>JOD @o.DeliveryFeeSnapshot.ToString("0.000")</td></tr>
+                <tr><th scope="row" colspan="5">Total</th><td><strong>JOD @o.Total.ToString("0.000")</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    @if (o.Disputes.Count > 0)
+    {
+        <h2 class="faed-section__title">Disputes</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Raised</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col"></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var dp in o.Disputes)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDate(dp.CreatedAtUtc)</td>
+                            <td>@DisputeStatusDisplay.ReasonLabel(dp.ReasonCode)</td>
+                            <td><span class="@DisputeStatusDisplay.BadgeClass(dp.Status)">@DisputeStatusDisplay.Label(dp.Status)</span></td>
+                            <td><a asp-controller="Disputes" asp-action="Details" asp-route-id="@dp.Id">Open</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -22,6 +22,32 @@
         </div>
     </div>
 
+    @if (Model.Reviews is { Summary.HasReviews: true })
+    {
+        <section class="faed-panel" aria-label="Merchant reviews">
+            <h2 class="faed-panel__title">
+                Buyer reviews —
+                <span aria-hidden="true">@DisputeStatusDisplay.Stars((int)Math.Round(Model.Reviews.Summary.AverageRating))</span>
+                @Model.Reviews.Summary.AverageRating.ToString("0.0") / 5
+                (@Model.Reviews.Summary.ReviewCount)
+            </h2>
+            <ul class="faed-review-list">
+                @foreach (var review in Model.Reviews.Reviews)
+                {
+                    <li>
+                        <span aria-hidden="true">@DisputeStatusDisplay.Stars(review.Rating)</span>
+                        <strong>@review.Rating / 5</strong>
+                        <span class="faed-field__hint">@review.ReviewerLabel · @AmmanTime.FormatDate(review.CreatedAtUtc)</span>
+                        @if (!string.IsNullOrWhiteSpace(review.Comment))
+                        {
+                            <p style="white-space:pre-wrap;margin:0.25rem 0 0;">@review.Comment</p>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
     @if (Model.Merchant.LiveListingCount == 0)
     {
         <div class="faed-empty">

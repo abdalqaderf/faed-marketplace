@@ -52,6 +52,24 @@ public class Category
 
     public bool IsRoot => ParentCategoryId is null;
 
+    /// <summary>
+    /// Admin edit of the display fields (docs/16-PERMISSIONS-MATRIX.md "Manage catalog
+    /// reference data — Admin"). The slug and the parent are structural and are not changed
+    /// here — a category's place in the tree is fixed once created.
+    /// </summary>
+    public void UpdateDetails(string name, int sortOrder)
+    {
+        Name = Require(name, nameof(name), MaxNameLength);
+        SortOrder = sortOrder;
+    }
+
+    /// <summary>
+    /// Takes a category out of use (or restores it). An inactive category is hidden from
+    /// merchant listing forms and public browse but is never deleted, so existing listings
+    /// that reference it keep working (docs/04-DOMAIN-MODEL.md §12).
+    /// </summary>
+    public void SetActive(bool isActive) => IsActive = isActive;
+
     private static string Require(string value, string name, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))

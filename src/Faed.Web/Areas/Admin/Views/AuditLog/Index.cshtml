@@ -1,0 +1,78 @@
+@model AdminAuditLogPageModel
+@{
+    ViewData["Title"] = "Audit log";
+    (AdminAuditLogFilter Value, string Label)[] tabs =
+    {
+        (AdminAuditLogFilter.All, "All"),
+        (AdminAuditLogFilter.Merchants, "Merchants"),
+        (AdminAuditLogFilter.Listings, "Listings"),
+        (AdminAuditLogFilter.Disputes, "Disputes"),
+        (AdminAuditLogFilter.Catalog, "Catalog"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("AuditLog")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Audit log</h1>
+            <p class="faed-page__subtitle">
+                Every security-sensitive administrator action. Append-only &mdash; entries are never edited or removed.
+            </p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter audit log">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Entries.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">Nothing logged</div>
+            <div>No admin actions match this filter yet.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">When</th>
+                        <th scope="col">Administrator</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Target</th>
+                        <th scope="col">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Entries.Items)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDateTime(e.CreatedAtUtc)</td>
+                            <td>@e.AdminEmail</td>
+                            <td>@AdminActivityDisplay.Label(e.ActionType)</td>
+                            <td>@e.TargetType @e.TargetId[..Math.Min(8, e.TargetId.Length)]</td>
+                            <td>@(string.IsNullOrWhiteSpace(e.Notes) ? "—" : e.Notes)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
+            {
+                Action = "Index",
+                Filter = Model.Filter.ToString(),
+                Page = Model.Entries.Page,
+                TotalPages = Model.Entries.TotalPages,
+                TotalCount = Model.Entries.TotalCount,
+                FirstItemNumber = Model.Entries.FirstItemNumber,
+                LastItemNumber = Model.Entries.LastItemNumber,
+            })" />
+    }
+</div>

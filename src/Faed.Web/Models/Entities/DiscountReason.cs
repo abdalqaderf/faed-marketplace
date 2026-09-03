@@ -42,6 +42,18 @@ public class DiscountReason
 
     public bool IsActive { get; private set; }
 
+    /// <summary>
+    /// Admin edit of the display fields (docs/16-PERMISSIONS-MATRIX.md). The <see cref="Code"/>
+    /// is the stable natural key seeding and existing listings rely on, so it is never changed.
+    /// </summary>
+    public void UpdateDetails(string name, string? description)
+    {
+        Name = Require(name, nameof(name), MaxNameLength);
+        Description = Optional(description, nameof(description), MaxDescriptionLength);
+    }
+
+    public void SetActive(bool isActive) => IsActive = isActive;
+
     private static string Require(string value, string name, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))

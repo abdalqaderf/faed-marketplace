@@ -145,4 +145,46 @@
             }
         </div>
     }
+
+    @if (Model.ActiveDispute is not null || Model.PastDisputes.Count > 0 || Model.CanRaiseDispute)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Disputes</h2>
+            @if (Model.ActiveDispute is { } active)
+            {
+                <p class="faed-panel__hint">
+                    <span class="@DisputeStatusDisplay.BadgeClass(active.Status)">@DisputeStatusDisplay.Label(active.Status)</span>
+                    &nbsp;@DisputeStatusDisplay.ReasonLabel(active.ReasonCode) · raised @AmmanTime.FormatDate(active.CreatedAtUtc)
+                </p>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Details" asp-route-id="@active.Id">
+                    View dispute
+                </a>
+            }
+            @if (Model.PastDisputes.Count > 0)
+            {
+                <ul class="faed-field__hint">
+                    @foreach (var past in Model.PastDisputes)
+                    {
+                        <li>
+                            <a asp-controller="Disputes" asp-action="Details" asp-route-id="@past.Id">
+                                @DisputeStatusDisplay.ReasonLabel(past.ReasonCode)
+                            </a>
+                            — @DisputeStatusDisplay.Label(past.Status), @AmmanTime.FormatDate(past.CreatedAtUtc)
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.CanRaiseDispute)
+            {
+                <p class="faed-panel__hint">
+                    If the buyer did not collect the order, damaged returned goods, or there is another problem
+                    with this transaction, you can raise a dispute for an administrator to review.
+                </p>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Create"
+                   asp-route-type="@TrustTransactionType.B2COrder" asp-route-id="@order.Id">
+                    Raise a dispute
+                </a>
+            }
+        </div>
+    }
 </div>

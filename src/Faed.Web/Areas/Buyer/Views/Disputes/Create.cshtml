@@ -1,0 +1,64 @@
+@model FileDisputePageModel
+@{
+    ViewData["Title"] = "Raise a dispute";
+    var reasons = new (DisputeReasonCode Value, string Label)[]
+    {
+        (DisputeReasonCode.ItemNotAsDescribed, "Item not as described"),
+        (DisputeReasonCode.UndisclosedDefect, "Undisclosed defect"),
+        (DisputeReasonCode.MissingItems, "Missing items"),
+        (DisputeReasonCode.ItemNotReceived, "Item not received"),
+        (DisputeReasonCode.WrongItem, "Wrong item supplied"),
+        (DisputeReasonCode.Other, "Something else"),
+    };
+}
+
+<div class="faed-page">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">Order</a>
+        <span aria-hidden="true">/</span>
+        <span>Raise a dispute</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Raise a dispute</h1>
+            <p class="faed-page__subtitle">@Model.OrderReference</p>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Form.OrderId" />
+            <div asp-validation-summary="All" class="faed-alert faed-alert--error" role="alert"></div>
+
+            <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                <legend class="faed-field__label">What went wrong?</legend>
+                @foreach (var (value, label) in reasons)
+                {
+                    <label class="faed-checkbox-row">
+                        <input type="radio" asp-for="Form.ReasonCode" value="@value" />
+                        <span>@label</span>
+                    </label>
+                }
+            </fieldset>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="Form.Description">Describe the problem</label>
+                <textarea class="faed-input" asp-for="Form.Description" rows="5"
+                          maxlength="@Faed.Web.Models.Entities.Dispute.MaxDescriptionLength" required></textarea>
+                <span asp-validation-for="Form.Description" class="faed-field__error"></span>
+            </div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" for="evidence">Evidence (optional)</label>
+                <input class="faed-input" id="evidence" type="file" name="Form.Evidence" multiple
+                       accept=".jpg,.jpeg,.png,.pdf" />
+                <span class="faed-field__hint">
+                    Photos or a PDF. These are private — only you, the merchant and an administrator can see them.
+                </span>
+            </div>
+
+            <button type="submit" class="faed-btn faed-btn--primary">File dispute</button>
+        </form>
+    </div>
+</div>

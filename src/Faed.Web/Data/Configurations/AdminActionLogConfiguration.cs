@@ -30,8 +30,12 @@ public sealed class AdminActionLogConfiguration : IEntityTypeConfiguration<Admin
             .IsRequired()
             .HasMaxLength(64);
 
-        builder.Property(l => l.Notes)
-            .HasMaxLength(2000);
+        // Unbounded: an audit note must record the administrator's full text — e.g. a dispute
+        // resolution up to Dispute.MaxResolutionLength (4000) — never a silently truncated
+        // copy (docs/08-SECURITY-AND-PRIVACY.md §13, docs/17-DATA-INVARIANTS.md "Dispute
+        // resolution is auditable"). The status change and its complete audit row commit in
+        // one transaction.
+        builder.Property(l => l.Notes);
 
         builder.HasIndex(l => new { l.TargetType, l.TargetId });
         builder.HasIndex(l => l.CreatedAtUtc);

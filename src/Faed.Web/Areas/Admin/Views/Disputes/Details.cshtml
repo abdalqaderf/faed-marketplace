@@ -1,0 +1,117 @@
+@model DisputeReviewPageModel
+@{
+    var d = Model.Dispute;
+    ViewData["Title"] = $"Dispute — {d.TransactionReference}";
+}
+
+<div class="faed-page faed-page--wide">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-action="Index">Disputes</a>
+        <span aria-hidden="true">/</span>
+        <span>@d.TransactionReference</span>
+    </nav>
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Dispute — @d.TransactionReference</h1>
+            <p class="faed-page__subtitle">
+                @DisputeStatusDisplay.TransactionLabel(d.TransactionType) ·
+                @DisputeStatusDisplay.ReasonLabel(d.ReasonCode) ·
+                raised by @d.RaisedByName @AmmanTime.FormatDateTime(d.CreatedAtUtc)
+            </p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Parties &amp; transaction</h2>
+        <dl class="faed-details">
+            <dt>Selling merchant</dt><dd>@d.SellingMerchantName</dd>
+            <dt>Buyer</dt><dd>@d.BuyerName</dd>
+            <dt>Raised by (user id)</dt><dd>@d.RaisedByUserId</dd>
+            <dt>Transaction total</dt><dd>JOD @d.TransactionTotal.ToString("0.000")</dd>
+        </dl>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">What was reported</h2>
+        <p style="white-space:pre-wrap;">@d.Description</p>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Evidence</h2>
+        @if (d.Evidence.Count == 0)
+        {
+            <p class="faed-panel__hint">No files attached.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var file in d.Evidence)
+                {
+                    <li>
+                        <a href="/dispute-evidence/@file.Id">@file.OriginalFileName</a>
+                        <span class="faed-field__hint">
+                            @file.ContentType · @(Math.Round(file.SizeBytes / 1024d)) KB · @AmmanTime.FormatDate(file.UploadedAtUtc)
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(d.AdminResolution))
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Recorded outcome</h2>
+            <div class="faed-alert @(d.Status == DisputeStatus.Resolved ? "faed-alert--success" : "faed-alert--info")" role="status">
+                @d.AdminResolution
+            </div>
+            @if (d.ResolvedAtUtc is { } resolved)
+            {
+                <p class="faed-panel__hint">Closed @AmmanTime.FormatDateTime(resolved) (Amman time).</p>
+            }
+        </div>
+    }
+
+    @if (d.CanStartReview || d.CanClose)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Decision</h2>
+            @if (d.CanStartReview)
+            {
+                <p class="faed-panel__hint">
+                    Pick the dispute up for review before recording an outcome — an open dispute
+                    cannot be resolved or dismissed directly.
+                </p>
+                <form asp-action="StartReview" asp-route-id="@d.Id" method="post" style="margin-bottom:1rem;">
+                    <button type="submit" class="faed-btn faed-btn--ghost">Start review</button>
+                </form>
+            }
+            @if (d.CanClose)
+            {
+                <p class="faed-panel__hint">
+                    The outcome text is recorded on the dispute and written to the admin audit log.
+                </p>
+                <form asp-action="Resolve" asp-route-id="@d.Id" method="post" style="margin-bottom:1rem;">
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="resolve-text">Uphold — outcome</label>
+                        <textarea class="faed-input" id="resolve-text" name="resolution" rows="3"
+                                  maxlength="@Faed.Web.Models.Entities.Dispute.MaxResolutionLength" required></textarea>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--primary">Uphold &amp; resolve</button>
+                </form>
+                <form asp-action="Reject" asp-route-id="@d.Id" method="post">
+                    <div class="faed-field">
+                        <label class="faed-field__label" for="reject-text">Dismiss — reason</label>
+                        <textarea class="faed-input" id="reject-text" name="resolution" rows="3"
+                                  maxlength="@Faed.Web.Models.Entities.Dispute.MaxResolutionLength" required></textarea>
+                    </div>
+                    <button type="submit" class="faed-btn faed-btn--danger">Dismiss dispute</button>
+                </form>
+            }
+        </div>
+    }
+</div>

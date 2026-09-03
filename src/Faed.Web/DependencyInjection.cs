@@ -1,13 +1,18 @@
 using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
+using Faed.Web.Services.Admin;
+using Faed.Web.Services.Analytics;
 using Faed.Web.Services.B2B;
+using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Storage;
+using Faed.Web.Services.Trust;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Faed.Web;
 
@@ -91,6 +96,25 @@ public static class DependencyInjection
             // under the test environment (docs/09-TEST-STRATEGY.md §1).
             services.AddHostedService<B2BDealExpiryService>();
         }
+
+        // Post-transaction trust: disputes + evidence, the admin dispute workflow, and
+        // merchant reviews (docs/10-IMPLEMENTATION-PLAN.md Phase 8, tasks/TASK-009-TRUST.md).
+        services.AddOptions<TrustOptions>()
+            .Bind(configuration.GetSection(TrustOptions.SectionName));
+        services.AddScoped<IDisputeService, DisputeService>();
+        services.AddScoped<IReviewService, ReviewService>();
+
+        // Merchant recovery analytics and the consolidated admin operational screens
+        // (docs/10-IMPLEMENTATION-PLAN.md Phases 9–10, tasks/TASK-010-ANALYTICS-AND-ADMIN.md).
+        // All read-only projections over authoritative data; catalog management is the only
+        // write path and it is admin-gated and audited.
+        services.AddOptions<AnalyticsOptions>()
+            .Bind(configuration.GetSection(AnalyticsOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<AnalyticsOptions>, AnalyticsOptionsValidator>();
+        services.AddScoped<IMerchantAnalyticsService, MerchantAnalyticsService>();
+        services.AddScoped<IAdminOperationsService, AdminOperationsService>();
+        services.AddScoped<IAdminCatalogService, AdminCatalogService>();
 
         return services;
     }

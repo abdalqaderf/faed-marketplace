@@ -1,0 +1,117 @@
+@model MerchantAnalyticsPageModel
+@{
+    ViewData["Title"] = "Analytics";
+    var a = Model.Analytics;
+    var sellThroughPct = (a.SellThroughRate * 100).ToString("0.#");
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Analytics")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Recovery analytics</h1>
+            <p class="faed-page__subtitle">
+                How much value you have recovered through Faed. Every figure is calculated from your
+                completed orders, deals and listings &mdash; nothing here can be edited by hand.
+            </p>
+        </div>
+    </div>
+
+    @if (!a.HasAnyActivity)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No analytics yet</div>
+            <div>Once you publish listings and complete your first sale, your recovery figures will appear here.</div>
+        </div>
+        return;
+    }
+
+    <h2 class="faed-section__title">Recovered value</h2>
+    <div class="faed-stat-row">
+        <div class="faed-stat">
+            <div class="faed-stat__value">JOD @a.RecoveredValueTotal.ToString("0.000")</div>
+            <div class="faed-stat__label">Total recovered</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">JOD @a.RecoveredValueB2C.ToString("0.000")</div>
+            <div class="faed-stat__label">Retail (B2C) &middot; @a.CompletedOrders order@(a.CompletedOrders == 1 ? "" : "s")</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">JOD @a.RecoveredValueB2B.ToString("0.000")</div>
+            <div class="faed-stat__label">Wholesale (B2B) &middot; @a.CompletedDeals deal@(a.CompletedDeals == 1 ? "" : "s")</div>
+        </div>
+    </div>
+
+    <h2 class="faed-section__title">Sell-through</h2>
+    <div class="faed-stat-row">
+        <div class="faed-stat">
+            <div class="faed-stat__value">@sellThroughPct%</div>
+            <div class="faed-stat__label">Sell-through rate</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@a.UnitsSoldTotal / @a.UnitsListed</div>
+            <div class="faed-stat__label">Units sold / units listed</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@a.UnitsSoldB2C &middot; @a.UnitsSoldB2B</div>
+            <div class="faed-stat__label">Units sold: retail &middot; wholesale</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@(a.AverageDaysToSale is { } d ? d.ToString("0.0") : "—")</div>
+            <div class="faed-stat__label">Avg. days to sale</div>
+        </div>
+    </div>
+
+    <h2 class="faed-section__title">Attention</h2>
+    <div class="faed-stat-row">
+        <div class="faed-stat@(a.ActiveNegotiations > 0 ? " faed-stat--attention" : "")">
+            <div class="faed-stat__value">@a.ActiveNegotiations</div>
+            <div class="faed-stat__label">Active B2B negotiations</div>
+        </div>
+        <div class="faed-stat@(a.StaleListings.Count > 0 ? " faed-stat--attention" : "")">
+            <div class="faed-stat__value">@a.StaleListings.Count</div>
+            <div class="faed-stat__label">Stale listings (older than @a.StaleListingThresholdLabel, no sales)</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@a.CancelledOrders</div>
+            <div class="faed-stat__label">Cancelled orders</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@a.NoShowOrders &middot; @a.CancelledDeals</div>
+            <div class="faed-stat__label">No-shows &middot; cancelled deals</div>
+        </div>
+    </div>
+
+    @if (a.StaleListings.Count > 0)
+    {
+        <h2 class="faed-section__title">Stale listings</h2>
+        <p class="faed-section__hint">
+            Live for more than @a.StaleListingThresholdLabel with no completed sale. Consider repricing,
+            refreshing the photos, or enabling wholesale.
+        </p>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Listing</th>
+                        <th scope="col">Published</th>
+                        <th scope="col">Age</th>
+                        <th scope="col">Available units</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in a.StaleListings)
+                    {
+                        <tr>
+                            <td><a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@l.Slug">@l.Title</a></td>
+                            <td>@AmmanTime.FormatDate(l.PublishedAtUtc)</td>
+                            <td>@l.AgeDays days</td>
+                            <td>@l.AvailableUnits</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

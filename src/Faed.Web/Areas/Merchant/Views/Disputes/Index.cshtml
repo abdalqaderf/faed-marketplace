@@ -1,0 +1,54 @@
+@model MerchantDisputeListPageModel
+@{
+    ViewData["Title"] = "Disputes";
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Disputes")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Disputes</h1>
+            <p class="faed-page__subtitle">
+                Disputes on orders you sell and wholesale deals you take part in. An administrator reviews
+                and resolves each one.
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Disputes.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No disputes</div>
+            <div>Nothing has been disputed. You can raise a dispute from a wholesale deal's page.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Raised</th>
+                        <th scope="col">Transaction</th>
+                        <th scope="col">Other party</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Disputes)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
+                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
+                            <td>@d.CounterpartyName</td>
+                            <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
+                            <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

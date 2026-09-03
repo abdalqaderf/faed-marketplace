@@ -1,7 +1,9 @@
 using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
+using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
+using Faed.Web.Services.Trust;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +17,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.ApprovedMerchant)]
-public sealed class OrdersController(IOrderService orders) : Controller
+public sealed class OrdersController(IOrderService orders, IDisputeService disputes) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -38,8 +40,28 @@ public sealed class OrdersController(IOrderService orders) : Controller
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
-        var order = await orders.GetMerchantOrderAsync(User.RequireUserId(), id, cancellationToken);
-        return order is null ? NotFound() : View(new MerchantOrderDetailPageModel { Order = order });
+        var userId = User.RequireUserId();
+        var order = await orders.GetMerchantOrderAsync(userId, id, cancellationToken);
+        if (order is null)
+        {
+            return NotFound();
+        }
+
+        var forThisOrder = (await disputes.GetMyDisputesAsync(userId, cancellationToken))
+            .Where(d => d.TransactionType == TrustTransactionType.B2COrder && d.TransactionId == id)
+            .ToList();
+        var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
+
+        return View(new MerchantOrderDetailPageModel
+        {
+            Order = order,
+            ActiveDispute = activeDispute,
+            PastDisputes = forThisOrder.Where(d => !d.IsActive).ToList(),
+            // A selling merchant can dispute an order once it is confirmed and not cancelled —
+            // the same window DisputeService enforces (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §4).
+            CanRaiseDispute = activeDispute is null && order.Status is OrderStatus.Confirmed
+                or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed,
+        });
     }
 
     [HttpPost]

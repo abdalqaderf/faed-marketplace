@@ -1,0 +1,110 @@
+@model AdminDealDetailPageModel
+@{
+    var d = Model.Deal;
+    ViewData["Title"] = "Deal detail";
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Deals")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Deal @d.Id.ToString()[..8]</h1>
+            <p class="faed-page__subtitle">
+                <span class="@B2BDealStatusDisplay.BadgeClass(d.Status)">@B2BDealStatusDisplay.Label(d.Status)</span>
+                &middot; accepted @AmmanTime.FormatDateTime(d.CreatedAtUtc)
+            </p>
+        </div>
+        <div class="faed-page__actions">
+            <a class="faed-btn faed-btn--ghost" asp-action="Deals">Back to deals</a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(d.StatusReason))
+    {
+        <div class="faed-alert faed-alert--info" role="status">Reason on record: @d.StatusReason</div>
+    }
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Parties</h2>
+        <dl class="faed-details">
+            <dt>Listing</dt>
+            <dd><a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@d.ListingSlug">@d.ListingTitle</a></dd>
+            <dt>Selling merchant</dt>
+            <dd><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@d.SellingMerchantSlug">@d.SellingMerchantBusinessName</a></dd>
+            <dt>Buying merchant</dt>
+            <dd><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@d.BuyingMerchantSlug">@d.BuyingMerchantBusinessName</a></dd>
+            <dt>Fulfilment</dt>
+            <dd>
+                @B2BDealStatusDisplay.FulfillmentLabel(d.FulfillmentType)
+                @if (!string.IsNullOrWhiteSpace(d.ShipmentReference))
+                {
+                    <text>&middot; ref @d.ShipmentReference</text>
+                }
+            </dd>
+        </dl>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Timeline</h2>
+        <dl class="faed-details">
+            <dt>Accepted</dt><dd>@AmmanTime.FormatDateTime(d.CreatedAtUtc)</dd>
+            <dt>Completed</dt><dd>@(d.CompletedAtUtc is { } cm ? AmmanTime.FormatDateTime(cm) : "—")</dd>
+            <dt>Cancelled</dt><dd>@(d.CancelledAtUtc is { } cn ? AmmanTime.FormatDateTime(cn) : "—")</dd>
+            <dt>Reservation expires</dt><dd>@(d.ReservationExpiresAtUtc is { } re ? AmmanTime.FormatDateTime(re) : "—")</dd>
+        </dl>
+    </div>
+
+    <div class="faed-table-wrap">
+        <table class="faed-table">
+            <thead>
+                <tr>
+                    <th scope="col">Variant</th>
+                    <th scope="col">Qty</th>
+                    <th scope="col">Unit</th>
+                    <th scope="col">Line total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in d.Lines)
+                {
+                    <tr>
+                        <td>@l.VariantSnapshot</td>
+                        <td>@l.Quantity</td>
+                        <td>JOD @l.UnitPrice.ToString("0.000")</td>
+                        <td>JOD @l.LineTotal.ToString("0.000")</td>
+                    </tr>
+                }
+                <tr><th scope="row" colspan="3">Subtotal</th><td>JOD @d.Subtotal.ToString("0.000")</td></tr>
+                @if (d.ShippingCostSnapshot is { } shipping)
+                {
+                    <tr><th scope="row" colspan="3">Shipping</th><td>JOD @shipping.ToString("0.000")</td></tr>
+                }
+                <tr><th scope="row" colspan="3">Total</th><td><strong>JOD @d.Total.ToString("0.000")</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    @if (d.Disputes.Count > 0)
+    {
+        <h2 class="faed-section__title">Disputes</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Raised</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col"></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var dp in d.Disputes)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDate(dp.CreatedAtUtc)</td>
+                            <td>@DisputeStatusDisplay.ReasonLabel(dp.ReasonCode)</td>
+                            <td><span class="@DisputeStatusDisplay.BadgeClass(dp.Status)">@DisputeStatusDisplay.Label(dp.Status)</span></td>
+                            <td><a asp-controller="Disputes" asp-action="Details" asp-route-id="@dp.Id">Open</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

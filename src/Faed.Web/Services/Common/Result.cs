@@ -43,6 +43,9 @@ public class Result
         new(false, ResultErrorKind.Forbidden, error);
 
     public static Result Conflict(string error) => new(false, ResultErrorKind.Conflict, error);
+
+    /// <summary>Re-projects any failed result (including a <see cref="Result{T}"/>) as a valueless failure.</summary>
+    public static Result From(Result failure) => new(false, failure.ErrorKind, failure.Error);
 }
 
 /// <summary>Outcome of an application operation that returns a value on success.</summary>
@@ -72,6 +75,6 @@ public sealed class Result<T> : Result
 
     public static new Result<T> Conflict(string error) => new(false, default, ResultErrorKind.Conflict, error);
 
-    public static Result<T> From(Result failure) =>
+    public static new Result<T> From(Result failure) =>
         new(false, default, failure.ErrorKind, failure.Error);
 }

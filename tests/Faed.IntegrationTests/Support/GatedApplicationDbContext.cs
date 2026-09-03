@@ -1,5 +1,6 @@
 using Faed.Web.Data;
 using Faed.Web.Models.Entities;
+using Faed.Web.Models.Identity;
 using Faed.Web.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -19,6 +20,8 @@ public sealed class GatedApplicationDbContext(
     Func<CancellationToken, Task> beforeFirstSave) : IApplicationDbContext
 {
     private int _saveStarted;
+
+    public DbSet<ApplicationUser> Users => inner.Users;
 
     public DbSet<MerchantProfile> MerchantProfiles => inner.MerchantProfiles;
 
@@ -63,6 +66,12 @@ public sealed class GatedApplicationDbContext(
     public DbSet<B2BDeal> B2BDeals => inner.B2BDeals;
 
     public DbSet<B2BDealLine> B2BDealLines => inner.B2BDealLines;
+
+    public DbSet<Dispute> Disputes => inner.Disputes;
+
+    public DbSet<DisputeEvidence> DisputeEvidence => inner.DisputeEvidence;
+
+    public DbSet<Review> Reviews => inner.Reviews;
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

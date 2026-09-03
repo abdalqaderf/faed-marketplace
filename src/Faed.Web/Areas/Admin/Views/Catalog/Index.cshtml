@@ -1,0 +1,263 @@
+@model AdminCatalogPageModel
+@{
+    ViewData["Title"] = "Catalog management";
+    var c = Model.Catalog;
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Catalog")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Catalog</h1>
+            <p class="faed-page__subtitle">
+                Manage the taxonomy, condition grades, discount reasons and controlled brands. Reference rows are
+                never deleted &mdash; deactivate an item to hide it from new listings while existing listings keep working.
+            </p>
+        </div>
+    </div>
+
+    @* ---- Categories ---------------------------------------------------------- *@
+    <section class="faed-panel">
+        <h2 class="faed-panel__title">Categories</h2>
+        <p class="faed-panel__hint">
+            The MVP taxonomy is limited to Fashion Overstock. Add lower-level categories beneath this sector;
+            new sector roots remain unavailable until a future-sector readiness decision.
+        </p>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Sort</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var cat in c.Categories)
+                    {
+                        <tr>
+                            <td style="padding-left:@(cat.Depth * 1.5 + 0.75)rem">@cat.Name</td>
+                            <td>@cat.Slug</td>
+                            <td>@cat.SortOrder</td>
+                            <td>@cat.ListingCount</td>
+                            <td><span class="@(cat.IsActive ? "faed-badge faed-badge--approved" : "faed-badge faed-badge--draft")">@(cat.IsActive ? "Active" : "Inactive")</span></td>
+                            <td>
+                                <details>
+                                    <summary class="faed-btn faed-btn--ghost faed-btn--sm">Edit</summary>
+                                    <form method="post" asp-action="UpdateCategory" class="faed-form-grid">
+                                        <input type="hidden" name="id" value="@cat.Id" />
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Name</span>
+                                            <input class="faed-input" name="name" value="@cat.Name" required maxlength="128" />
+                                        </label>
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Sort order</span>
+                                            <input class="faed-input" type="number" name="sortOrder" value="@cat.SortOrder" />
+                                        </label>
+                                        <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Save</button>
+                                    </form>
+                                    <form method="post" asp-action="SetCategoryActive">
+                                        <input type="hidden" name="id" value="@cat.Id" />
+                                        <input type="hidden" name="isActive" value="@((!cat.IsActive).ToString().ToLowerInvariant())" />
+                                        <button class="faed-btn faed-btn--ghost faed-btn--sm" type="submit">
+                                            @(cat.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <form method="post" asp-action="CreateCategory" class="faed-form-grid">
+            <label class="faed-field">
+                <span class="faed-field__label">New category name</span>
+                <input class="faed-input" name="name" required maxlength="128" />
+            </label>
+            <label class="faed-field">
+                <span class="faed-field__label">Parent</span>
+                <select class="faed-select" name="parentCategoryId" required>
+                    <option value="">Choose a Fashion Overstock parent</option>
+                    @foreach (var cat in c.Categories.Where(category => category.IsActive))
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="faed-field">
+                <span class="faed-field__label">Sort order</span>
+                <input class="faed-input" type="number" name="sortOrder" value="0" />
+            </label>
+            <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Add category</button>
+        </form>
+    </section>
+
+    @* ---- Condition grades -------------------------------------------------- *@
+    <section class="faed-panel">
+        <h2 class="faed-panel__title">Condition grades</h2>
+        <p class="faed-panel__hint">The grade set is fixed at A&ndash;D for the Fashion MVP. Copy and availability only.</p>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Description</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in c.ConditionGrades)
+                    {
+                        <tr>
+                            <td>@g.Code</td>
+                            <td>@g.Name</td>
+                            <td>@g.Description</td>
+                            <td>@g.ListingCount</td>
+                            <td><span class="@(g.IsActive ? "faed-badge faed-badge--approved" : "faed-badge faed-badge--draft")">@(g.IsActive ? "Active" : "Inactive")</span></td>
+                            <td>
+                                <details>
+                                    <summary class="faed-btn faed-btn--ghost faed-btn--sm">Edit</summary>
+                                    <form method="post" asp-action="UpdateConditionGrade" class="faed-form-grid">
+                                        <input type="hidden" name="id" value="@g.Id" />
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Name</span>
+                                            <input class="faed-input" name="name" value="@g.Name" required maxlength="64" />
+                                        </label>
+                                        <label class="faed-field faed-field--full">
+                                            <span class="faed-field__label">Description</span>
+                                            <input class="faed-input" name="description" value="@g.Description" required maxlength="512" />
+                                        </label>
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Sort order</span>
+                                            <input class="faed-input" type="number" name="sortOrder" value="@g.SortOrder" />
+                                        </label>
+                                        <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Save</button>
+                                    </form>
+                                    <form method="post" asp-action="SetConditionGradeActive">
+                                        <input type="hidden" name="id" value="@g.Id" />
+                                        <input type="hidden" name="isActive" value="@((!g.IsActive).ToString().ToLowerInvariant())" />
+                                        <button class="faed-btn faed-btn--ghost faed-btn--sm" type="submit">
+                                            @(g.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @* ---- Discount reasons ------------------------------------------------ *@
+    <section class="faed-panel">
+        <h2 class="faed-panel__title">Discount reasons</h2>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Description</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in c.DiscountReasons)
+                    {
+                        <tr>
+                            <td>@r.Code</td>
+                            <td>@r.Name</td>
+                            <td>@(string.IsNullOrWhiteSpace(r.Description) ? "—" : r.Description)</td>
+                            <td>@r.ListingCount</td>
+                            <td><span class="@(r.IsActive ? "faed-badge faed-badge--approved" : "faed-badge faed-badge--draft")">@(r.IsActive ? "Active" : "Inactive")</span></td>
+                            <td>
+                                <details>
+                                    <summary class="faed-btn faed-btn--ghost faed-btn--sm">Edit</summary>
+                                    <form method="post" asp-action="UpdateDiscountReason" class="faed-form-grid">
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Name</span>
+                                            <input class="faed-input" name="name" value="@r.Name" required maxlength="128" />
+                                        </label>
+                                        <label class="faed-field faed-field--full">
+                                            <span class="faed-field__label">Description</span>
+                                            <input class="faed-input" name="description" value="@r.Description" maxlength="512" />
+                                        </label>
+                                        <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Save</button>
+                                    </form>
+                                    <form method="post" asp-action="SetDiscountReasonActive">
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <input type="hidden" name="isActive" value="@((!r.IsActive).ToString().ToLowerInvariant())" />
+                                        <button class="faed-btn faed-btn--ghost faed-btn--sm" type="submit">
+                                            @(r.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <form method="post" asp-action="CreateDiscountReason" class="faed-form-grid">
+            <label class="faed-field">
+                <span class="faed-field__label">Code (one word)</span>
+                <input class="faed-input" name="code" required maxlength="64" pattern="\S+" />
+            </label>
+            <label class="faed-field">
+                <span class="faed-field__label">Name</span>
+                <input class="faed-input" name="name" required maxlength="128" />
+            </label>
+            <label class="faed-field faed-field--full">
+                <span class="faed-field__label">Description (optional)</span>
+                <input class="faed-input" name="description" maxlength="512" />
+            </label>
+            <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Add reason</button>
+        </form>
+    </section>
+
+    @* ---- Brands -------------------------------------------------------- *@
+    <section class="faed-panel">
+        <h2 class="faed-panel__title">Brands</h2>
+        <p class="faed-panel__hint">Brands are optional and admin-controlled. Merchants choose from this list; they never create brands.</p>
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @if (c.Brands.Count == 0)
+                    {
+                        <tr><td colspan="5">No brands defined.</td></tr>
+                    }
+                    @foreach (var b in c.Brands)
+                    {
+                        <tr>
+                            <td>@b.Name</td>
+                            <td>@b.Slug</td>
+                            <td>@b.ListingCount</td>
+                            <td><span class="@(b.IsActive ? "faed-badge faed-badge--approved" : "faed-badge faed-badge--draft")">@(b.IsActive ? "Active" : "Inactive")</span></td>
+                            <td>
+                                <details>
+                                    <summary class="faed-btn faed-btn--ghost faed-btn--sm">Edit</summary>
+                                    <form method="post" asp-action="RenameBrand" class="faed-form-grid">
+                                        <input type="hidden" name="id" value="@b.Id" />
+                                        <label class="faed-field">
+                                            <span class="faed-field__label">Name</span>
+                                            <input class="faed-input" name="name" value="@b.Name" required maxlength="128" />
+                                        </label>
+                                        <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Save</button>
+                                    </form>
+                                    <form method="post" asp-action="SetBrandActive">
+                                        <input type="hidden" name="id" value="@b.Id" />
+                                        <input type="hidden" name="isActive" value="@((!b.IsActive).ToString().ToLowerInvariant())" />
+                                        <button class="faed-btn faed-btn--ghost faed-btn--sm" type="submit">
+                                            @(b.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <form method="post" asp-action="CreateBrand" class="faed-form-grid">
+            <label class="faed-field">
+                <span class="faed-field__label">New brand name</span>
+                <input class="faed-input" name="name" required maxlength="128" />
+            </label>
+            <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Add brand</button>
+        </form>
+    </section>
+</div>

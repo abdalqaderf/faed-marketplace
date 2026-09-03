@@ -118,6 +118,79 @@
         </div>
     }
 
+    @if (Model.ActiveDispute is not null || Model.PastDisputes.Count > 0 || Model.CanRaiseDispute)
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Disputes</h2>
+            @if (Model.ActiveDispute is { } dispute)
+            {
+                <p class="faed-panel__hint">
+                    <span class="@DisputeStatusDisplay.BadgeClass(dispute.Status)">@DisputeStatusDisplay.Label(dispute.Status)</span>
+                    &nbsp;@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode) · raised @AmmanTime.FormatDate(dispute.CreatedAtUtc)
+                </p>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Details" asp-route-id="@dispute.Id">
+                    View dispute
+                </a>
+            }
+            @if (Model.PastDisputes.Count > 0)
+            {
+                <ul class="faed-field__hint">
+                    @foreach (var past in Model.PastDisputes)
+                    {
+                        <li>
+                            <a asp-controller="Disputes" asp-action="Details" asp-route-id="@past.Id">
+                                @DisputeStatusDisplay.ReasonLabel(past.ReasonCode)
+                            </a>
+                            — @DisputeStatusDisplay.Label(past.Status), @AmmanTime.FormatDate(past.CreatedAtUtc)
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.CanRaiseDispute)
+            {
+                <p class="faed-panel__hint">
+                    If the item was not as described, defective, missing parts or never arrived, you can raise a
+                    dispute. An administrator will review it.
+                </p>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Create" asp-route-orderId="@order.Id">
+                    Raise a dispute
+                </a>
+            }
+        </div>
+    }
+
+    @if (Model.ReviewEligibility is { ExistingReview: { } mine })
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Your review</h2>
+            <p><strong aria-hidden="true">@DisputeStatusDisplay.Stars(mine.Rating)</strong> @mine.Rating / 5</p>
+            @if (!string.IsNullOrWhiteSpace(mine.Comment))
+            {
+                <p style="white-space:pre-wrap;">@mine.Comment</p>
+            }
+            <p class="faed-panel__hint">Posted @AmmanTime.FormatDate(mine.CreatedAtUtc).</p>
+        </div>
+    }
+    else if (Model.ReviewEligibility is { CanReview: true })
+    {
+        <div class="faed-panel">
+            <h2 class="faed-panel__title">Review @order.MerchantBusinessName</h2>
+            <p class="faed-panel__hint">Your order is complete. Leave a rating to help other buyers.</p>
+            <form asp-action="Review" asp-route-id="@order.Id" method="post">
+                <div class="faed-field">
+                    <label class="faed-field__label" for="review-rating">Rating (1–5)</label>
+                    <input class="faed-input" id="review-rating" name="Rating" type="number" min="1" max="5" value="5" required
+                           style="max-width:6rem;" />
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="review-comment">Comment (optional)</label>
+                    <textarea class="faed-input" id="review-comment" name="Comment" rows="3" maxlength="2000"></textarea>
+                </div>
+                <button type="submit" class="faed-btn faed-btn--primary">Post review</button>
+            </form>
+        </div>
+    }
+
     @if (order.BuyerCanCancel)
     {
         <div class="faed-panel">

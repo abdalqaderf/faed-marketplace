@@ -1,0 +1,63 @@
+@model MerchantReviewsPageModel
+@{
+    ViewData["Title"] = "Reviews";
+    var summary = Model.Reviews.Summary;
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Reviews")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Reviews received</h1>
+            <p class="faed-page__subtitle">
+                Ratings left by buyers after a completed transaction. Reviews cannot be edited or removed.
+            </p>
+        </div>
+    </div>
+
+    <div class="faed-stat-row">
+        <div class="faed-stat">
+            <div class="faed-stat__value">@(summary.HasReviews ? summary.AverageRating.ToString("0.0") : "—")</div>
+            <div class="faed-stat__label">Average rating</div>
+        </div>
+        <div class="faed-stat">
+            <div class="faed-stat__value">@summary.ReviewCount</div>
+            <div class="faed-stat__label">Total reviews</div>
+        </div>
+    </div>
+
+    @if (!summary.HasReviews)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">No reviews yet</div>
+            <div>Once a buyer completes a transaction with you, they can leave a review here.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Rating</th>
+                        <th scope="col">From</th>
+                        <th scope="col">Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Reviews.Reviews)
+                    {
+                        <tr>
+                            <td>@AmmanTime.FormatDate(r.CreatedAtUtc)</td>
+                            <td><span aria-hidden="true">@DisputeStatusDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
+                            <td>@r.ReviewerLabel</td>
+                            <td>@(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

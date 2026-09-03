@@ -58,6 +58,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<B2BDealLine> B2BDealLines => Set<B2BDealLine>();
 
+    public DbSet<Dispute> Disputes => Set<Dispute>();
+
+    public DbSet<DisputeEvidence> DisputeEvidence => Set<DisputeEvidence>();
+
+    public DbSet<Review> Reviews => Set<Review>();
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
 

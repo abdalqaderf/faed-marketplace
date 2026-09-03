@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Ordering;
+using Faed.Web.Services.Trust;
 
 namespace Faed.Web.Areas.Buyer.ViewModels;
 
@@ -60,4 +61,17 @@ public sealed class BuyerOrderListPageModel
 public sealed class BuyerOrderDetailPageModel
 {
     public required OrderDetailView Order { get; init; }
+
+    /// <summary>Whether this buyer may review the selling merchant for this order, and any review already left.</summary>
+    public ReviewEligibilityView? ReviewEligibility { get; init; }
+
+    /// <summary>An active (Open/UnderReview) dispute on this order, if there is one.</summary>
+    public DisputeSummaryView? ActiveDispute { get; init; }
+
+    /// <summary>Closed disputes on this order, shown as history.</summary>
+    public IReadOnlyList<DisputeSummaryView> PastDisputes { get; init; } = [];
+
+    public LeaveReviewFormModel ReviewForm { get; set; } = new();
+
+    public bool CanRaiseDispute { get; init; }
 }

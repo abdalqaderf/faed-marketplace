@@ -1,7 +1,9 @@
 using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
+using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
 using Faed.Web.Services.Common;
+using Faed.Web.Services.Trust;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +17,8 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.CanNegotiateB2B)]
-public sealed class DealsController(IB2BDealService deals) : Controller
+public sealed class DealsController(
+    IB2BDealService deals, IReviewService reviews, IDisputeService disputes) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -36,8 +39,56 @@ public sealed class DealsController(IB2BDealService deals) : Controller
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
-        var deal = await deals.GetDealAsync(User.RequireUserId(), id, cancellationToken);
-        return deal is null ? NotFound() : View(new B2BDealDetailPageModel { Deal = deal });
+        var userId = User.RequireUserId();
+        var deal = await deals.GetDealAsync(userId, id, cancellationToken);
+        if (deal is null)
+        {
+            return NotFound();
+        }
+
+        var eligibility = await reviews.GetEligibilityAsync(
+            userId, TrustTransactionType.B2BDeal, id, cancellationToken);
+
+        var forThisDeal = (await disputes.GetMyDisputesAsync(userId, cancellationToken))
+            .Where(d => d.TransactionType == TrustTransactionType.B2BDeal && d.TransactionId == id)
+            .ToList();
+        // Only an Open/UnderReview dispute suppresses a new filing (docs/03-BUSINESS-RULES.md §14).
+        var activeDispute = forThisDeal.FirstOrDefault(d => d.IsActive);
+
+        return View(new B2BDealDetailPageModel
+        {
+            Deal = deal,
+            ReviewEligibility = eligibility,
+            ActiveDispute = activeDispute,
+            PastDisputes = forThisDeal.Where(d => !d.IsActive).ToList(),
+            CanRaiseDispute = activeDispute is null && deal.Status != B2BDealStatus.Cancelled,
+        });
+    }
+
+    /// <summary>The buying merchant reviews the seller once the deal is completed
+    /// (docs/03-BUSINESS-RULES.md §13).</summary>
+    [HttpPost]
+    public async Task<IActionResult> Review(Guid id, MerchantLeaveReviewFormModel form, CancellationToken cancellationToken)
+    {
+        var result = await reviews.SubmitReviewAsync(
+            User.RequireUserId(),
+            new SubmitReviewInput(TrustTransactionType.B2BDeal, id, form.Rating, form.Comment),
+            cancellationToken);
+
+        if (result.Succeeded)
+        {
+            TempData["StatusMessage"] = "Thanks — your review of the seller has been posted.";
+        }
+        else if (result.ErrorKind == ResultErrorKind.NotFound)
+        {
+            return NotFound();
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error;
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost]

@@ -13,9 +13,7 @@
 }
 
 <div class="faed-page faed-page--wide">
-    <nav class="faed-subnav" aria-label="Admin sections">
-        <a class="is-active" asp-area="Admin" asp-controller="MerchantVerification" asp-action="Index">Merchant verification</a>
-    </nav>
+    <partial name="_AdminSubnav" model="@("MerchantVerification")" />
 
     <div class="faed-page__header">
         <div>

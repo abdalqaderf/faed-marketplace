@@ -1,0 +1,69 @@
+@model DisputeQueuePageModel
+@{
+    ViewData["Title"] = "Disputes";
+    var tabs = new (DisputeQueueFilter Value, string Label)[]
+    {
+        (DisputeQueueFilter.Active, "Needs attention"),
+        (DisputeQueueFilter.Open, "Open"),
+        (DisputeQueueFilter.UnderReview, "Under review"),
+        (DisputeQueueFilter.Resolved, "Resolved"),
+        (DisputeQueueFilter.Rejected, "Dismissed"),
+        (DisputeQueueFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Disputes")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Disputes</h1>
+            <p class="faed-page__subtitle">
+                @Model.OpenCount dispute@(Model.OpenCount == 1 ? "" : "s") still need an administrator.
+            </p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter disputes">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">Nothing here</div>
+            <div>No disputes match this filter right now.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Raised</th>
+                        <th scope="col">Transaction</th>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Items)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
+                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
+                            <td>@d.CounterpartyName</td>
+                            <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
+                            <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

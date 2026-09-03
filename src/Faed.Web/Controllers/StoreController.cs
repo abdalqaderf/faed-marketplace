@@ -1,4 +1,5 @@
 using Faed.Web.Services.Marketplace;
+using Faed.Web.Services.Trust;
 using Faed.Web.ViewModels.Marketplace;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +11,8 @@ namespace Faed.Web.Controllers;
 /// 404s, the same way a non-Live listing does (docs/03-BUSINESS-RULES.md §1).
 /// </summary>
 [Route("store")]
-public sealed class StoreController(IPublicMarketplaceService marketplace) : Controller
+public sealed class StoreController(
+    IPublicMarketplaceService marketplace, IReviewService reviews) : Controller
 {
     [HttpGet("{slug}")]
     public async Task<IActionResult> Index(string slug, ShopFilterModel filters, CancellationToken cancellationToken)
@@ -22,6 +24,13 @@ public sealed class StoreController(IPublicMarketplaceService marketplace) : Con
         }
 
         var result = await marketplace.BrowseListingsAsync(filters.ToQuery(merchantSlug: slug), cancellationToken);
-        return View(new StorePageModel { Merchant = merchant, Result = result, Filters = filters });
+        var merchantReviews = await reviews.GetMerchantReviewsAsync(merchant.Id, 10, cancellationToken);
+        return View(new StorePageModel
+        {
+            Merchant = merchant,
+            Result = result,
+            Filters = filters,
+            Reviews = merchantReviews,
+        });
     }
 }

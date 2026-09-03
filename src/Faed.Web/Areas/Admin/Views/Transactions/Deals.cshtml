@@ -1,0 +1,79 @@
+@model AdminDealMonitorPageModel
+@{
+    ViewData["Title"] = "Deal monitoring";
+    (AdminDealFilter Value, string Label)[] tabs =
+    {
+        (AdminDealFilter.InProgress, "In progress"),
+        (AdminDealFilter.Completed, "Completed"),
+        (AdminDealFilter.Cancelled, "Cancelled"),
+        (AdminDealFilter.All, "All"),
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_AdminSubnav" model="@("Deals")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">B2B deals</h1>
+            <p class="faed-page__subtitle">Monitoring view. Fulfilment stays with the two participating merchants.</p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav" aria-label="Filter deals">
+        @foreach (var (value, label) in tabs)
+        {
+            <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Deals" asp-route-filter="@value">@label</a>
+        }
+    </nav>
+
+    @if (Model.Deals.Items.Count == 0)
+    {
+        <div class="faed-empty">
+            <div class="faed-empty__title">Nothing here</div>
+            <div>No deals match this filter.</div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Accepted</th>
+                        <th scope="col">Seller</th>
+                        <th scope="col">Buyer</th>
+                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Units</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Deals.Items)
+                    {
+                        <tr>
+                            <td><a asp-action="DealDetails" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
+                            <td>@d.SellingMerchantBusinessName</td>
+                            <td>@d.BuyingMerchantBusinessName</td>
+                            <td>@B2BDealStatusDisplay.FulfillmentLabel(d.FulfillmentType)</td>
+                            <td>@d.TotalUnits</td>
+                            <td>JOD @d.Total.ToString("0.000")</td>
+                            <td><span class="@B2BDealStatusDisplay.BadgeClass(d.Status)">@B2BDealStatusDisplay.Label(d.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
+            {
+                Action = "Deals",
+                Filter = Model.Filter.ToString(),
+                Page = Model.Deals.Page,
+                TotalPages = Model.Deals.TotalPages,
+                TotalCount = Model.Deals.TotalCount,
+                FirstItemNumber = Model.Deals.FirstItemNumber,
+                LastItemNumber = Model.Deals.LastItemNumber,
+            })" />
+    }
+</div>
