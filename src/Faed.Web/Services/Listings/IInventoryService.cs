@@ -14,7 +14,19 @@ namespace Faed.Web.Services.Listings;
 /// </summary>
 public interface IInventoryService
 {
-    Task<IReadOnlyList<InventoryRow>> GetMyInventoryAsync(
+    /// <summary>
+    /// A bounded page of the caller's own variant stock, worst-stocked first
+    /// (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8 "every growable collection is
+    /// database-bounded" — the row count grows with every listing/variant a merchant adds).
+    /// </summary>
+    Task<PagedResult<InventoryRow>> GetMyInventoryAsync(
+        string userId, int page = 1, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Summary counts across the caller's <em>entire</em> inventory (not just the current
+    /// page) for the dashboard stat row.
+    /// </summary>
+    Task<InventorySummary> GetMyInventorySummaryAsync(
         string userId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<InventoryAdjustmentView>> GetMyRecentAdjustmentsAsync(

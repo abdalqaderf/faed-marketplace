@@ -14,10 +14,16 @@
         ("AuditLog", "AuditLog", "Index", "Audit log"),
     };
 }
-<nav class="faed-subnav" aria-label="Admin sections">
-    @foreach (var link in links)
-    {
-        <a class="@(active == link.Section ? "is-active" : "")"
-           asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action">@link.Label</a>
-    }
-</nav>
+<div class="faed-workspace-nav faed-workspace-nav--admin">
+    <div class="faed-workspace-nav__identity">
+        <span class="faed-workspace-nav__eyebrow">Operations</span>
+        <strong>Admin Workspace</strong>
+    </div>
+    <nav class="faed-subnav faed-subnav--workspace" aria-label="Admin sections">
+        @foreach (var link in links)
+        {
+            <a class="@(active == link.Section ? "is-active" : "")" aria-current="@(active == link.Section ? "page" : null)"
+               asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action">@link.Label</a>
+        }
+    </nav>
+</div>

@@ -4,9 +4,15 @@
 }
 
 <div class="faed-page">
-    <nav class="faed-subnav" aria-label="Merchant sections">
-        <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
-    </nav>
+    <div class="faed-workspace-nav faed-workspace-nav--merchant">
+        <div class="faed-workspace-nav__identity">
+            <span class="faed-workspace-nav__eyebrow">Seller workspace</span>
+            <strong>Merchant Center</strong>
+        </div>
+        <nav class="faed-subnav faed-subnav--workspace" aria-label="Merchant sections">
+            <a class="is-active" aria-current="page" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+        </nav>
+    </div>
 
     <div class="faed-page__header">
         <div>

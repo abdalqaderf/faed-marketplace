@@ -10,9 +10,10 @@
         {
             <span class="faed-product-card__no-photo" aria-hidden="true">No photo yet</span>
         }
+        <span class="faed-product-card__media-label">Verified stock</span>
         @if (Model.HasValidReferencePrice)
         {
-            <span class="faed-product-card__discount">-@(Model.DiscountPercent)%</span>
+            <span class="faed-product-card__discount">@(Model.DiscountPercent)% lower</span>
         }
         @if (Model.IsSoldOut)
         {
@@ -24,7 +25,7 @@
         }
     </a>
     <div class="faed-product-card__body">
-        <div class="faed-product-card__condition">Grade @Model.ConditionCode &middot; @Model.ConditionName</div>
+        <div class="faed-product-card__condition"><span>Condition</span> Grade @Model.ConditionCode &middot; @Model.ConditionName</div>
         <h3 class="faed-product-card__title">
             <a asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug">@Model.Title</a>
         </h3>
@@ -36,7 +37,7 @@
             }
             <span>@Model.MerchantBusinessName</span>
         </a>
-        <div class="faed-price faed-price--sm">
+        <div class="faed-price faed-price--sm" aria-label="Price">
             <span class="faed-price__current">
                 @if (Model.EffectivePrice is { } price)
                 {
@@ -75,5 +76,6 @@
                 }
             </div>
         }
+        <span class="faed-product-card__view">View listing <span aria-hidden="true">&rarr;</span></span>
     </div>
 </article>

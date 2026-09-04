@@ -5,48 +5,80 @@
 
 <section class="faed-hero">
     <div class="faed-page faed-page--wide faed-hero__inner">
-        <p class="faed-hero__eyebrow">Amman &middot; Fashion Overstock</p>
-        <h1 class="faed-hero__title">Surplus stock from verified merchants, at honest prices.</h1>
-        <p class="faed-hero__subtitle">
-            Faed connects Amman's verified fashion merchants with buyers who want genuine surplus
-            and non-perfect stock &mdash; clearly graded, clearly disclosed, at retail or wholesale.
-        </p>
-        <div class="faed-hero__actions">
-            <a class="faed-btn faed-btn--primary" asp-controller="Shop" asp-action="Index">Browse the shop</a>
-            <a class="faed-btn faed-btn--ghost faed-btn--on-tint" asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Sell as a merchant</a>
+        <div class="faed-hero__content">
+            <p class="faed-hero__eyebrow">Amman &middot; Fashion Overstock</p>
+            <h1 class="faed-hero__title">Good stock deserves another route to market.</h1>
+            <p class="faed-hero__subtitle">
+                Shop surplus and non-perfect fashion from verified merchants &mdash; with condition,
+                discount reason and availability made clear before you buy.
+            </p>
+            <div class="faed-hero__actions">
+                <a class="faed-btn faed-btn--light" asp-controller="Shop" asp-action="Index">Browse the shop <span aria-hidden="true">&rarr;</span></a>
+                <a class="faed-btn faed-btn--ghost faed-btn--on-tint" asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Sell as a merchant</a>
+            </div>
+            <div class="faed-hero__trust" aria-label="Marketplace facts">
+                <span><strong>@Model.VerifiedMerchantCount</strong> verified merchant@(Model.VerifiedMerchantCount == 1 ? "" : "s")</span>
+                <span><strong>@Model.LiveListingCount</strong> live listing@(Model.LiveListingCount == 1 ? "" : "s")</span>
+                <span><strong>2 ways</strong> to buy: retail &amp; wholesale</span>
+            </div>
         </div>
-        <div class="faed-hero__trust">
-            <span>@Model.VerifiedMerchantCount verified merchant@(Model.VerifiedMerchantCount == 1 ? "" : "s")</span>
-            <span aria-hidden="true">&middot;</span>
-            <span>@Model.LiveListingCount live listing@(Model.LiveListingCount == 1 ? "" : "s")</span>
-            <span aria-hidden="true">&middot;</span>
-            <span>Retail &amp; wholesale</span>
-        </div>
+
+        <aside class="faed-hero__discovery" aria-label="Explore the marketplace">
+            <p class="faed-hero__discovery-label">Start with a category</p>
+            <div class="faed-hero__category-links">
+                @foreach (var category in Model.Categories.Take(3))
+                {
+                    <a asp-controller="Shop" asp-action="Index" asp-route-Category="@category.Slug">
+                        <span>@category.Name</span>
+                        <span class="faed-hero__category-count">@category.LiveListingCount live <span aria-hidden="true">&rarr;</span></span>
+                    </a>
+                }
+            </div>
+            <div class="faed-hero__promise">
+                <span class="faed-hero__promise-mark" aria-hidden="true">✓</span>
+                <p><strong>Trust is part of the listing.</strong><br />Merchant verification and listing review come before publication.</p>
+            </div>
+        </aside>
+    </div>
+    <div class="faed-hero__rule" aria-hidden="true">
+        <span>Condition explained</span>
+        <span>Discount reason disclosed</span>
+        <span>Variant stock checked</span>
     </div>
 </section>
 
 <div class="faed-page faed-page--wide">
     @if (Model.Categories.Count > 0)
     {
-        <section class="faed-home-section">
+        <section class="faed-home-section faed-home-categories">
             <div class="faed-section-header">
-                <h2 class="faed-section-header__title">Shop by category</h2>
+                <div>
+                    <p class="faed-kicker">Explore</p>
+                    <h2 class="faed-section-header__title">Shop by category</h2>
+                </div>
+                <a class="faed-section-header__link" asp-controller="Shop" asp-action="Index">See all inventory <span aria-hidden="true">&rarr;</span></a>
             </div>
             <div class="faed-category-grid">
+                @{ var categoryIndex = 0; }
                 @foreach (var category in Model.Categories)
                 {
+                    categoryIndex++;
                     <a class="faed-category-card" asp-controller="Shop" asp-action="Index" asp-route-Category="@category.Slug">
+                        <span class="faed-category-card__index" aria-hidden="true">0@categoryIndex</span>
                         <span class="faed-category-card__name">@category.Name</span>
-                        <span class="faed-category-card__count">@category.LiveListingCount live</span>
+                        <span class="faed-category-card__count">@category.LiveListingCount live listing@(category.LiveListingCount == 1 ? "" : "s")</span>
+                        <span class="faed-category-card__arrow" aria-hidden="true">&rarr;</span>
                     </a>
                 }
             </div>
         </section>
     }
-
     <section class="faed-home-section">
         <div class="faed-section-header">
-            <h2 class="faed-section-header__title">Featured inventory</h2>
+            <div>
+                <p class="faed-kicker">New routes for existing stock</p>
+                <h2 class="faed-section-header__title">Featured inventory</h2>
+            </div>
             <a class="faed-section-header__link" asp-controller="Shop" asp-action="Index">View all &rarr;</a>
         </div>
 
@@ -70,7 +102,10 @@
 
     <section class="faed-home-section faed-how-it-works">
         <div class="faed-section-header">
-            <h2 class="faed-section-header__title">How Faed works</h2>
+            <div>
+                <p class="faed-kicker">From stockroom to buyer</p>
+                <h2 class="faed-section-header__title">A clearer way to buy discounted fashion</h2>
+            </div>
         </div>
         <ol class="faed-steps-grid">
             <li>
@@ -93,14 +128,19 @@
 
     <section class="faed-home-section faed-transparency">
         <div class="faed-section-header">
-            <h2 class="faed-section-header__title">Condition and discount, always separate</h2>
+            <div>
+                <p class="faed-kicker">Two questions, two clear answers</p>
+                <h2 class="faed-section-header__title">Condition and discount stay separate</h2>
+            </div>
         </div>
         <div class="faed-transparency__grid">
             <div class="faed-panel">
-                <h3 class="faed-panel__title">Condition grades</h3>
+                <span class="faed-transparency__label">01 &middot; Physical state</span>
+                <h3 class="faed-panel__title">Condition</h3>
                 <p class="faed-panel__hint">What physical state the item is in — Grade A through D, always explained in plain language, never just a letter.</p>
             </div>
             <div class="faed-panel">
+                <span class="faed-transparency__label">02 &middot; Commercial reason</span>
                 <h3 class="faed-panel__title">Why discounted</h3>
                 <p class="faed-panel__hint">The commercial reason it's priced below normal — overstock, past season, packaging damage and more. Independent of condition.</p>
             </div>
@@ -109,6 +149,7 @@
 
     <section class="faed-merchant-cta">
         <div>
+            <p class="faed-kicker faed-kicker--light">For verified businesses</p>
             <h2 class="faed-merchant-cta__title">Have surplus stock to move?</h2>
             <p class="faed-merchant-cta__subtitle">List it on Faed once your business is verified, and reach retail and wholesale buyers across Amman.</p>
         </div>

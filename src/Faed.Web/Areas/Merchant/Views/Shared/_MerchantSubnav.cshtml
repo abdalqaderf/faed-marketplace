@@ -15,10 +15,16 @@
         ("StoreSettings", "Merchant", "StoreSettings", "Store settings"),
     };
 }
-<nav class="faed-subnav" aria-label="Merchant sections">
-    @foreach (var link in links)
-    {
-        <a class="@(active == link.Section ? "is-active" : "")"
-           asp-area="@link.Area" asp-controller="@link.Controller" asp-action="Index">@link.Label</a>
-    }
-</nav>
+<div class="faed-workspace-nav faed-workspace-nav--merchant">
+    <div class="faed-workspace-nav__identity">
+        <span class="faed-workspace-nav__eyebrow">Seller workspace</span>
+        <strong>Merchant Center</strong>
+    </div>
+    <nav class="faed-subnav faed-subnav--workspace" aria-label="Merchant sections">
+        @foreach (var link in links)
+        {
+            <a class="@(active == link.Section ? "is-active" : "")" aria-current="@(active == link.Section ? "page" : null)"
+               asp-area="@link.Area" asp-controller="@link.Controller" asp-action="Index">@link.Label</a>
+        }
+    </nav>
+</div>

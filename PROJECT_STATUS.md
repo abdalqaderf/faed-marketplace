@@ -15,12 +15,180 @@
 | TASK-009 — Disputes and Reviews | 8 | Completed |
 | TASK-010 — Merchant Analytics and Admin Completion | 9–10 | Completed |
 | TASK-011 — Hardening, Demo Data and Delivery | 11 | Completed |
+| TASK-012 — Final UI/UX Completion | 12 | Completed |
+| TASK-013 — Final Visual Design & Polish | 13 | Completed |
 
-All eleven planned tasks are complete. The MVP is feature-complete for field validation and
+All thirteen planned tasks are complete. The MVP is feature-complete for field validation and
 demonstration; the remaining items are infrastructure decisions and manual delivery steps
 recorded in `docs/24-DELIVERY-AND-HARDENING.md` §11 and `DEPLOYMENT.md` §3.
 
 ## Current state
+
+**Phase 13 — Final Visual Design & Polish complete (TASK-013). Status: `PASS WITH DOCUMENTED LIMITATIONS`.**
+
+The existing Faed design system was strengthened across the complete user-facing surface without
+adding a UI framework or changing marketplace behavior. The application now has a distinctive,
+responsive marketplace shell; clearer commerce hierarchy and disclosure language; role-aware
+Buyer, Merchant and Admin workspaces; and route-scoped Identity styling that preserves generated
+ASP.NET Core Identity behavior.
+
+- **Global shell and foundations:** replaced the remaining scaffold-like navigation/footer with a
+  branded Faed shell, active-route states, role-aware account actions, a skip link and real-route
+  footer. Refined the existing color, type, spacing, radius, elevation, focus and motion tokens,
+  while removing obsolete scoped-template CSS and its empty script reference.
+- **Public marketplace:** rebuilt home-page discovery, category and trust sections; strengthened
+  browse filters, sorting and listing cards; clarified condition, discount reason, verified stock,
+  merchant identity, review provenance and the listing purchase hierarchy; and polished store,
+  privacy, 404, access-denied and exception states.
+- **Role workspaces:** gave Buyer order/dispute rows explicit actions and improved checkout rhythm;
+  gave Merchant verification, listings, inventory, offers, deals, orders, disputes and store
+  settings consistent workspace wayfinding; and made Admin navigation, queues and approve/reject
+  decisions visually denser and operationally distinct.
+- **Responsive/accessibility:** retained semantic landmarks and one primary `h1` per checked page,
+  added current-page semantics, labels and visible keyboard focus, kept touch targets and tables
+  usable at narrow widths, and included reduced-motion behavior.
+- **Automated gates:** Debug and Release builds both passed with 0 warnings / 0 errors; all 270 unit
+  tests and all 190 SQL Server integration tests passed with 0 failures / 0 skips; EF Core reported
+  no pending model changes; `git diff --check`, CSS brace balance, obsolete-color checks and live
+  Release HTTP/asset checks passed.
+- **Documented limitation:** the in-app browser runtime reported that no browser was available, so
+  interactive 360/390/768/1024/1440 px viewport, screenshot and console inspection could not be
+  performed in this environment. Responsive behavior was reviewed from the rendered markup and
+  breakpoint/focus rules, and public/Identity routes and their referenced assets were exercised
+  against the running Release application. Because the mandated real-browser visual pass could not
+  be executed, the result is intentionally not recorded as an unqualified `PASS`.
+
+### Previous phase — TASK-012
+
+**Phase 12 — Final UI/UX Completion complete (TASK-012). Status: `PASS`.**
+
+A source-backed Phase 0 audit of every Public/Buyer/Merchant/Admin/Identity surface — every
+Razor view, controller, ViewModel, authorization policy, ownership check and shared CSS/JS
+file — was performed before any visual change, per `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md`.
+The codebase built on TASK-001–011 was already close to spec: consistent Faed design-system
+usage across every screen, correct authorization on every route, and TASK-011's shared
+`PagedResult<T>` paging already applied everywhere it had been scoped to. The audit surfaced a
+small number of real, scoped defects, all fixed:
+
+- **Navigation showed an administrator Buyer/Merchant links that predictably failed.** The
+  global nav showed every signed-in user "My Orders", "My Disputes" and "Merchant Center"
+  regardless of role, but an administrator can neither place a B2C order
+  (`FaedPolicies.CanPlaceB2COrder` excludes `Admin`) nor hold a selling merchant identity
+  (`FaedPolicies.ApprovedMerchant` excludes `Admin`; `MerchantVerificationService` rejects an
+  admin's application) — docs/16-PERMISSIONS-MATRIX.md "Create B2C order — Admin ❌". Clicking
+  either link as an Admin predictably reached a 403, which is exactly the defect
+  `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` Phase 1 exists to catch ("No visible link should
+  predictably send its intended user to 403"). `Views/Shared/_Layout.cshtml` now hides those
+  three links for the `Admin` role, leaving the Admin nav link in their place; every other
+  signed-in role is unaffected. Covered by new `Faed.IntegrationTests.Task012NavigationHttpTests`
+  (an administrator's rendered home page excludes all three links; a plain signed-in user's
+  includes them).
+- **Merchant Listings and Inventory were unbounded, growable collections.** TASK-011 moved
+  every other merchant/admin queue (orders, negotiations, deals, disputes, moderation) to
+  server-side paging, but `IMerchantListingService.GetMyListingsAsync` and
+  `IInventoryService.GetMyInventoryAsync` still returned the merchant's *entire* listing/variant
+  set on every request — a merchant with a long catalog history would eventually render an
+  unbounded HTML table (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8 "every growable collection
+  must be database-bounded"). Both now return `PagedResult<T>` built from a real SQL
+  `COUNT` + `Skip`/`Take` (reusing `QueryablePagingExtensions`/`Paging.DefaultPageSize`, exactly
+  the TASK-011 infrastructure — nothing new was built) and the two views use the shared
+  `_Pagination` partial, preserving the active status-filter tab across pages. Inventory needed
+  a two-step query (page the flattened variant list at the database first, then re-load only
+  the listings that contributed a variant to that page for their full option graph) because
+  `ListingVariant` has no `Listing` navigation property to join through directly. The Inventory
+  dashboard's stat row (active variants, low stock, available/reserved units) is computed by a
+  new `IInventoryService.GetMyInventorySummaryAsync` — a single grouped SQL aggregate over the
+  merchant's *entire* inventory — so those totals stay correct once the row table underneath is
+  paged rather than silently narrowing to "whatever is on the current page." Covered by new
+  `Faed.IntegrationTests.ListingServiceTests.MerchantListings_BeyondOnePage_ArePaged_…` and
+  `MerchantInventory_BeyondOnePage_IsPaged_ButTheSummaryCoversTheWholeInventory` (26–27 fixture
+  rows, asserting exact page counts, no id overlap between pages, full coverage across pages,
+  and a summary unaffected by which page was requested).
+- **The unhandled-exception page and the footer's Privacy page were unstyled scaffold
+  content.** `Views/Shared/Error.cshtml` (the `UseExceptionHandler("/Home/Error")` target) was
+  still the Visual Studio template's bare `<h1 class="text-danger">` markup with no Faed
+  styling and no recovery action — exactly what `faed-ui-quality-gate` rejects ("a random
+  template with Faed text pasted into it"). It is now styled like the existing
+  `Views/Home/StatusCode.cshtml` empty state, with "Back to Faed" / "Browse the shop" recovery
+  actions and no exception detail beyond the safe-to-disclose request id.
+  `Views/Home/Privacy.cshtml` — reachable from every page's footer — was still the scaffolded
+  "Use this page to detail your site's privacy policy." placeholder. It now carries a real,
+  honest, Faed-styled summary of the data-handling practices `docs/08-SECURITY-AND-PRIVACY.md`
+  already requires (private verification documents, private dispute evidence, no sale of
+  personal data) — nothing beyond what the codebase already does.
+- **The Admin Disputes detail page was missing the Admin section nav.** Every other Admin
+  index/detail view includes `<partial name="_AdminSubnav" .../>`; `Areas/Admin/Views/Disputes/Details.cshtml`
+  did not, so an administrator lost the "which Admin section am I in" wayfinding on that one
+  screen. Added for consistency with every other Admin page.
+- **The default `/Identity/Account/AccessDenied` page (reached whenever a signed-in user fails
+  a server-side policy check by direct URL) was the framework's unstyled default.** A minimal,
+  logic-free override (`Areas/Identity/Pages/Account/AccessDenied.cshtml[.cs]`) restyles it into
+  the Faed shell with a single recovery link. No authentication/authorization behavior changed
+  — the page still does nothing but display the fact that access was denied. Verified by a live
+  `dotnet run` smoke check (200, renders "Access denied" inside the Faed shell) rather than an
+  automated HTTP test: the integration-test host's `TestAuthHandler` returns a raw 403 instead
+  of following the framework's real cookie `AccessDeniedPath` redirect, so this specific page is
+  outside what that harness can exercise.
+
+**Deliberately not changed**, per the plan's own scope guard ("do not scaffold all Identity
+pages only for styling") and to avoid taking on authentication-logic risk with no automated
+safety net for it: `/Identity/Account/Login`, `/Identity/Account/Register` and
+`/Identity/Account/Manage/*` keep the framework's default Identity.UI styling (within the Faed
+shell — header/nav/footer/`faed.css` already apply, per `Areas/Identity/Pages/_ViewStart.cshtml`).
+Restyling their Razor Pages would mean hand-writing new `PageModel` code for `SignInManager`/
+`UserManager` sign-in logic that no test in this repository exercises, which is a materially
+different risk than restyling static content. This is recorded as an accepted, explained
+limitation, not a silent gap.
+
+Every other Phase 0 audit area — Public marketplace (Home/Shop/Listing/Store), Buyer
+(checkout/orders/disputes/reviews), Merchant (verification/listings/B2B offers and deals/
+disputes/analytics/store settings), and every other Admin queue (verification, moderation,
+transactions, catalog, reviews, audit log) — was already database-paged where growable, already
+authorization-correct at the MVC-policy/service/database layers, already used the Faed design
+system consistently (product cards, price blocks, condition/discount separation, status badges,
+empty states), and was left unchanged (`docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` §4 "do not
+redesign already-good screens").
+
+### Validation (TASK-012)
+
+- `dotnet build Faed.slnx -c Debug` — succeeds, 0 warnings, 0 errors.
+- `dotnet build Faed.slnx -c Release` — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx -c Release` — **460 passed (270 unit, 190 SQL Server integration)**,
+  0 failed, 0 skipped. No existing test was removed, skipped or weakened; 4 tests were added
+  (2 navigation, 2 pagination regression).
+- `dotnet ef migrations has-pending-model-changes --project src/Faed.Web --startup-project
+  src/Faed.Web --configuration Release --no-build` — no model drift. **No migration was added by
+  TASK-012** (a UI-only task, as expected).
+- Live `dotnet run` smoke check (Development, LocalDB): Home, Shop, Privacy, a guessed listing
+  slug (branded 404), `/Identity/Account/Login` and the overridden `/Identity/Account/AccessDenied`
+  all returned the expected status code and rendered the expected content.
+- Role × state × ownership × viewport QA: authorization/ownership behavior for every
+  role/state combination in the plan's Phase 19 matrix is covered by the existing TASK-002–011
+  HTTP/service test suites (unchanged and still green) plus the two new navigation tests above;
+  the responsive/design-system review is a static-source review (every touched view reuses
+  existing `faed-*` classes and the shared `_Pagination`/`_MerchantSubnav`/`_AdminSubnav`
+  partials — no new CSS was written) rather than a manual per-viewport click-through, since no
+  browser/screenshot tool was available in this session.
+
+### Not implemented (accepted limitations)
+
+- `/Identity/Account/Login`, `Register`, `Manage/*` keep default Identity.UI styling (see above).
+- Merchant "Reviews received" (capped at the existing 50) and the public storefront's "recent
+  reviews" (capped at the existing 10) are bounded but not paginated beyond that cap, matching
+  the pre-existing `Areas/Merchant/Views/Inventory/Index.cshtml` "Recent adjustments" (capped at
+  25) pattern already shipped by TASK-004/010. All three are review/history windows, not
+  operational queues a merchant works through daily; at current and realistically near-term MVP
+  review volumes per merchant this is not a real usability gap, and TASK-011's own paging
+  rollout deliberately did not extend to them either. If a merchant's review volume later makes
+  this a real problem, it is a small additive change (the same `PagedResult<T>` pattern used
+  everywhere else), not a redesign.
+- No manual browser/screenshot-based cross-viewport (phone/tablet/desktop) click-through was
+  performed — this session had no browser automation tool available. Confidence instead comes
+  from: every touched view reusing already-responsive, already-reviewed `faed-*` components
+  (`faed-table-wrap` horizontal scroll, `_Pagination`'s existing mobile-safe layout,
+  `faed-subnav`'s wrapping flex layout) with no new CSS; the full existing automated suite
+  (which includes route/render checks) staying green; and a live-server smoke check of the
+  newly changed anonymous routes.
 
 **Phase 11 — Hardening, Demo Data and Delivery complete (TASK-011).**
 
@@ -347,10 +515,10 @@ implemented.
 
 ## Active task
 
-None. TASK-011 is closed and the planned task queue (TASK-001 – TASK-011) is complete.
+None. TASK-013 is closed and the planned task queue (TASK-001 – TASK-013) is complete.
 
-Independent final review (Codex) is the next step, followed by the manual delivery items in
-`DEPLOYMENT.md` §3.
+Next step is demo/deployment: the manual delivery items in `DEPLOYMENT.md` §3, not another
+general UI/UX phase.
 
 ## TASK-011 — Hardening, Demo Data and Delivery
 

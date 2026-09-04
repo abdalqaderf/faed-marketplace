@@ -70,8 +70,8 @@
         @foreach (var revision in n.Revisions.Reverse())
         {
             var isCurrent = revision.RevisionNumber == current.RevisionNumber;
-            <article class="faed-panel" style="margin-top:0.75rem;">
-                <h3 class="faed-panel__title" style="font-size:0.95rem;">
+            <article class="faed-panel faed-field--spaced">
+                <h3 class="faed-panel__title faed-panel__title--sm">
                     Revision @revision.RevisionNumber — proposed by @B2BNegotiationStatusDisplay.PartyLabel(revision.ProposedBy).ToLower() (@revision.ProposedByName)
                     @if (isCurrent && n.Status == B2BNegotiationStatus.Open)
                     {
@@ -119,7 +119,7 @@
                 (JOD @current.Total.ToString("0.000") for the goods). The reservation is separate from the offer's expiry.
             </p>
             <form asp-action="Accept" asp-route-id="@n.Id" method="post">
-                <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                <fieldset class="faed-field faed-fieldset-reset">
                     <legend class="faed-field__label">How will this deal be fulfilled?</legend>
                     <label class="faed-checkbox-row">
                         <input type="radio" name="fulfillmentType" value="@B2BFulfillmentType.Pickup" checked />
@@ -138,7 +138,7 @@
                     <button type="submit" class="faed-btn faed-btn--primary">Accept &amp; reserve the deal</button>
                 </div>
             </form>
-            <form asp-action="Reject" asp-route-id="@n.Id" method="post" style="margin-top:0.75rem;">
+            <form asp-action="Reject" asp-route-id="@n.Id" method="post" class="faed-field--spaced">
                 <button type="submit" class="faed-btn faed-btn--danger">Reject</button>
             </form>
         </div>
@@ -151,7 +151,7 @@
             <p class="faed-panel__hint">A counter-offer is a new revision. The previous offer stays on record.</p>
             <div asp-validation-summary="All" class="faed-alert faed-alert--error" role="alert"></div>
             <form asp-action="Counter" asp-route-id="@n.Id" method="post">
-                <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                <fieldset class="faed-field faed-fieldset-reset">
                     <legend class="faed-field__label">Quantities by variant</legend>
                     <div class="faed-table-wrap">
                         <table class="faed-table">

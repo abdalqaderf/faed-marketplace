@@ -18,9 +18,11 @@ public sealed class ListingsController(IMerchantListingService listings) : Contr
 {
     [HttpGet]
     public async Task<IActionResult> Index(
-        MerchantListingFilter filter = MerchantListingFilter.All, CancellationToken cancellationToken = default)
+        MerchantListingFilter filter = MerchantListingFilter.All,
+        int page = 1,
+        CancellationToken cancellationToken = default)
     {
-        var items = await listings.GetMyListingsAsync(User.RequireUserId(), filter, cancellationToken);
+        var items = await listings.GetMyListingsAsync(User.RequireUserId(), filter, page, cancellationToken);
         return View(new ListingListPageModel { Filter = filter, Items = items });
     }
 

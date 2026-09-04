@@ -128,19 +128,19 @@
 
             @if (order.MerchantCanMarkNoShow)
             {
-                <form asp-action="NoShow" asp-route-id="@order.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                <form asp-action="NoShow" asp-route-id="@order.Id" method="post" class="faed-field faed-field--spaced">
                     <label class="faed-field__label" for="noshow-reason">No-show reason</label>
                     <input class="faed-input" id="noshow-reason" name="reason" maxlength="500" required />
-                    <button type="submit" class="faed-btn faed-btn--ghost" style="margin-top:0.5rem;">Mark as no-show</button>
+                    <button type="submit" class="faed-btn faed-btn--ghost faed-action-spaced">Mark as no-show</button>
                 </form>
             }
 
             @if (order.MerchantCanCancel)
             {
-                <form asp-action="Cancel" asp-route-id="@order.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                <form asp-action="Cancel" asp-route-id="@order.Id" method="post" class="faed-field faed-field--spaced">
                     <label class="faed-field__label" for="cancel-reason">Cancellation reason</label>
                     <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" required />
-                    <button type="submit" class="faed-btn faed-btn--danger" style="margin-top:0.5rem;">Cancel order</button>
+                    <button type="submit" class="faed-btn faed-btn--danger faed-action-spaced">Cancel order</button>
                 </form>
             }
         </div>

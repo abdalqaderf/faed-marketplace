@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Enums;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 
 namespace Faed.Web.Areas.Merchant.ViewModels;
 
 public sealed class InventoryPageModel
 {
-    public required IReadOnlyList<InventoryRow> Rows { get; init; }
+    public required PagedResult<InventoryRow> Rows { get; init; }
+
+    public required InventorySummary Summary { get; init; }
 
     public required IReadOnlyList<InventoryAdjustmentView> RecentAdjustments { get; init; }
 

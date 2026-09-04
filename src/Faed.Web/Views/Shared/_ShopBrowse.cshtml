@@ -13,6 +13,10 @@
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#shop-filters" aria-label="Close filters"></button>
         </div>
         <div class="offcanvas-body faed-filter-panel__body">
+            <div class="faed-filter-panel__desktop-heading">
+                <span>Refine results</span>
+                <small>Choose only what matters</small>
+            </div>
             @if (filters.HasActiveFilters)
             {
                 <a class="faed-filter-panel__clear" href="@path">Clear all filters</a>
@@ -173,7 +177,7 @@
 
     <section class="faed-shop-results">
         <div class="faed-sort-bar">
-            <button type="button" class="faed-btn faed-btn--ghost faed-btn--sm faed-filter-toggle" data-bs-toggle="offcanvas" data-bs-target="#shop-filters" aria-controls="shop-filters">
+            <button type="button" class="faed-btn faed-btn--ghost faed-btn--sm faed-filter-toggle" data-bs-toggle="offcanvas" data-bs-target="#shop-filters" aria-controls="shop-filters" aria-label="Open shop filters">
                 <span>Filters</span>
                 @if (filters.ActiveFilterCount > 0)
                 {
@@ -196,7 +200,7 @@
                     }
                 }
                 <label class="visually-hidden" for="sort-select">Sort by</label>
-                <select class="faed-select" id="sort-select" name="Sort" onchange="this.form.submit()">
+                <select class="faed-select" id="sort-select" name="Sort" onchange="this.form.submit()" aria-label="Sort listings">
                     <option value="@ShopSort.Newest" selected="@(filters.Sort == ShopSort.Newest)">Newest</option>
                     <option value="@ShopSort.PriceLowToHigh" selected="@(filters.Sort == ShopSort.PriceLowToHigh)">Price: low to high</option>
                     <option value="@ShopSort.PriceHighToLow" selected="@(filters.Sort == ShopSort.PriceHighToLow)">Price: high to low</option>

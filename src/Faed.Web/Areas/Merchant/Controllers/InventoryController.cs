@@ -15,12 +15,13 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 public sealed class InventoryController(IInventoryService inventory) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(int page = 1, CancellationToken cancellationToken = default)
     {
         var userId = User.RequireUserId();
-        var rows = await inventory.GetMyInventoryAsync(userId, cancellationToken);
+        var rows = await inventory.GetMyInventoryAsync(userId, page, cancellationToken);
+        var summary = await inventory.GetMyInventorySummaryAsync(userId, cancellationToken);
         var adjustments = await inventory.GetMyRecentAdjustmentsAsync(userId, cancellationToken: cancellationToken);
-        return View(new InventoryPageModel { Rows = rows, RecentAdjustments = adjustments });
+        return View(new InventoryPageModel { Rows = rows, Summary = summary, RecentAdjustments = adjustments });
     }
 
     [HttpPost]

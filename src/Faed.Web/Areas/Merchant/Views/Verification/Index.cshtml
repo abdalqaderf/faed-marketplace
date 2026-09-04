@@ -8,16 +8,22 @@
 }
 
 <div class="faed-page">
-    <nav class="faed-subnav" aria-label="Merchant sections">
-        <a class="is-active" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
-        @if (Model.Application?.CanSell == true)
-        {
-            <a asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
-            <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
-            <a asp-area="Merchant" asp-controller="Orders" asp-action="Index">B2C Orders</a>
-            <a asp-area="Merchant" asp-controller="StoreSettings" asp-action="Index">Store settings</a>
-        }
-    </nav>
+    <div class="faed-workspace-nav faed-workspace-nav--merchant">
+        <div class="faed-workspace-nav__identity">
+            <span class="faed-workspace-nav__eyebrow">Seller workspace</span>
+            <strong>Merchant Center</strong>
+        </div>
+        <nav class="faed-subnav faed-subnav--workspace" aria-label="Merchant sections">
+            <a class="is-active" aria-current="page" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
+            @if (Model.Application?.CanSell == true)
+            {
+                <a asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
+                <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
+                <a asp-area="Merchant" asp-controller="Orders" asp-action="Index">B2C Orders</a>
+                <a asp-area="Merchant" asp-controller="StoreSettings" asp-action="Index">Store settings</a>
+            }
+        </nav>
+    </div>
 
     <div class="faed-page__header">
         <div>
@@ -53,7 +59,7 @@
         @if (app.Status == MerchantVerificationStatus.Approved)
         {
             <div class="faed-alert faed-alert--success" role="status">
-                Your business is verified. You can create listings once the catalog and listing tools are available.
+                Your business is verified. You can create listings and manage stock from Merchant Center.
             </div>
         }
         else if (app.Status == MerchantVerificationStatus.PendingReview)

@@ -1,7 +1,6 @@
 @model InventoryPageModel
 @{
     ViewData["Title"] = "Inventory";
-    var lowStockCount = Model.Rows.Count(r => r.IsActive && r.AvailableQuantity <= 3);
 }
 
 <div class="faed-page faed-page--wide">
@@ -16,24 +15,24 @@
 
     <div class="faed-stat-row">
         <div class="faed-stat">
-            <div class="faed-stat__value">@Model.Rows.Count(r => r.IsActive)</div>
+            <div class="faed-stat__value">@Model.Summary.ActiveVariantCount</div>
             <div class="faed-stat__label">Active variants</div>
         </div>
-        <div class="faed-stat @(lowStockCount > 0 ? "faed-stat--attention" : "")">
-            <div class="faed-stat__value">@lowStockCount</div>
-            <div class="faed-stat__label">Low stock (&le; 3 units)</div>
+        <div class="faed-stat @(Model.Summary.LowStockVariantCount > 0 ? "faed-stat--attention" : "")">
+            <div class="faed-stat__value">@Model.Summary.LowStockVariantCount</div>
+            <div class="faed-stat__label">Low stock (&le; @InventorySummary.LowStockThreshold units)</div>
         </div>
         <div class="faed-stat">
-            <div class="faed-stat__value">@Model.Rows.Sum(r => r.AvailableQuantity)</div>
+            <div class="faed-stat__value">@Model.Summary.AvailableUnitsTotal</div>
             <div class="faed-stat__label">Available units</div>
         </div>
         <div class="faed-stat">
-            <div class="faed-stat__value">@Model.Rows.Sum(r => r.ReservedQuantity)</div>
+            <div class="faed-stat__value">@Model.Summary.ReservedUnitsTotal</div>
             <div class="faed-stat__label">Reserved units</div>
         </div>
     </div>
 
-    @if (Model.Rows.Count == 0)
+    @if (Model.Rows.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No variants yet</div>
@@ -46,8 +45,8 @@
             <table class="faed-table">
                 <thead>
                     <tr>
-                        <th>Listing</th>
                         <th>SKU</th>
+                        <th>Listing</th>
                         <th>Combination</th>
                         <th>Available</th>
                         <th>Reserved</th>
@@ -57,11 +56,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in Model.Rows)
+                    @foreach (var row in Model.Rows.Items)
                     {
-                        <tr class="@(row.IsActive && row.AvailableQuantity <= 3 ? "faed-row--attention" : "")">
+                        <tr class="@(row.IsActive && row.AvailableQuantity <= InventorySummary.LowStockThreshold ? "faed-row--attention" : "")">
+                            <td><strong>@row.Sku</strong></td>
                             <td><a asp-area="Merchant" asp-controller="Listings" asp-action="Edit" asp-route-id="@row.ListingId">@row.ListingTitle</a></td>
-                            <td>@row.Sku</td>
                             <td>@row.Combination</td>
                             <td>@row.AvailableQuantity</td>
                             <td>@row.ReservedQuantity</td>
@@ -107,6 +106,8 @@
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Rows, "Index", itemNoun: "variant")' />
     }
 
     <h2 class="faed-panel__title">Recent adjustments</h2>

@@ -29,7 +29,7 @@
 
     <div class="faed-panel">
         <h2 class="faed-panel__title">What was reported</h2>
-        <p style="white-space:pre-wrap;">@d.Description</p>
+        <p class="faed-prewrap">@d.Description</p>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(d.AdminResolution))
@@ -66,10 +66,10 @@
         @if (d.CanAddEvidence)
         {
             <form asp-action="AddEvidence" asp-route-id="@d.Id" method="post" enctype="multipart/form-data"
-                  class="faed-field" style="margin-top:1rem;">
+                  class="faed-field faed-field--spaced">
                 <label class="faed-field__label" for="more-evidence">Add more evidence</label>
                 <input class="faed-input" id="more-evidence" type="file" name="Files" multiple accept=".jpg,.jpeg,.png,.pdf" />
-                <button type="submit" class="faed-btn faed-btn--ghost" style="margin-top:0.5rem;">Attach</button>
+                <button type="submit" class="faed-btn faed-btn--ghost faed-action-spaced">Attach</button>
             </form>
         }
     </div>

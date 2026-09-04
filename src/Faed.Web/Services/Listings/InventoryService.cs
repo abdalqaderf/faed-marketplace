@@ -14,51 +14,104 @@ public sealed class InventoryService(
     IClock clock,
     ILogger<InventoryService> logger) : IInventoryService
 {
-    public async Task<IReadOnlyList<InventoryRow>> GetMyInventoryAsync(
+    public async Task<PagedResult<InventoryRow>> GetMyInventoryAsync(
+        string userId, int page = 1, CancellationToken cancellationToken = default)
+    {
+        page = Paging.NormalizePage(page);
+        var merchantId = await ResolveMerchantIdAsync(userId, cancellationToken);
+        if (merchantId is null)
+        {
+            return PagedResult<InventoryRow>.Empty(page, Paging.DefaultPageSize);
+        }
+
+        // Step 1: page the flattened variant list at the database — a plain, fully
+        // SQL-translatable projection, ordered so whatever is closest to running out sorts
+        // first (.claude/skills/faed-dashboard-ux "what needs my attention now?").
+        var flatQuery = db.Listings
+            .AsNoTracking()
+            .Where(l => l.MerchantProfileId == merchantId && l.Status != ListingStatus.Archived)
+            .SelectMany(l => l.Variants, (l, v) => new
+            {
+                VariantId = v.Id,
+                v.IsActive,
+                v.AvailableQuantity,
+                ListingTitle = l.Title,
+                v.Sku,
+            })
+            .OrderBy(r => r.IsActive ? 0 : 1)
+            .ThenBy(r => r.AvailableQuantity)
+            .ThenBy(r => r.ListingTitle)
+            .ThenBy(r => r.Sku)
+            .ThenBy(r => r.VariantId);
+
+        var pagedIds = await flatQuery.ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
+        if (pagedIds.Items.Count == 0)
+        {
+            return new PagedResult<InventoryRow>([], pagedIds.TotalCount, pagedIds.Page, pagedIds.PageSize);
+        }
+
+        // Step 2: re-load only the listings that contributed a variant to this page — at most
+        // PageSize of them — with the full option graph needed to describe each combination.
+        var pageVariantIds = pagedIds.Items.Select(r => r.VariantId).ToHashSet();
+        var listingsForPage = await db.Listings
+            .AsNoTracking()
+            .Where(l => l.MerchantProfileId == merchantId && l.Variants.Any(v => pageVariantIds.Contains(v.Id)))
+            .Include(l => l.Options).ThenInclude(o => o.Values)
+            .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
+            .ToListAsync(cancellationToken);
+
+        var rowsByVariantId = new Dictionary<Guid, InventoryRow>();
+        foreach (var listing in listingsForPage)
+        {
+            var optionNameByValueId = listing.Options
+                .SelectMany(o => o.Values.Select(v => new { v.Id, OptionName = o.Name, v.Value }))
+                .ToDictionary(x => x.Id, x => (x.OptionName, x.Value));
+
+            foreach (var variant in listing.Variants.Where(v => pageVariantIds.Contains(v.Id)))
+            {
+                rowsByVariantId[variant.Id] = new InventoryRow(
+                    variant.Id,
+                    listing.Id,
+                    listing.Title,
+                    listing.Status,
+                    variant.Sku,
+                    ListingQueries.DescribeOptions(variant, optionNameByValueId),
+                    variant.AvailableQuantity,
+                    variant.ReservedQuantity,
+                    variant.SoldQuantity,
+                    variant.IsActive,
+                    variant.UpdatedAtUtc);
+            }
+        }
+
+        // Preserve the database-decided order from step 1.
+        var rows = pagedIds.Items.Select(r => rowsByVariantId[r.VariantId]).ToList();
+        return new PagedResult<InventoryRow>(rows, pagedIds.TotalCount, pagedIds.Page, pagedIds.PageSize);
+    }
+
+    public async Task<InventorySummary> GetMyInventorySummaryAsync(
         string userId, CancellationToken cancellationToken = default)
     {
         var merchantId = await ResolveMerchantIdAsync(userId, cancellationToken);
         if (merchantId is null)
         {
-            return [];
+            return InventorySummary.Empty;
         }
 
-        var listings = await db.Listings
+        var variants = db.Listings
             .AsNoTracking()
             .Where(l => l.MerchantProfileId == merchantId && l.Status != ListingStatus.Archived)
-            .Include(l => l.Options).ThenInclude(o => o.Values)
-            .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
-            .ToListAsync(cancellationToken);
+            .SelectMany(l => l.Variants);
 
-        return
-        [
-            .. listings
-                .SelectMany(listing =>
-                {
-                    var optionNameByValueId = listing.Options
-                        .SelectMany(o => o.Values.Select(v => new { v.Id, OptionName = o.Name, v.Value }))
-                        .ToDictionary(x => x.Id, x => (x.OptionName, x.Value));
-
-                    return listing.Variants.Select(variant => new InventoryRow(
-                        variant.Id,
-                        listing.Id,
-                        listing.Title,
-                        listing.Status,
-                        variant.Sku,
-                        ListingQueries.DescribeOptions(variant, optionNameByValueId),
-                        variant.AvailableQuantity,
-                        variant.ReservedQuantity,
-                        variant.SoldQuantity,
-                        variant.IsActive,
-                        variant.UpdatedAtUtc));
-                })
-                // Whatever is closest to running out is what the merchant needs to see first
-                // (.claude/skills/faed-dashboard-ux "what needs my attention now?").
-                .OrderBy(r => r.IsActive ? 0 : 1)
-                .ThenBy(r => r.AvailableQuantity)
-                .ThenBy(r => r.ListingTitle, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(r => r.Sku, StringComparer.OrdinalIgnoreCase),
-        ];
+        return await variants
+            .GroupBy(v => 1)
+            .Select(g => new InventorySummary(
+                g.Count(v => v.IsActive),
+                g.Count(v => v.IsActive && v.AvailableQuantity <= InventorySummary.LowStockThreshold),
+                g.Sum(v => v.AvailableQuantity),
+                g.Sum(v => v.ReservedQuantity)))
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? InventorySummary.Empty;
     }
 
     public async Task<IReadOnlyList<InventoryAdjustmentView>> GetMyRecentAdjustmentsAsync(

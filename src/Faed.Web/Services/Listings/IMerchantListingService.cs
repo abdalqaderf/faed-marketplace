@@ -2,6 +2,7 @@ using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Listings;
 
+
 /// <summary>
 /// Merchant-side listing use cases (tasks/TASK-004-LISTINGS-AND-INVENTORY.md,
 /// docs/10-IMPLEMENTATION-PLAN.md Phase 3).
@@ -16,8 +17,14 @@ public interface IMerchantListingService
     /// <summary>DB-driven choices for the listing form (categories, grades, reasons, brands).</summary>
     Task<ListingReferenceData> GetReferenceDataAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<MerchantListingListItem>> GetMyListingsAsync(
-        string userId, MerchantListingFilter filter, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// A bounded, most-recently-updated-first page of the caller's own listings
+    /// (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8 "every growable collection is
+    /// database-bounded" — a merchant's listing count grows without limit over time, so this
+    /// is a real page rather than the full set).
+    /// </summary>
+    Task<PagedResult<MerchantListingListItem>> GetMyListingsAsync(
+        string userId, MerchantListingFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>The merchant's own listing, or <c>null</c> when it is not theirs.</summary>
     Task<ListingDetailView?> GetMyListingAsync(

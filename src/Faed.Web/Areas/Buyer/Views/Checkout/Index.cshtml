@@ -62,7 +62,7 @@
                 <h2 class="faed-panel__title">Choose your items</h2>
                 <div class="faed-table-wrap">
                     <table class="faed-table">
-                        <caption class="faed-field__hint" style="text-align:left;caption-side:top;">
+                        <caption class="faed-field__hint faed-caption">
                             Set a quantity for each variant you want. Leave the rest at 0.
                         </caption>
                         <thead>
@@ -96,7 +96,7 @@
                                     <td>
                                         <label>
                                             <span class="faed-field__hint">Quantity for @line.Combination</span>
-                                            <input class="faed-input" style="max-width:6rem;"
+                                            <input class="faed-input faed-input--quantity"
                                                    asp-for="Form.Lines[i].Quantity"
                                                    type="number" min="0" max="@line.AvailableQuantity"
                                                    disabled="@(!line.IsSellable)" />
@@ -112,7 +112,7 @@
             <div class="faed-panel">
                 <h2 class="faed-panel__title">How you'll get it</h2>
 
-                <fieldset class="faed-field" style="border:0;padding:0;margin:0;">
+                <fieldset class="faed-field faed-fieldset-reset">
                     <legend class="faed-field__label">Fulfilment method</legend>
                     @if (checkout.CanPickup)
                     {
@@ -132,7 +132,7 @@
 
                 @if (checkout.CanPickup)
                 {
-                    <fieldset class="faed-field" data-section="pickup" style="border:0;padding:0;margin:0;">
+                    <fieldset class="faed-field faed-fieldset-reset" data-section="pickup">
                         <legend class="faed-field__label">Pickup location</legend>
                         @foreach (var location in checkout.PickupLocations)
                         {
@@ -156,7 +156,7 @@
 
                 @if (checkout.CanDeliver)
                 {
-                    <fieldset class="faed-field" data-section="delivery" style="border:0;padding:0;margin:0;">
+                    <fieldset class="faed-field faed-fieldset-reset" data-section="delivery">
                         <legend class="faed-field__label">Delivery zone</legend>
                         @foreach (var zone in checkout.DeliveryZones)
                         {

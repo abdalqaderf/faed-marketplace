@@ -1,25 +1,30 @@
-﻿@model ErrorViewModel
+@model ErrorViewModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = "Something went wrong";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
-
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
-
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+@* The unhandled-exception fallback (Program.cs "app.UseExceptionHandler("/Home/Error")").
+   Styled to match Views/Home/StatusCode.cshtml rather than the framework's default scaffold
+   markup (faed-ui-quality-gate "reject if the page looks like... a random template with Faed
+   text pasted into it"; docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §10 "error pages provide
+   recovery without information leakage"). No exception detail is shown here in any
+   environment — only the request id, which is safe to disclose and helps support correlate a
+   report. *@
+<div class="faed-page">
+    <div class="faed-empty faed-error-state">
+        <span class="faed-error-state__code">Error</span>
+        <h1 class="faed-empty__title">Something went wrong</h1>
+        <p>
+            We hit an unexpected error handling that request. Nothing was lost — try again in a
+            moment, or head back to the marketplace.
+        </p>
+        @if (Model.ShowRequestId)
+        {
+            <p class="faed-field__hint">Reference: <code>@Model.RequestId</code></p>
+        }
+        <div class="faed-page__actions faed-page__actions--center">
+            <a class="faed-btn faed-btn--primary" asp-controller="Home" asp-action="Index">Back to Faed</a>
+            <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Browse the shop</a>
+        </div>
+    </div>
+</div>

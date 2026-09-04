@@ -64,13 +64,13 @@ public sealed class MerchantListingService(
         return new ListingReferenceData(categories, grades, reasons, brands);
     }
 
-    public async Task<IReadOnlyList<MerchantListingListItem>> GetMyListingsAsync(
-        string userId, MerchantListingFilter filter, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<MerchantListingListItem>> GetMyListingsAsync(
+        string userId, MerchantListingFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var merchantId = await ResolveMerchantIdAsync(userId, cancellationToken);
         if (merchantId is null)
         {
-            return [];
+            return PagedResult<MerchantListingListItem>.Empty(Paging.NormalizePage(page), Paging.DefaultPageSize);
         }
 
         var query = db.Listings.AsNoTracking().Where(l => l.MerchantProfileId == merchantId);
@@ -109,7 +109,7 @@ public sealed class MerchantListingService(
                     .OrderByDescending(m => m.SubmittedAtUtc)
                     .Select(m => m.ReviewNote)
                     .FirstOrDefault()))
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
     }
 
     public async Task<ListingDetailView?> GetMyListingAsync(

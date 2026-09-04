@@ -5,16 +5,17 @@
 }
 
 <div class="faed-page">
-    <div class="faed-empty">
-        <div class="faed-empty__title">
+    <div class="faed-empty faed-error-state">
+        <span class="faed-error-state__code">@(isNotFound ? "404" : Model.ToString())</span>
+        <h1 class="faed-empty__title">
             @(isNotFound ? "We couldn't find that page" : $"Something went wrong ({Model})")
-        </div>
+        </h1>
         <p>
             @(isNotFound
                 ? "The listing, merchant or page you're looking for may have been removed, or the link may be out of date."
                 : "Please try again in a moment.")
         </p>
-        <div class="faed-page__actions" style="justify-content: center;">
+        <div class="faed-page__actions faed-page__actions--center">
             <a class="faed-btn faed-btn--primary" asp-controller="Home" asp-action="Index">Back to Faed</a>
             <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Browse the shop</a>
         </div>

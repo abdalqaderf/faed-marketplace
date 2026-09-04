@@ -224,6 +224,22 @@ public sealed record InventoryRow(
         : string.Join(" · ", Options.Select(o => $"{o.Option}: {o.Value}"));
 }
 
+/// <summary>
+/// Counts across a merchant's <em>entire</em> inventory, independent of which page of
+/// <see cref="InventoryRow"/> is on screen. "Low stock" reuses the same &le;3-unit convention
+/// as the public marketplace (<c>PublicMarketplaceModels.IsLowStock</c>).
+/// </summary>
+public sealed record InventorySummary(
+    int ActiveVariantCount,
+    int LowStockVariantCount,
+    int AvailableUnitsTotal,
+    int ReservedUnitsTotal)
+{
+    public const int LowStockThreshold = 3;
+
+    public static InventorySummary Empty { get; } = new(0, 0, 0, 0);
+}
+
 public sealed record InventoryAdjustmentView(
     Guid Id,
     Guid VariantId,

@@ -2,6 +2,7 @@ using Faed.Web.Data;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 using Faed.IntegrationTests.Support;
 using Microsoft.AspNetCore.Identity;
@@ -431,6 +432,103 @@ public sealed class ListingServiceTests(FaedWebApplicationFactory factory)
         Assert.Equal(ListingStatus.SoldOut, finalStatus);
     }
 
+    /// <summary>
+    /// TASK-012 Phase 2: the merchant listing list is a growable collection and must be
+    /// database-bounded like every other merchant/admin queue
+    /// (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8).
+    /// </summary>
+    [SkippableFact]
+    public async Task MerchantListings_BeyondOnePage_ArePaged_WithNoOverlapAndACorrectTotal()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ListingScope(factory);
+        var (userId, merchantId) = await scope.CreateApprovedMerchantAsync();
+        var referenceData = await scope.Listings.GetReferenceDataAsync();
+        var categoryId = referenceData.Categories[0].Id;
+        var conditionGradeId = referenceData.ConditionGrades[0].Id;
+
+        const int total = Paging.DefaultPageSize + 3;
+        var now = DateTime.UtcNow;
+        for (var i = 0; i < total; i++)
+        {
+            var listing = new Listing(
+                merchantId, categoryId, conditionGradeId, $"Paging fixture {i:000}", $"paging-fixture-{Guid.NewGuid():N}",
+                "Fixture listing for a pagination regression test.", now.AddSeconds(i));
+            scope.Db.Listings.Add(listing);
+            scope.TrackListingForCleanup(listing.Id);
+        }
+
+        await scope.Db.SaveChangesAsync();
+
+        var page1 = await scope.Listings.GetMyListingsAsync(userId, MerchantListingFilter.All, page: 1);
+        Assert.Equal(total, page1.TotalCount);
+        Assert.Equal(Paging.DefaultPageSize, page1.Items.Count);
+        Assert.True(page1.HasNextPage);
+        Assert.False(page1.HasPreviousPage);
+
+        var page2 = await scope.Listings.GetMyListingsAsync(userId, MerchantListingFilter.All, page: 2);
+        Assert.Equal(total - Paging.DefaultPageSize, page2.Items.Count);
+        Assert.True(page2.HasPreviousPage);
+        Assert.False(page2.HasNextPage);
+
+        var seenOnBothPages = page1.Items.Select(i => i.Id).Intersect(page2.Items.Select(i => i.Id));
+        Assert.Empty(seenOnBothPages);
+        Assert.Equal(total, page1.Items.Select(i => i.Id).Union(page2.Items.Select(i => i.Id)).Distinct().Count());
+    }
+
+    /// <summary>
+    /// TASK-012 Phase 2: inventory is a growable collection (every variant of every listing)
+    /// and must be database-bounded; the dashboard summary stat row must keep reflecting the
+    /// merchant's <em>entire</em> inventory even though the row table underneath it is paged.
+    /// </summary>
+    [SkippableFact]
+    public async Task MerchantInventory_BeyondOnePage_IsPaged_ButTheSummaryCoversTheWholeInventory()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new ListingScope(factory);
+        var (userId, merchantId) = await scope.CreateApprovedMerchantAsync();
+        var referenceData = await scope.Listings.GetReferenceDataAsync();
+        var categoryId = referenceData.Categories[0].Id;
+        var conditionGradeId = referenceData.ConditionGrades[0].Id;
+
+        const int total = Paging.DefaultPageSize + 2;
+        var now = DateTime.UtcNow;
+        var listing = new Listing(
+            merchantId, categoryId, conditionGradeId, "Inventory paging fixture", $"inventory-paging-{Guid.NewGuid():N}",
+            "Fixture listing for an inventory pagination regression test.", now);
+        var option = listing.AddOption("Index", now);
+        for (var i = 0; i < total; i++)
+        {
+            var value = listing.AddOptionValue(option.Id, $"V{i:000}", now);
+            listing.AddVariant($"INV-{i:000}", [value.Id], initialQuantity: 10, now);
+        }
+
+        scope.Db.Listings.Add(listing);
+        scope.TrackListingForCleanup(listing.Id);
+        await scope.Db.SaveChangesAsync();
+
+        var summary = await scope.Inventory.GetMyInventorySummaryAsync(userId);
+        Assert.Equal(total, summary.ActiveVariantCount);
+        Assert.Equal(total * 10, summary.AvailableUnitsTotal);
+
+        var page1 = await scope.Inventory.GetMyInventoryAsync(userId, page: 1);
+        Assert.Equal(total, page1.TotalCount);
+        Assert.Equal(Paging.DefaultPageSize, page1.Items.Count);
+
+        var page2 = await scope.Inventory.GetMyInventoryAsync(userId, page: 2);
+        Assert.Equal(total - Paging.DefaultPageSize, page2.Items.Count);
+
+        var seenOnBothPages = page1.Items.Select(r => r.VariantId).Intersect(page2.Items.Select(r => r.VariantId));
+        Assert.Empty(seenOnBothPages);
+        Assert.Equal(
+            total, page1.Items.Select(r => r.VariantId).Union(page2.Items.Select(r => r.VariantId)).Distinct().Count());
+
+        // The summary is unaffected by which page was requested — it is not derived from
+        // page1/page2's rows.
+        var summaryAfterPaging = await scope.Inventory.GetMyInventorySummaryAsync(userId);
+        Assert.Equal(summary, summaryAfterPaging);
+    }
+
     private static ListingDetailsInput ToInput(ListingDetailView listing) => new(
         listing.CategoryId,
         listing.BrandId,
@@ -465,6 +563,10 @@ public sealed class ListingServiceTests(FaedWebApplicationFactory factory)
         private readonly List<Guid> _merchantProfileIds = [];
 
         public IMerchantListingService Listings => _scope.ServiceProvider.GetRequiredService<IMerchantListingService>();
+
+        /// <summary>Registers a listing created directly through <see cref="Db"/> (rather than
+        /// <see cref="CreateSubmittableListingAsync"/>) for the same FK-safe cleanup on dispose.</summary>
+        public void TrackListingForCleanup(Guid listingId) => _listingIds.Add(listingId);
 
         public IInventoryService Inventory => _scope.ServiceProvider.GetRequiredService<IInventoryService>();
 

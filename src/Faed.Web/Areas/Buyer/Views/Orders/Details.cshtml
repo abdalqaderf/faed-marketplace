@@ -166,7 +166,7 @@
             <p><strong aria-hidden="true">@DisputeStatusDisplay.Stars(mine.Rating)</strong> @mine.Rating / 5</p>
             @if (!string.IsNullOrWhiteSpace(mine.Comment))
             {
-                <p style="white-space:pre-wrap;">@mine.Comment</p>
+                <p class="faed-prewrap">@mine.Comment</p>
             }
             <p class="faed-panel__hint">Posted @AmmanTime.FormatDate(mine.CreatedAtUtc).</p>
         </div>
@@ -179,8 +179,7 @@
             <form asp-action="Review" asp-route-id="@order.Id" method="post">
                 <div class="faed-field">
                     <label class="faed-field__label" for="review-rating">Rating (1–5)</label>
-                    <input class="faed-input" id="review-rating" name="Rating" type="number" min="1" max="5" value="5" required
-                           style="max-width:6rem;" />
+                    <input class="faed-input faed-input--quantity" id="review-rating" name="Rating" type="number" min="1" max="5" value="5" required />
                 </div>
                 <div class="faed-field">
                     <label class="faed-field__label" for="review-comment">Comment (optional)</label>

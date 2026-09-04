@@ -130,29 +130,29 @@
 
             @if (d.SellerCanMarkShipped)
             {
-                <form asp-action="Shipped" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                <form asp-action="Shipped" asp-route-id="@d.Id" method="post" class="faed-field faed-field--spaced">
                     <label class="faed-field__label" for="shipped-reference">Shipment reference (optional)</label>
                     <input class="faed-input" id="shipped-reference" name="shipmentReference" maxlength="200" />
-                    <button type="submit" class="faed-btn faed-btn--primary" style="margin-top:0.5rem;">Mark shipped</button>
+                    <button type="submit" class="faed-btn faed-btn--primary faed-action-spaced">Mark shipped</button>
                 </form>
             }
 
             @if (d.SellerCanSetShipmentReference && !d.SellerCanMarkShipped)
             {
-                <form asp-action="ShipmentReference" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                <form asp-action="ShipmentReference" asp-route-id="@d.Id" method="post" class="faed-field faed-field--spaced">
                     <label class="faed-field__label" for="reference">Shipment reference</label>
                     <input class="faed-input" id="reference" name="shipmentReference" maxlength="200"
                            value="@d.ShipmentReference" required />
-                    <button type="submit" class="faed-btn faed-btn--ghost" style="margin-top:0.5rem;">Save reference</button>
+                    <button type="submit" class="faed-btn faed-btn--ghost faed-action-spaced">Save reference</button>
                 </form>
             }
 
             @if (d.CanCancel)
             {
-                <form asp-action="Cancel" asp-route-id="@d.Id" method="post" class="faed-field" style="margin-top:1rem;">
+                <form asp-action="Cancel" asp-route-id="@d.Id" method="post" class="faed-field faed-field--spaced">
                     <label class="faed-field__label" for="cancel-reason">Cancellation reason</label>
                     <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" required />
-                    <button type="submit" class="faed-btn faed-btn--danger" style="margin-top:0.5rem;">Cancel deal</button>
+                    <button type="submit" class="faed-btn faed-btn--danger faed-action-spaced">Cancel deal</button>
                 </form>
             }
         </div>
@@ -207,7 +207,7 @@
             <p><span aria-hidden="true">@DisputeStatusDisplay.Stars(mine.Rating)</span> @mine.Rating / 5</p>
             @if (!string.IsNullOrWhiteSpace(mine.Comment))
             {
-                <p style="white-space:pre-wrap;">@mine.Comment</p>
+                <p class="faed-prewrap">@mine.Comment</p>
             }
         </div>
     }
@@ -219,8 +219,8 @@
             <form asp-action="Review" asp-route-id="@d.Id" method="post">
                 <div class="faed-field">
                     <label class="faed-field__label" for="review-rating">Rating (1–5)</label>
-                    <input class="faed-input" id="review-rating" name="Rating" type="number" min="1" max="5" value="5"
-                           required style="max-width:6rem;" />
+                    <input class="faed-input faed-input--quantity" id="review-rating" name="Rating" type="number" min="1" max="5" value="5"
+                           required />
                 </div>
                 <div class="faed-field">
                     <label class="faed-field__label" for="review-comment">Comment (optional)</label>

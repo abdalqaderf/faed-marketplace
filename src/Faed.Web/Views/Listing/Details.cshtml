@@ -48,6 +48,7 @@
         </div>
 
         <div class="faed-listing-info">
+            <p class="faed-kicker">@Model.CategoryName &middot; reviewed listing</p>
             <h1 class="faed-listing-info__title">@Model.Title</h1>
 
             <a class="faed-trust-line" asp-controller="Store" asp-action="Index" asp-route-slug="@Model.MerchantSlug">
@@ -85,7 +86,7 @@
                 }
             </div>
 
-            <dl class="faed-condition-block">
+            <dl class="faed-condition-block" aria-label="Condition and discount disclosure">
                 <dt>Condition</dt>
                 <dd>Grade @Model.ConditionCode &mdash; @Model.ConditionName. @Model.ConditionDescription</dd>
                 <dt>Why discounted</dt>
@@ -101,6 +102,11 @@
                 </dd>
             </dl>
 
+            <div class="faed-purchase-panel">
+                <div class="faed-purchase-panel__heading">
+                    <span>Choose your item</span>
+                    <small>Stock is held at variant level</small>
+                </div>
             @if (Model.Options.Count > 0)
             {
                 <div class="faed-variant-picker" data-variant-picker>
@@ -159,6 +165,7 @@
                     <p class="faed-cta-row__hint">Wholesale offers are between verified merchants — sign in as an approved merchant to negotiate.</p>
                 }
             </div>
+            </div>
 
             @* Short "fulfillment summary" that closes the purchase block (faed-commerce-ux
                "Listing detail order"). The exact pickup locations and delivery zones are shown
@@ -194,7 +201,7 @@
             <div class="faed-section__body">
                 @if (Model.DefectPhotos.Count > 0)
                 {
-                    <h3 class="faed-panel__title" style="font-size:0.95rem;">Defect photos</h3>
+                    <h3 class="faed-panel__title faed-panel__title--sm">Defect photos</h3>
                     <div class="faed-thumb-grid mb-4">
                         @foreach (var photo in Model.DefectPhotos)
                         {
@@ -207,7 +214,7 @@
                 }
                 @if (Model.PackagingPhotos.Count > 0)
                 {
-                    <h3 class="faed-panel__title" style="font-size:0.95rem;">Packaging photos</h3>
+                    <h3 class="faed-panel__title faed-panel__title--sm">Packaging photos</h3>
                     <div class="faed-thumb-grid">
                         @foreach (var photo in Model.PackagingPhotos)
                         {

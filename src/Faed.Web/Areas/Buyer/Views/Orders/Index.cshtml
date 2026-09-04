@@ -33,6 +33,7 @@
                         <th scope="col">Total</th>
                         <th scope="col">Fulfilment</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,6 +46,7 @@
                             <td>JOD @order.Total.ToString("0.000")</td>
                             <td>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</td>
                             <td><span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@order.Id">View order</a></td>
                         </tr>
                     }
                 </tbody>

@@ -150,8 +150,8 @@
                         <span class="faed-field__error" asp-validation-for="Form.ConditionGradeId"></span>
                     </div>
 
-                    <fieldset class="faed-field faed-field--full" style="border:0; padding:0; margin:0 0 var(--faed-space-4);">
-                        <legend class="faed-field__label" style="padding:0;">Why discounted</legend>
+                    <fieldset class="faed-field faed-field--full faed-fieldset-reset">
+                        <legend class="faed-field__label">Why discounted</legend>
                         <div class="faed-checkbox-group">
                             @foreach (var reason in referenceData.DiscountReasons)
                             {
@@ -254,7 +254,7 @@
             @foreach (var option in listing.Options)
             {
                 <div class="mb-3">
-                    <div class="faed-page__actions" style="justify-content: space-between;">
+                    <div class="faed-page__actions faed-page__actions--split">
                         <strong>@option.Name</strong>
                         @if (canEdit)
                         {
@@ -273,7 +273,7 @@
                                 {
                                     <form asp-action="RemoveOptionValue" asp-route-id="@listing.Id"
                                           asp-route-optionId="@option.Id" asp-route-optionValueId="@value.Id" method="post" class="d-inline">
-                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm" style="min-height:auto;padding:0 0.35rem;" aria-label="Remove @value.Value">&times;</button>
+                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm faed-btn--icon" aria-label="Remove @value.Value">&times;</button>
                                     </form>
                                 }
                             </span>
@@ -284,8 +284,8 @@
                         <form asp-action="AddOptionValue" asp-route-id="@listing.Id" method="post" class="mt-2 d-flex gap-2">
                             <input type="hidden" name="AddOptionValue.OptionId" value="@option.Id" />
                             <label class="visually-hidden" for="add-value-@option.Id">Add a @option.Name value</label>
-                            <input class="faed-input" id="add-value-@option.Id" name="AddOptionValue.Value"
-                                   placeholder="Add a value" style="max-width:12rem;" />
+                            <input class="faed-input faed-input--compact" id="add-value-@option.Id" name="AddOptionValue.Value"
+                                   placeholder="Add a value" />
                             <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">Add</button>
                         </form>
                     }
@@ -296,7 +296,7 @@
             {
                 <form asp-action="AddOption" asp-route-id="@listing.Id" method="post" class="d-flex gap-2 mb-4" novalidate>
                     <label class="visually-hidden" asp-for="AddOption.Name">Option name</label>
-                    <input class="faed-input" asp-for="AddOption.Name" placeholder="e.g. Size or Colour" style="max-width:16rem;" />
+                    <input class="faed-input faed-input--medium" asp-for="AddOption.Name" placeholder="e.g. Size or Colour" />
                     <button type="submit" class="faed-btn faed-btn--ghost">Add option</button>
                 </form>
             }
@@ -415,7 +415,7 @@
                     _ => listing.PackagingPhotos,
                 };
 
-                <h3 class="faed-panel__title" style="font-size:0.95rem;">@(ListingStatusDisplay.MediaTypeLabel(group))s</h3>
+                <h3 class="faed-panel__title faed-panel__title--sm">@(ListingStatusDisplay.MediaTypeLabel(group))s</h3>
                 @if (images.Count == 0)
                 {
                     <p class="faed-field__hint mb-3">None added.</p>

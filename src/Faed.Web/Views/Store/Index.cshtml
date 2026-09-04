@@ -5,7 +5,9 @@
 
 <div class="faed-page faed-page--wide">
     <div class="faed-store-header">
+        <div class="faed-store-header__monogram" aria-hidden="true">@Model.Merchant.BusinessName.Substring(0, 1).ToUpperInvariant()</div>
         <div class="faed-store-header__identity">
+            <p class="faed-kicker">Merchant storefront</p>
             <h1 class="faed-store-header__name">
                 @Model.Merchant.BusinessName
                 @if (Model.Merchant.IsVerified)
@@ -19,6 +21,7 @@
                 Member since @AmmanTime.FormatDate(Model.Merchant.MemberSinceUtc)
                 &middot; @Model.Merchant.LiveListingCount active @(Model.Merchant.LiveListingCount == 1 ? "listing" : "listings")
             </p>
+            <p class="faed-store-header__assurance">Business identity reviewed by Faed before selling access was granted.</p>
         </div>
     </div>
 
@@ -40,7 +43,7 @@
                         <span class="faed-field__hint">@review.ReviewerLabel · @AmmanTime.FormatDate(review.CreatedAtUtc)</span>
                         @if (!string.IsNullOrWhiteSpace(review.Comment))
                         {
-                            <p style="white-space:pre-wrap;margin:0.25rem 0 0;">@review.Comment</p>
+                            <p class="faed-review-comment">@review.Comment</p>
                         }
                     </li>
                 }

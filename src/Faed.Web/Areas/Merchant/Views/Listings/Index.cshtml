@@ -33,7 +33,7 @@
         }
     </nav>
 
-    @if (Model.Items.Count == 0)
+    @if (Model.Items.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No listings here yet</div>
@@ -58,10 +58,11 @@
                         <th>Variants</th>
                         <th>Available</th>
                         <th>Updated</th>
+                        <th><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model.Items)
+                    @foreach (var item in Model.Items.Items)
                     {
                         <tr>
                             <td>
@@ -84,10 +85,13 @@
                             <td>@item.VariantCount</td>
                             <td>@item.AvailableUnits</td>
                             <td>@AmmanTime.FormatDate(item.UpdatedAtUtc)</td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Edit" asp-route-id="@item.Id">Manage</a></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Items, "Index", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "listing")' />
     }
 </div>
