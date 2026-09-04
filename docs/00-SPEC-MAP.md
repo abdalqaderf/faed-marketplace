@@ -51,21 +51,3 @@ The implementation queue is already prepared:
 11. `TASK-011-HARDENING-AND-DEMO.md`
 
 Execute tasks in order unless the product owner explicitly changes the plan.
-
-
-## Project skill system
-
-The repository also includes project-specific Claude skills under:
-
-```text
-.claude/skills/
-```
-
-These skills are operational aids, especially for UI/UX work.
-They do not replace `/docs`, but they make the agent apply Faed-specific design behavior consistently.
-
-
-## Foundation environment
-
-- `docs/22-VISUAL-STUDIO-BASELINE.md` — how the developer creates the initial MVC + Identity project.
-- `docs/23-GITHUB-REPOSITORY-POLICY.md` — what belongs in Git/GitHub and what stays local.

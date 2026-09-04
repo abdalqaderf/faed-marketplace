@@ -1,4 +1,4 @@
-/* Faed design-token + component layer (docs/07-UI-UX-SPEC.md §13, .claude/skills/faed-ui-direction).
+/* Faed design-token + component layer (docs/07-UI-UX-SPEC.md §13).
    Bootstrap 5 is the grid/reset foundation; the visual identity lives here. */
 
 :root {
@@ -736,7 +736,7 @@ a:hover {
 }
 
 /* =====================================================================================
-   Public marketplace (tasks/TASK-005-PUBLIC-MARKETPLACE.md, .claude/skills/faed-ui-direction)
+   Public marketplace (tasks/TASK-005-PUBLIC-MARKETPLACE.md)
    ===================================================================================== */
 
 /* ---- Section header (Home) ---- */

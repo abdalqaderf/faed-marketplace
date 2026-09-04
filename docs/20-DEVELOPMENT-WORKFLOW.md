@@ -61,13 +61,11 @@ Do not let code silently become the only place where a product decision lives.
 For any UI task:
 
 1. read the relevant task file;
-2. load the relevant project skills from `.claude/skills/`;
-3. use `/modern-web-guidance` and `/design-system` when available before implementation;
-4. build the page/flow;
-5. run `faed-ui-quality-gate`;
-6. run `faed-responsive-accessibility`;
-7. use `/design-critique`, `/accessibility-review`, and `/ux-copy` when available;
-8. revise until the page no longer looks generic, default Bootstrap, or obviously AI-generated.
+2. apply the Faed-specific UI direction, commerce, dashboard, and accessibility rules
+   established in earlier phases (see `07-UI-UX-SPEC.md`);
+3. build the page/flow;
+4. check responsive and accessibility behavior before calling the page done;
+5. revise until the page no longer looks generic, default Bootstrap, or obviously AI-generated.
 
 
 ## Foundation workflow

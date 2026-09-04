@@ -5,11 +5,9 @@
 
 @* The unhandled-exception fallback (Program.cs "app.UseExceptionHandler("/Home/Error")").
    Styled to match Views/Home/StatusCode.cshtml rather than the framework's default scaffold
-   markup (faed-ui-quality-gate "reject if the page looks like... a random template with Faed
-   text pasted into it"; docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §10 "error pages provide
-   recovery without information leakage"). No exception detail is shown here in any
-   environment — only the request id, which is safe to disclose and helps support correlate a
-   report. *@
+   markup, and provides recovery without information leakage (docs/08-SECURITY-AND-PRIVACY.md).
+   No exception detail is shown here in any environment — only the request id, which is safe
+   to disclose and helps support correlate a report. *@
 <div class="faed-page">
     <div class="faed-empty faed-error-state">
         <span class="faed-error-state__code">Error</span>

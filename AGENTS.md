@@ -275,47 +275,15 @@ For stock-sensitive features, passing the SQL Server concurrency test is mandato
 ---
 
 
-## 11. UI skill system
-
-This repository includes project-specific Claude skills under `.claude/skills/`.
+## 11. UI rules
 
 When a task touches UI, UX, Razor views, CSS, responsive layout, forms, dashboards,
-product cards, listing pages, merchant/admin screens, or user-facing copy, load the
-relevant project skill(s) before implementation.
+product cards, listing pages, or merchant/admin screens, apply `docs/07-UI-UX-SPEC.md`
+in full, including its mobile-first, accessibility, and commerce-presentation rules.
 
-### Project UI skills
-- `faed-ui-direction`
-- `faed-commerce-ux`
-- `faed-marketplace-pages`
-- `faed-dashboard-ux`
-- `faed-responsive-accessibility`
-- `faed-ui-quality-gate`
-
-### Claude account / built-in skills to use when available
-- `/modern-web-guidance`
-- `/design-system`
-- `/design-critique`
-- `/accessibility-review`
-- `/ux-copy`
-
-### Required usage pattern
-
-For public marketplace UI:
-- use `faed-ui-direction`
-- use `faed-commerce-ux`
-- use `faed-marketplace-pages`
-
-For merchant/admin UI:
-- use `faed-ui-direction`
-- use `faed-dashboard-ux`
-
-Before declaring any UI task complete:
-- use `faed-responsive-accessibility`
-- use `faed-ui-quality-gate`
-- and run `/design-critique`, `/accessibility-review`, and `/ux-copy` when available.
-
-Project skills operationalize Faed-specific UI rules and help prevent generic AI-looking output.
-They do not override the product specifications in `/docs`.
+Before declaring any UI task complete, re-check responsive behavior and accessibility,
+and revise until the page no longer looks generic, default Bootstrap, or obviously
+AI-generated.
 
 
 ## Visual Studio baseline ownership
@@ -346,7 +314,6 @@ Agents must not:
 - proceed if the baseline has a blocking setup error.
 
 See:
-- `docs/22-VISUAL-STUDIO-BASELINE.md`
 - `tasks/TASK-001-FOUNDATION.md`
 
 ## Git and repository policy
@@ -355,12 +322,8 @@ Project instructions are source-controlled.
 
 Commit:
 - `AGENTS.md`;
-- `CLAUDE.md`;
-- `.claude/skills/`;
-- `.github/copilot-instructions.md`;
 - `/docs`;
-- `/tasks`;
-- application/test source;
+- application source;
 - migrations;
 - non-secret configuration.
 
@@ -371,8 +334,6 @@ Do not commit:
 - local uploads/private storage;
 - local databases;
 - packaging/reference artifacts excluded by `.gitignore`.
-
-See `docs/23-GITHUB-REPOSITORY-POLICY.md`.
 
 ## 12. Agent behavior
 

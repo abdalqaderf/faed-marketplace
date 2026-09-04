@@ -18,10 +18,9 @@ public interface IMerchantListingService
     Task<ListingReferenceData> GetReferenceDataAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// A bounded, most-recently-updated-first page of the caller's own listings
-    /// (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8 "every growable collection is
-    /// database-bounded" — a merchant's listing count grows without limit over time, so this
-    /// is a real page rather than the full set).
+    /// A bounded, most-recently-updated-first page of the caller's own listings — a
+    /// merchant's listing count grows without limit over time, so this is a real page rather
+    /// than the full set.
     /// </summary>
     Task<PagedResult<MerchantListingListItem>> GetMyListingsAsync(
         string userId, MerchantListingFilter filter, int page = 1, CancellationToken cancellationToken = default);

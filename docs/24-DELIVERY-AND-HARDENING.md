@@ -133,8 +133,8 @@ these same transactional paths, adding end-to-end coverage. All green.
 
 ## 7. Responsive QA / accessibility pass
 
-The public, merchant and admin UIs were built against the project skills
-(`.claude/skills/faed-*`, `docs/07-UI-UX-SPEC.md`) in TASK-004–010: mobile-first layout,
+The public, merchant and admin UIs were built against the Faed-specific UI direction and
+`docs/07-UI-UX-SPEC.md` in TASK-004–010: mobile-first layout,
 semantic landmarks, `scope`-annotated tables inside `overflow-x` wrappers, non-colour status
 badges (`Rendering/*StatusDisplay`), `role="status"` / `role="alert"` messaging,
 `<fieldset>`/`<legend>` groupings, explicit empty and error states, and a branded

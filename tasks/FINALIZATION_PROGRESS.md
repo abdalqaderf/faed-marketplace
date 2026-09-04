@@ -10,9 +10,14 @@
 
 **Project Phase:** Finalization after Phase One submission  
 **Overall Status:** IN PROGRESS  
-**Current Task:** TASK-018  
-**Next Agent:** Codex  
-**Next Action:** Perform the repository cleanup audit using the current repository and `FINAL_DEMO_AUDIT.md`; TASK-017 found no blocking issues, so no revisit of TASK-016 is needed.
+**Current Task:** TASK-020  
+**Next Agent:** Claude Code  
+**Next Action:** Execute `TASK-020-CLAUDE-README-FINAL-DOCS.md` — rewrite `README.md` and
+finalize retained documentation, using the cleaned repository plus `REPOSITORY_CLEANUP_REPORT.md`
+as input. Before deleting `PROJECT_STATUS.md`, `FINAL_DEMO_AUDIT.md`, `FINAL_RUNTIME_AUDIT.md`,
+`FINAL_RUNTIME_FIX_REPORT.md`, `DEMO_DATA_REPORT.md`, or `REPOSITORY_CLEANUP_AUDIT.md`, extract
+anything the README still needs from them (demo accounts, known limitations) — per TASK-019's
+cleanup ordering, they were intentionally not deleted yet.
 
 ---
 
@@ -52,8 +57,8 @@ If a task is blocked, do **not** advance to the next task unless the blocker is 
 | TASK-015 | Claude Code | Fix validated runtime issues | COMPLETED WITH NOTES | `FINAL_RUNTIME_FIX_REPORT.md` |
 | TASK-016 | Claude Code | Realistic demo data and media | COMPLETED | `DEMO_DATA_REPORT.md` |
 | TASK-017 | Claude Code (deviation; assigned Codex) | Review populated runtime/demo | COMPLETED WITH NOTES | `FINAL_DEMO_AUDIT.md` |
-| TASK-018 | Codex | Repository cleanup audit | NOT STARTED | `REPOSITORY_CLEANUP_AUDIT.md` |
-| TASK-019 | Claude Code | Execute repository cleanup | NOT STARTED | `REPOSITORY_CLEANUP_REPORT.md` |
+| TASK-018 | Codex (assigned); performed by Claude Code (deviation) | Repository cleanup audit | COMPLETED WITH NOTES | `REPOSITORY_CLEANUP_AUDIT.md` |
+| TASK-019 | Claude Code | Execute repository cleanup | COMPLETED | `REPOSITORY_CLEANUP_REPORT.md` |
 | TASK-020 | Claude Code | Rewrite README/final docs | NOT STARTED | Updated `README.md` |
 | TASK-021 | Codex | Final submission audit | NOT STARTED | `FINAL_SUBMISSION_AUDIT.md` |
 
@@ -180,21 +185,24 @@ If completed successfully:
 
 ## TASK-018 — Repository Cleanup Audit
 
-**Agent:** Codex  
+**Agent:** Codex (assigned). **Actually performed by:** Claude Code, at the user's explicit
+direction after being asked and choosing to proceed despite the assignment mismatch — the
+same recorded-deviation pattern used for TASK-017. This is a recorded deviation, not a
+change to Decision #1/#2.  
 **Task File:** `TASK-018-CODEX-REPOSITORY-CLEANUP-AUDIT.md`  
-**Status:** NOT STARTED  
+**Status:** COMPLETED WITH NOTES  
 **Prerequisites:** TASK-017 completed  
 **Expected Output:** `REPOSITORY_CLEANUP_AUDIT.md`
 
 ### Completion Record
 
-- Date:
-- Result:
-- Summary:
-- KEEP decisions:
-- REMOVE decisions:
-- CONSOLIDATE decisions:
-- Blockers/notes:
+- Date: 2026-09-05
+- Result: COMPLETED WITH NOTES — REVIEW ONLY, no deletions performed; full KEEP/REMOVE/CONSOLIDATE/GENERATED classification produced for every path the task file required, with dependency/stale-reference impact measured directly via `git grep` rather than assumed.
+- Summary: Inspected the tracked repository tree (`git ls-files`), confirmed a clean working tree, and confirmed `reference/`, `MANIFEST.json`, `MERGE_NOTES.md`, `QUALITY-CHECK.md`, `.vs/`, `bin/`, `obj/`, and `App_Data/private-storage/` are already untracked/gitignored (no Git action needed or possible on them). Measured how many source files actually cite each finalization-file candidate before recommending removal, and found the master plan's original draft removal list is unsafe to apply as-is for two items: `AGENTS.md` (64 rationale citations across ~50 files under `src/`) and `docs/00-20` + `docs/adr/*` (564 citations across ~150 files) are cited pervasively in code comments as the "why" behind business rules, per `docs/00-SPEC-MAP.md`'s own rule to reference specs instead of duplicating rules in comments. Deleting them as originally drafted would create 600+ dangling references, which directly conflicts with the master plan's own Definition of Done #10 ("no stale references ... remain"). Recommended KEEPING `AGENTS.md` and `docs/00-20`/`docs/adr/*` by default, and confirmed the rest of the originally-drafted removal list (`.claude/`, `CLAUDE.md`, `START_PROMPT.md`, `.github/copilot-instructions.md`, `docs/21`, `docs/22`, `docs/23`, `docs/25`, `tests/`, `PROJECT_STATUS.md`, the finalization-sequence report files) has zero-to-low source-reference cost and can proceed as drafted. Also found and flagged a pre-existing duplicate-numbering issue (`docs/24-DELIVERY-AND-HARDENING.md` and `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` share the "24" prefix) and confirmed no secrets exist in tracked `appsettings.*` files.
+- KEEP decisions: `AGENTS.md`; `docs/00-SPEC-MAP.md` … `docs/20-DEVELOPMENT-WORKFLOW.md`; `docs/adr/0001-0007`; `docs/24-DELIVERY-AND-HARDENING.md` (or fold into `DEPLOYMENT.md`); `src/Faed.Web/**`; `Faed.slnx` (edited); `Directory.Build.props`; `.editorconfig`; `.gitignore` (edited); `README.md`/`DEPLOYMENT.md` (rewritten by TASK-020); `.github/workflows/ci.yml` (rewritten to drop test/SQL Server steps, or removed).
+- REMOVE decisions: `tests/Faed.UnitTests/`, `tests/Faed.IntegrationTests/` (with `Faed.slnx`/CI updates); `.claude/`; `CLAUDE.md`; `START_PROMPT.md`; `.github/copilot-instructions.md`; `docs/21-CLAUDE-SKILLS-USAGE.md`; `docs/22-VISUAL-STUDIO-BASELINE.md`; `docs/23-GITHUB-REPOSITORY-POLICY.md`; `docs/25-FINAL-VISUAL-DESIGN-POLISH-PLAN.md`; `PROJECT_STATUS.md`; `FINAL_DEMO_AUDIT.md`, `FINAL_RUNTIME_AUDIT.md`, `FINAL_RUNTIME_FIX_REPORT.md`, `DEMO_DATA_REPORT.md`, `REPOSITORY_CLEANUP_AUDIT.md` (once TASK-020/021 have extracted anything still needed for the README); `tasks/` (only as the very last step, once the tracker records the sequence finished — not mid-sequence).
+- CONSOLIDATE decisions: `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` — remove the file but first edit its 6 direct source-comment citations to point at a permanent doc instead of a defunct plan file; `docs/23-GITHUB-REPOSITORY-POLICY.md`'s repo-hygiene guidance may be folded into a few sentences of `DEPLOYMENT.md` instead of being deleted outright, at the user's discretion.
+- Blockers/notes: No blocker to completing the audit itself. One decision needs explicit user confirmation before TASK-019 deletes anything: whether to accept this audit's recommendation to keep `AGENTS.md`/`docs/00-20`/`docs/adr/*` (default), or override it and accept editing ~600 source comments to remove them as the master plan's draft list originally specified. Full evidence and an ordered execution checklist are in `REPOSITORY_CLEANUP_AUDIT.md` §C–F.
 
 ### Handoff
 
@@ -210,22 +218,60 @@ If completed successfully:
 
 **Agent:** Claude Code  
 **Task File:** `TASK-019-CLAUDE-REPOSITORY-CLEANUP.md`  
-**Status:** NOT STARTED  
+**Status:** COMPLETED  
 **Prerequisites:** TASK-018 completed  
 **Required Input:** `REPOSITORY_CLEANUP_AUDIT.md`  
 **Expected Output:** `REPOSITORY_CLEANUP_REPORT.md`
 
 ### Completion Record
 
-- Date:
-- Result:
-- Backup/tag created:
-- Summary:
-- Removed:
-- Retained:
-- Verification:
-- Files created/changed:
-- Blockers/notes:
+- Date: 2026-09-05
+- Result: COMPLETED — the blocking decision from TASK-018 was put to the user first (keep vs.
+  remove `AGENTS.md`/`docs/00-20`/`docs/adr/*`); the user chose **keep** (the audit's default
+  recommendation), so no large-scale source-comment rewrite was performed. The rest of the
+  audit's classification was executed directly.
+- Backup/tag created: local-only tag `pre-cleanup-2026-09-05` at the pre-cleanup commit
+  (`739591f`), created before any deletion; not pushed.
+- Summary: Removed both test projects and their `Faed.slnx` entries; rewrote
+  `.github/workflows/ci.yml` to restore+build only; removed `.claude/`, `CLAUDE.md`,
+  `START_PROMPT.md`, `.github/copilot-instructions.md`, `docs/21`, `docs/22`, `docs/23`,
+  `docs/25`, and `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` (which also resolved a pre-existing
+  duplicate "24" numbering collision — only `docs/24-DELIVERY-AND-HARDENING.md` remains "24").
+  Fixed every stale source/doc reference this created (13 files: 4 source-comment path
+  citations, 6 `docs/24-FINAL-UI-UX-COMPLETION-PLAN.md` citations replaced with plain-language
+  rationale, `docs/00-SPEC-MAP.md`, `docs/20-DEVELOPMENT-WORKFLOW.md`, `docs/24-DELIVERY-AND-HARDENING.md`,
+  and `AGENTS.md`'s own UI-skill/VS-baseline/Git-policy sections). Updated `.gitignore`'s header
+  comment to match what's actually kept. Deleted local untracked `bin/`/`obj/` build output;
+  `.vs/` was left in place (locked by an open Visual Studio instance, zero repository impact).
+  `reference/`, `MANIFEST.json`, `MERGE_NOTES.md`, `QUALITY-CHECK.md` were deliberately left in
+  place — untracked, zero effect on the submitted repository, and one file
+  (`reference/ORIGINAL-PROJECT-BRIEF-AR.txt`) is irreplaceable with no Git history backing it up.
+- Removed: full list in `REPOSITORY_CLEANUP_REPORT.md` §C.
+- Retained: `AGENTS.md`, `docs/00-20`, `docs/adr/*` (per the user's decision), `docs/24-DELIVERY-AND-HARDENING.md`,
+  `README.md`/`DEPLOYMENT.md` (TASK-020's job), and — deliberately not yet deleted, per the
+  audit's own ordering — `PROJECT_STATUS.md`, `FINAL_DEMO_AUDIT.md`, `FINAL_RUNTIME_AUDIT.md`,
+  `FINAL_RUNTIME_FIX_REPORT.md`, `DEMO_DATA_REPORT.md`, `REPOSITORY_CLEANUP_AUDIT.md`, and all of
+  `tasks/` (still the live coordination file set for this sequence).
+- Verification: clean `dotnet restore` PASS (single project, `Faed.Web`); Release build PASS
+  (0 warnings/0 errors); `dotnet ef migrations has-pending-model-changes` → no pending changes;
+  `dotnet ef migrations list` → all 10 migrations present; `dotnet ef database update` against a
+  freshly created, previously-nonexistent LocalDB database (`Faed_Task019CleanupVerification`)
+  → all 10 migrations applied cleanly; Development startup smoke test PASS (clean seed/log
+  output, "Now listening on..."); HTTP smoke test PASS for `/`, `/Shop`,
+  `/Identity/Account/Register`, and the edited `/css/faed.css` (all 200). No test suite was run
+  in this task — the test projects were deleted as this task's own first step; the last
+  complete test-suite result (464/464 PASS) was already recorded by TASK-017/018 earlier the
+  same day, before any source changed here beyond stale-citation comment edits.
+- Files created/changed: full list in `REPOSITORY_CLEANUP_REPORT.md` §G. No functional/behavioral
+  code changed — every `src/Faed.Web/**` edit is a comment-only fix for a citation to a file this
+  task deleted. No new migration was needed. All changes are staged but not committed (per "only
+  commit when asked").
+- Blockers/notes: No blocker. A `dotnet ef database drop --force` against the existing
+  Development database was attempted for a stricter drop-and-recreate test (matching the
+  pattern used in TASK-016/017) but was blocked by this session's auto-mode safety classifier
+  as a destructive action; verification proceeded instead against a distinct, newly created
+  database name, which verifies the same claim without touching existing demo data. `.vs/`
+  could not be deleted (locked by Visual Studio); harmless, untracked, no repository impact.
 
 ### Handoff
 
@@ -368,6 +414,28 @@ Do not delete previous entries.
 - Role/route checks: Anonymous, Buyer, Pending Merchant, Approved Merchant, Admin all verified via real authenticated HTTP sessions; authorization boundaries correct in both directions; no unhandled exceptions or broken assets
 - Output: FINAL_DEMO_AUDIT.md
 - Next: TASK-018 / Codex
+
+[2026-09-05] TASK-018 — COMPLETED WITH NOTES (performed by Claude Code, assigned Codex; deviation approved by user)
+- Mode: REVIEW ONLY, no deletions
+- Classified every path the task file required as KEEP/REMOVE/CONSOLIDATE/GENERATED-LOCAL-ONLY
+- Main finding: the master plan's draft removal list for AGENTS.md and docs/00-20/adr is unsafe as written — 64 and 564 source-comment citations respectively would go stale, conflicting with the plan's own "no stale references" Definition of Done; recommended KEEPING those files by default instead
+- Everything else in the original draft removal list (.claude/, CLAUDE.md, START_PROMPT.md, copilot-instructions.md, docs/21-23, docs/25, tests/, PROJECT_STATUS.md) confirmed safe to remove with low/zero source impact
+- Also flagged: duplicate "24" numbering between docs/24-DELIVERY-AND-HARDENING.md and docs/24-FINAL-UI-UX-COMPLETION-PLAN.md; no secrets found in tracked appsettings files
+- Output: REPOSITORY_CLEANUP_AUDIT.md
+- Next: TASK-019 / Claude Code (needs user confirmation on the AGENTS.md/docs KEEP-vs-REMOVE decision before deletions begin)
+
+[2026-09-05] TASK-019 — COMPLETED
+- User decision: KEEP AGENTS.md and docs/00-20/adr (audit's default recommendation); no large-scale comment rewrite performed
+- Removed: both test projects + Faed.slnx entries; CI rewritten to restore+build only; .claude/, CLAUDE.md, START_PROMPT.md, .github/copilot-instructions.md; docs/21, 22, 23, 25, and docs/24-FINAL-UI-UX-COMPLETION-PLAN.md (resolving the duplicate "24" numbering); local bin/obj build output
+- Stale references fixed: 13 files (4 source-comment path citations, 6 docs/24-FINAL-UI-UX-COMPLETION-PLAN.md citations, docs/00-SPEC-MAP.md, docs/20, docs/24-DELIVERY-AND-HARDENING.md, AGENTS.md's own UI-skill/VS-baseline/Git-policy sections, .gitignore header)
+- Deliberately not yet deleted (per audit ordering): PROJECT_STATUS.md, FINAL_*.md, DEMO_DATA_REPORT.md, REPOSITORY_CLEANUP_AUDIT.md, tasks/
+- Build: PASS (Release, 0 warnings, 0 errors); restore now resolves a single project
+- Migrations: no pending model changes; all 10 present; applied cleanly to a fresh isolated database
+- Startup/HTTP smoke: PASS (Development startup clean; /, /Shop, /Identity/Account/Register, /css/faed.css all 200)
+- No test suite run this task (test projects deleted as step 1); last full-suite result was TASK-017/018's 464/464 PASS, same day
+- Backup: local-only tag pre-cleanup-2026-09-05, not pushed
+- Output: REPOSITORY_CLEANUP_REPORT.md
+- Next: TASK-020 / Claude Code
 ```
 
 ---
