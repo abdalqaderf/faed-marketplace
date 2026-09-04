@@ -1,4 +1,4 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -40,9 +40,8 @@ public sealed class MerchantAnalyticsService(
             .Where(d => d.SellingMerchantProfileId == mid && d.Status == B2BDealStatus.Completed);
 
         // ---- Recovered value: completed transactions only, from immutable line snapshots ----
-        // (docs/03-BUSINESS-RULES.md §15 "Derive from completed orders / completed deals").
         // The delivery-fee snapshot is deliberately excluded: recovered value is the value
-        // recovered *from inventory*, not fulfilment charges (docs/15-GLOSSARY.md "Recovered Value").
+        // recovered *from inventory*, not fulfilment charges.
         var recoveredB2C = await completedOrders
             .SelectMany(o => o.Items)
             .SumAsync(i => (decimal?)i.LineTotalSnapshot, cancellationToken) ?? 0m;
@@ -61,7 +60,7 @@ public sealed class MerchantAnalyticsService(
 
         // ---- Units listed: introduced supply = opening balance + every positive adjustment ----
         // Negative adjustments explain units removed from sale; they do not undo the fact that
-        // those units were introduced (docs/03-BUSINESS-RULES.md section 5 invariant).
+        // those units were introduced.
         var initialUnits = await db.Listings
             .AsNoTracking()
             .Where(l => l.MerchantProfileId == mid)

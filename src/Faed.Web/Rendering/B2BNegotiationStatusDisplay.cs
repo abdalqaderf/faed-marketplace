@@ -1,12 +1,10 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
 
 namespace Faed.Web.Rendering;
 
 /// <summary>
 /// View helper: maps B2B negotiation enums to badge classes and human labels
-/// (docs/07-UI-UX-SPEC.md §11 — never communicate state through colour alone; §2 — plain
-/// commerce wording).
 /// </summary>
 public static class B2BNegotiationStatusDisplay
 {

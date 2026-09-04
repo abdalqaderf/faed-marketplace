@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Faed.Web.Models.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -33,13 +33,12 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.StatusReason).HasMaxLength(Order.MaxStatusReasonLength);
         builder.Property(o => o.FulfillmentSnapshot).IsRequired().HasMaxLength(Order.MaxFulfillmentSnapshotLength);
 
-        // JOD is stored with three decimal places everywhere (AGENTS.md §6).
+        // JOD is stored with three decimal places everywhere.
         builder.Property(o => o.Subtotal).HasColumnType("decimal(18,3)");
         builder.Property(o => o.Total).HasColumnType("decimal(18,3)");
         builder.Property(o => o.DeliveryFeeSnapshot).HasColumnType("decimal(18,3)");
 
         // Persist the workflow enums as text so order queues and ad-hoc DB reads stay legible
-        // (docs/19-CODING-CONVENTIONS.md "Enums vs tables").
         builder.Property(o => o.Status)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -55,14 +54,13 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(o => new { o.BuyerUserId, o.CreatedAtUtc });
         builder.HasIndex(o => new { o.MerchantProfileId, o.Status });
-        // Drives the reservation-expiry sweep (docs/06-ARCHITECTURE.md §7).
+        // Drives the reservation-expiry sweep.
         builder.HasIndex(o => new { o.Status, o.ReservationExpiresAtUtc });
 
-        // "Order has exactly one Buyer" (docs/17-DATA-INVARIANTS.md) is enforced referentially
+        // "Order has exactly one Buyer" is enforced referentially
         // against the Identity user, and — like the MerchantProfile → ApplicationUser
         // relationship — the delete behaviour is Restrict so a buyer with order history can
-        // never be hard-deleted out from under it (docs/04-DOMAIN-MODEL.md §12 "Do not
-        // cascade-delete completed Orders", "Carefully configure FK delete behavior").
+        // never be hard-deleted out from under it.
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(o => o.BuyerUserId)
@@ -70,7 +68,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .OnDelete(DeleteBehavior.Restrict);
 
         // Transactional history is preserved, never cascade-deleted with a merchant, location
-        // or zone (docs/04-DOMAIN-MODEL.md §12).
+        // or zone.
         builder.HasOne<MerchantProfile>()
             .WithMany()
             .HasForeignKey(o => o.MerchantProfileId)
@@ -119,7 +117,7 @@ public sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
             .OnDelete(DeleteBehavior.Cascade);
 
         // The listing/variant an order line references must never be hard-deleted out from
-        // under the order history (docs/04-DOMAIN-MODEL.md §12).
+        // under the order history.
         builder.HasOne<Listing>()
             .WithMany()
             .HasForeignKey(i => i.ListingId)

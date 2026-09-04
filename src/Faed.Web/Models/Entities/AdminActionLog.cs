@@ -1,10 +1,9 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// Append-only record of a security-sensitive admin action (docs/04-DOMAIN-MODEL.md §10,
-/// docs/08-SECURITY-AND-PRIVACY.md §13). Rows are never updated or deleted.
+/// Append-only record of a security-sensitive admin action. Rows are never updated or deleted.
 /// </summary>
 public class AdminActionLog
 {

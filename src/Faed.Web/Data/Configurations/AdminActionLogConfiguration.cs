@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,8 +32,7 @@ public sealed class AdminActionLogConfiguration : IEntityTypeConfiguration<Admin
 
         // Unbounded: an audit note must record the administrator's full text — e.g. a dispute
         // resolution up to Dispute.MaxResolutionLength (4000) — never a silently truncated
-        // copy (docs/08-SECURITY-AND-PRIVACY.md §13, docs/17-DATA-INVARIANTS.md "Dispute
-        // resolution is auditable"). The status change and its complete audit row commit in
+        // copy. The status change and its complete audit row commit in
         // one transaction.
         builder.Property(l => l.Notes);
 

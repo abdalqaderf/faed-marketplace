@@ -3,14 +3,12 @@ using Faed.Web.Services.Common;
 namespace Faed.Web.Services.B2B;
 
 /// <summary>
-/// Accepted merchant-to-merchant deal use cases (tasks/TASK-008-B2B-DEALS.md,
-/// docs/03-BUSINESS-RULES.md §10, docs/adr/0004-B2B-NEGOTIATION-SEPARATE-FROM-DEAL.md).
+/// Accepted merchant-to-merchant deal use cases.
 /// Accepting an offer revision atomically reserves every requested variant and creates the
-/// deal; if any line cannot be reserved the acceptance fails as a whole
-/// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §6). Every method re-resolves the caller's
+/// deal; if any line cannot be reserved the acceptance fails as a whole.
+/// Every method re-resolves the caller's
 /// approved merchant and re-checks participation from the database — a guessed deal id
-/// reveals nothing (docs/08-SECURITY-AND-PRIVACY.md §9,
-/// docs/16-PERMISSIONS-MATRIX.md "View unrelated B2B negotiation — ❌").
+/// reveals nothing.
 /// </summary>
 public interface IB2BDealService
 {
@@ -60,8 +58,7 @@ public interface IB2BDealService
     /// <summary>
     /// Releases the reserved stock of every deal whose reservation window lapsed before the
     /// seller started fulfilling it, and cancels the deal. Safe to call repeatedly — a deal
-    /// already released is not processed again (docs/17-DATA-INVARIANTS.md "Reservation
-    /// release is idempotent"). Returns the number released.
+    /// already released is not processed again. Returns the number released.
     /// </summary>
     Task<int> ReleaseExpiredDealReservationsAsync(CancellationToken cancellationToken = default);
 }

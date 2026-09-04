@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Encodings.Web;
 using Faed.Web.Data;
@@ -15,7 +15,7 @@ namespace Faed.Web.Areas.Identity.Pages.Account;
 /// <summary>
 /// The default Identity registration flow with one Faed-specific invariant: every normal
 /// account is atomically classified as a Buyer. Merchant remains an additive role granted
-/// after verification approval (docs/04-DOMAIN-MODEL.md §1, docs/16-PERMISSIONS-MATRIX.md).
+/// after verification approval.
 /// </summary>
 public sealed class RegisterModel(
     UserManager<ApplicationUser> userManager,

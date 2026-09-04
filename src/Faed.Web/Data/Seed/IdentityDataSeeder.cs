@@ -9,10 +9,9 @@ namespace Faed.Web.Data.Seed;
 /// <summary>
 /// Idempotent seeding of the fixed Faed Identity roles (Buyer, Merchant, Admin) and
 /// optional development accounts.
-///
 /// Each account is seeded only when its email and password are supplied via user secrets
 /// or environment variables, and the caller should only invoke it outside Production. No
-/// password is ever stored in source control (docs/08-SECURITY-AND-PRIVACY.md §11-12).
+/// password is ever stored in source control.
 /// </summary>
 public static class IdentityDataSeeder
 {
@@ -51,8 +50,8 @@ public static class IdentityDataSeeder
             FaedRoles.Admin,
             cancellationToken);
 
-    // A development seed for the other roles belongs to the phase that first needs one
-    // (AGENTS.md §12 — do not scaffold future phases). The helper below is already generic,
+    // A development seed for the other roles belongs to the phase that first needs one.
+    // The helper below is already generic,
     // so adding one is a single call.
     private static async Task SeedDevelopmentAccountAsync(
         IServiceProvider services,

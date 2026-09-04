@@ -1,9 +1,8 @@
-namespace Faed.Web.Services.Common;
+﻿namespace Faed.Web.Services.Common;
 
 /// <summary>
 /// The kind of failure an application operation produced. Controllers map these to
 /// HTTP outcomes; routine validation does not use exceptions
-/// (docs/06-ARCHITECTURE.md §9, docs/19-CODING-CONVENTIONS.md "Exceptions/results").
 /// </summary>
 public enum ResultErrorKind
 {

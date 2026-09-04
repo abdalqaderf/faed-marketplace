@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Admin.ViewModels;
+﻿using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// The admin overview: one screen that says what is waiting for a decision across every MVP
-/// queue (docs/07-UI-UX-SPEC.md §7). Read-only; the counts are live queries.
+/// queue. Read-only; the counts are live queries.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]

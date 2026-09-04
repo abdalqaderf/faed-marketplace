@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -26,13 +26,13 @@ public sealed class B2BNegotiationConfiguration : IEntityTypeConfiguration<B2BNe
         // Guards a buyer and a seller acting on the same negotiation at the same time.
         builder.Property(n => n.RowVersion).IsRowVersion();
 
-        // docs/04-DOMAIN-MODEL.md §11 — the merchant negotiation queues.
+        // Supports the merchant negotiation queues.
         builder.HasIndex(n => new { n.SellingMerchantProfileId, n.Status });
         builder.HasIndex(n => new { n.BuyingMerchantProfileId, n.Status });
         builder.HasIndex(n => n.ListingId);
 
         // Transactional history is preserved, never cascade-deleted with a listing or a
-        // merchant (docs/04-DOMAIN-MODEL.md §12). Two merchant foreign keys from one row rule
+        // merchant. Two merchant foreign keys from one row rule
         // out cascade anyway.
         builder.HasOne<Listing>()
             .WithMany()
@@ -67,14 +67,14 @@ public sealed class B2BOfferRevisionConfiguration : IEntityTypeConfiguration<B2B
 
         builder.Ignore(r => r.TotalQuantity);
 
-        // JOD is stored with three decimal places everywhere (AGENTS.md §6).
+        // JOD is stored with three decimal places everywhere.
         builder.Property(r => r.ProposedUnitPrice).HasColumnType("decimal(18,3)");
         builder.Property(r => r.ProposedTotal).HasColumnType("decimal(18,3)");
 
         builder.Property(r => r.Message).HasMaxLength(B2BOfferRevision.MaxMessageLength);
 
         // "Revision numbers are strictly increasing and unique per negotiation"
-        // (docs/17-DATA-INVARIANTS.md) — enforced by the database, not only the aggregate.
+        // — enforced by the database, not only the aggregate.
         builder.HasIndex(r => new { r.B2BNegotiationId, r.RevisionNumber }).IsUnique();
 
         builder.HasOne<B2BNegotiation>()
@@ -110,7 +110,7 @@ public sealed class B2BOfferLineConfiguration : IEntityTypeConfiguration<B2BOffe
             .OnDelete(DeleteBehavior.Cascade);
 
         // The variant an offer line references must never be hard-deleted out from under the
-        // negotiation history (docs/04-DOMAIN-MODEL.md §12).
+        // negotiation history.
         builder.HasOne<ListingVariant>()
             .WithMany()
             .HasForeignKey(l => l.ListingVariantId)

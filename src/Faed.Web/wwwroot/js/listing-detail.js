@@ -1,6 +1,6 @@
-// Progressive enhancement only: the server-rendered page already states aggregate
+﻿// Progressive enhancement only: the server-rendered page already states aggregate
 // availability and the primary CTA's disabled state, so a browser with JS disabled still
-// shows a fully honest listing (docs/19-CODING-CONVENTIONS.md "the server remains authoritative").
+// shows a fully honest listing.
 (function () {
     "use strict";
 

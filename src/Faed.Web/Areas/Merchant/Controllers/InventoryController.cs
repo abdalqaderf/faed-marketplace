@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Listings;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// Merchant-facing variant stock: the current level of every SKU and a manual-adjustment
-/// form (tasks/TASK-004-LISTINGS-AND-INVENTORY.md, docs/03-BUSINESS-RULES.md §6).
+/// form.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.ApprovedMerchant)]

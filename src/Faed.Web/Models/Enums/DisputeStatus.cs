@@ -1,8 +1,7 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// The lifecycle of a post-transaction dispute (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10,
-/// docs/03-BUSINESS-RULES.md §14). A dispute is a record that hangs off exactly one completed
+/// The lifecycle of a post-transaction dispute. A dispute is a record that hangs off exactly one completed
 /// or in-fulfilment transaction — a B2C <see cref="Faed.Web.Models.Entities.Order"/> or a B2B
 /// <see cref="Faed.Web.Models.Entities.B2BDeal"/>. It never mutates that transaction's own
 /// status or its stock: the order/deal state machines are unchanged by this phase.

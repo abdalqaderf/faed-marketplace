@@ -1,8 +1,8 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
 /// Why a merchant changed a variant's available stock outside the normal order/deal
-/// lifecycle (docs/03-BUSINESS-RULES.md §6). Stock is never silently overwritten: every
+/// lifecycle. Stock is never silently overwritten: every
 /// manual change records who, when, the delta and a reason.
 /// </summary>
 public enum InventoryAdjustmentType

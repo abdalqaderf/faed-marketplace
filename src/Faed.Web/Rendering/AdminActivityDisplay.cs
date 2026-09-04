@@ -1,10 +1,9 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Rendering;
 
 /// <summary>
 /// View helper: plain-English labels for audited admin actions in the audit-log viewer
-/// (docs/07-UI-UX-SPEC.md §2, docs/08-SECURITY-AND-PRIVACY.md §13).
 /// </summary>
 public static class AdminActivityDisplay
 {

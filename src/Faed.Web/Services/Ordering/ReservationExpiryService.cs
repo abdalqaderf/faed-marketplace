@@ -1,13 +1,12 @@
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 
 namespace Faed.Web.Services.Ordering;
 
 /// <summary>
 /// Periodically releases the reserved stock of B2C orders whose reservation window elapsed
-/// before the merchant confirmed them (docs/06-ARCHITECTURE.md §7,
-/// docs/03-BUSINESS-RULES.md §7). Each sweep runs in its own DI scope; the release itself is
+/// before the merchant confirmed them. Each sweep runs in its own DI scope; the release itself is
 /// idempotent, so a sweep that overlaps a merchant confirmation, or that runs twice, cannot
-/// double-release stock (docs/09-TEST-STRATEGY.md "repeated expiry job is idempotent").
+/// double-release stock.
 /// </summary>
 public sealed class ReservationExpiryService(
     IServiceScopeFactory scopeFactory,
@@ -36,7 +35,6 @@ public sealed class ReservationExpiryService(
             catch (Exception ex)
             {
                 // A failing sweep must not take the host down; the next tick tries again
-                // (docs/06-ARCHITECTURE.md §7 "log failures").
                 logger.LogError(ex, "Reservation-expiry sweep failed");
             }
         }

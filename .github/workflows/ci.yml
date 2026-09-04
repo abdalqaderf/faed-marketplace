@@ -1,8 +1,6 @@
 name: CI
 
-# Restore and build only. The automated test suite (unit + SQL Server integration tests)
-# ran throughout development and finalization but is not part of the submitted repository;
-# see docs/09-TEST-STRATEGY.md for the strategy that was applied before submission.
+# Restore and build only. There is no automated test suite in this repository.
 
 on:
   push:

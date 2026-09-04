@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -63,7 +63,7 @@ public sealed class InventoryAdjustmentConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(a => new { a.ListingVariantId, a.CreatedAtUtc });
 
         // The audit trail outlives the listing edit that produced it: removing a variant must
-        // not erase the record of why its stock moved (docs/04-DOMAIN-MODEL.md §12).
+        // not erase the record of why its stock moved.
         builder.HasOne<ListingVariant>()
             .WithMany()
             .HasForeignKey(a => a.ListingVariantId)

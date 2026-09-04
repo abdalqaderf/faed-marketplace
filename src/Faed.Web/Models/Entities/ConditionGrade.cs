@@ -3,15 +3,12 @@ using Faed.Web.Models;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// Physical-condition reference data (docs/01-PRD.md §6, docs/04-DOMAIN-MODEL.md §2). A DB
-/// reference table rather than an enum so admins can manage the copy later
-/// (docs/19-CODING-CONVENTIONS.md "Enums vs tables"). The Fashion MVP seeds grades A–D
-/// only; there is no used-goods Grade E (docs/02-SCOPE-AND-DECISIONS.md,
-/// docs/17-DATA-INVARIANTS.md).
-///
+/// Physical-condition reference data. A DB
+/// reference table rather than an enum so admins can manage the copy later.
+/// The Fashion MVP seeds grades A–D
+/// only; there is no used-goods Grade E.
 /// Deliberately independent of <see cref="DiscountReason"/>: the physical state of an item
 /// and the commercial reason it is discounted are separate concepts
-/// (docs/adr/0003-CONDITION-VS-DISCOUNT-REASON.md).
 /// </summary>
 public class ConditionGrade
 {
@@ -47,10 +44,8 @@ public class ConditionGrade
     public bool IsActive { get; private set; }
 
     /// <summary>
-    /// Admin edit of the buyer-facing copy (docs/16-PERMISSIONS-MATRIX.md, docs/07-UI-UX-SPEC.md
-    /// §8 — buyers need the human-readable meaning). The <see cref="Code"/> is the stable
+    /// Admin edit of the buyer-facing copy. The <see cref="Code"/> is the stable
     /// natural key and is never changed; the grade set stays A–D for the Fashion MVP
-    /// (docs/17-DATA-INVARIANTS.md "Grade E is invalid").
     /// </summary>
     public void UpdateDetails(string name, string description, int sortOrder)
     {

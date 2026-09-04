@@ -1,4 +1,4 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
@@ -33,7 +33,7 @@ public sealed class OrderService(
     {
         // Reuse the public read path: it already enforces Live + approved merchant + launch
         // sector, so a listing the buyer could never see is also one they can never start an
-        // order for (docs/03-BUSINESS-RULES.md §2, AGENTS.md §3).
+        // order for.
         if (await userRoles.IsInRoleAsync(buyerUserId, FaedRoles.Admin, cancellationToken))
         {
             return Result<CheckoutView>.Forbidden("Administrators cannot place B2C orders.");
@@ -102,8 +102,7 @@ public sealed class OrderService(
         }
 
         // Defence in depth: the MVC route is behind the CanPlaceB2COrder policy, but the
-        // service contract must not trust its caller (docs/08-SECURITY-AND-PRIVACY.md §2,
-        // docs/16-PERMISSIONS-MATRIX.md "Create B2C order — Admin ❌").
+        // service contract must not trust its caller.
         if (await userRoles.IsInRoleAsync(buyerUserId, FaedRoles.Admin, cancellationToken))
         {
             return Result<Guid>.Forbidden("Administrators cannot place B2C orders.");
@@ -166,8 +165,7 @@ public sealed class OrderService(
 
         var orderListings = variantIndex.Values.Select(x => x.Listing).Distinct().ToList();
 
-        // AGENTS.md Rule D / docs/17-DATA-INVARIANTS.md: one order belongs to exactly one
-        // selling merchant. Faed does not run a multi-merchant cart.
+        // One order belongs to exactly one selling merchant. Faed does not run a multi-merchant cart.
         var merchantIds = orderListings.Select(l => l.MerchantProfileId).Distinct().ToList();
         if (merchantIds.Count != 1)
         {
@@ -200,7 +198,6 @@ public sealed class OrderService(
 
         // Fulfilment: pickup at a merchant location, or delivery within a merchant zone. The
         // fee and address text in force now are snapshotted onto the order
-        // (docs/03-BUSINESS-RULES.md §12).
         decimal deliveryFee;
         string fulfillmentSnapshot;
         string? deliveryAddress = null;
@@ -314,7 +311,7 @@ public sealed class OrderService(
                     string.IsNullOrWhiteSpace(discountSnapshot) ? null : discountSnapshot);
 
                 // Atomic Available -> Reserved. A stale RowVersion here means another order
-                // took the stock first; the whole transaction rolls back (docs/05 §9).
+                // took the stock first; the whole transaction rolls back.
                 variant.Reserve(quantity, now);
             }
         }
@@ -329,7 +326,7 @@ public sealed class OrderService(
             // Force this listing's rowversion into the transaction's write set so two orders
             // depleting different variants of the same listing serialize on the listing row —
             // otherwise both could commit against a listing each still sees as in stock,
-            // leaving a fully depleted listing incorrectly Live (docs/17-DATA-INVARIANTS.md).
+            // leaving a fully depleted listing incorrectly Live.
             listing.RegisterStockReservation(now);
         }
 
@@ -427,8 +424,7 @@ public sealed class OrderService(
         }
 
         // The buyer confirms receipt once the merchant has handed the order over — the same
-        // transition the merchant's own "mark completed" uses (docs/03-BUSINESS-RULES.md §7
-        // "When completed: Reserved -> Sold").
+        // transition the merchant's own "mark completed" uses.
         return await ApplyTransitionAsync(
             order, o => o.Complete(clock.UtcNow), StockEffect.ConfirmSale, cancellationToken);
     }
@@ -570,7 +566,7 @@ public sealed class OrderService(
                 .SingleOrDefaultAsync(o => o.Id == id && o.Status == OrderStatus.Pending, cancellationToken);
 
             // Already confirmed or cancelled by someone else since the id list was taken —
-            // idempotent by construction (docs/09-TEST-STRATEGY.md "repeated expiry job is idempotent").
+            // idempotent by construction.
             if (order is null
                 || order.ReservationExpiresAtUtc is not { } expiresAt
                 || expiresAt >= clock.UtcNow)
@@ -639,7 +635,7 @@ public sealed class OrderService(
 
     /// <summary>
     /// Runs one order status transition and its matching stock movement inside a single
-    /// transaction: the two commit together or not at all (docs/06-ARCHITECTURE.md §6).
+    /// transaction: the two commit together or not at all.
     /// </summary>
     private async Task<Result> ApplyTransitionAsync(
         Order order,

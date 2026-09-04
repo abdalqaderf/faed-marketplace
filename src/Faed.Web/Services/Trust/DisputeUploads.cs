@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace Faed.Web.Services.Trust;
 
@@ -6,7 +6,6 @@ namespace Faed.Web.Services.Trust;
 /// Maps posted <see cref="IFormFile"/>s to <see cref="DisputeEvidenceUpload"/>s. Kept in the
 /// service layer so every controller that files or supplements a dispute converts uploads the
 /// same way; the dispute service is the single place that validates the bytes
-/// (docs/08-SECURITY-AND-PRIVACY.md §4).
 /// </summary>
 public static class DisputeUploads
 {

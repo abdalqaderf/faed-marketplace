@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
@@ -17,7 +17,7 @@ public sealed class CheckoutLineFormModel
 
 /// <summary>
 /// The buyer's checkout submission. Prices and the selling merchant are never bound here —
-/// they are resolved server-side (docs/08-SECURITY-AND-PRIVACY.md §6-7).
+/// they are resolved server-side.
 /// </summary>
 public sealed class CheckoutFormModel
 {

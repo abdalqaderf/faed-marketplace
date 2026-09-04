@@ -1,14 +1,11 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One file attached to a <see cref="Dispute"/> as evidence (docs/04-DOMAIN-MODEL.md §9,
-/// docs/03-BUSINESS-RULES.md §14). Only a protected object key and its metadata are stored;
+/// One file attached to a <see cref="Dispute"/> as evidence. Only a protected object key and its metadata are stored;
 /// there is no public URL to the bytes, and the dispute service streams them only to the
 /// dispute's participants and to administrators
-/// (docs/08-SECURITY-AND-PRIVACY.md §3-4, docs/17-DATA-INVARIANTS.md "Private document
-/// authorization is never based on knowing the storage object key").
 /// </summary>
 public class DisputeEvidence
 {
@@ -58,7 +55,7 @@ public class DisputeEvidence
     /// <summary>The Identity user id of whoever uploaded the file (a participant or an administrator).</summary>
     public string UploadedByUserId { get; private set; } = null!;
 
-    /// <summary>Opaque key into private object storage. Never rendered to a client (docs/08-SECURITY-AND-PRIVACY.md §3).</summary>
+    /// <summary>Opaque key into private object storage. Never rendered to a client.</summary>
     public string StorageObjectKey { get; private set; } = null!;
 
     public string OriginalFileName { get; private set; } = null!;

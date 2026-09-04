@@ -1,4 +1,4 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
@@ -9,7 +9,7 @@ namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// Admin merchant-verification queue, review detail, decisions, and the authorized
-/// private-document stream (tasks/TASK-002-MERCHANT-VERIFICATION.md).
+/// private-document stream.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]
@@ -72,7 +72,6 @@ public sealed class MerchantVerificationController(IMerchantVerificationService 
     /// <summary>
     /// Streams a private verification document. There is no public URL to this content;
     /// access requires the admin policy and is written to the audit log by the service
-    /// (docs/08-SECURITY-AND-PRIVACY.md §3).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Document(Guid id, CancellationToken cancellationToken)
@@ -84,7 +83,7 @@ public sealed class MerchantVerificationController(IMerchantVerificationService 
         }
 
         // Serve as an attachment (never inline): the browser must not render merchant-
-        // supplied bytes in the admin's session (docs/08-SECURITY-AND-PRIVACY.md §3-4).
+        // supplied bytes in the admin's session.
         Response.Headers["X-Content-Type-Options"] = "nosniff";
         Response.Headers.CacheControl = "no-store";
         return File(result.Value.Content, result.Value.ContentType, result.Value.OriginalFileName);

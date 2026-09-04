@@ -1,4 +1,4 @@
-using Faed.Web.Services.Abstractions;
+﻿using Faed.Web.Services.Abstractions;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Faed.Web.Data;
 
 /// <summary>
-/// The single application DbContext (AGENTS.md §5, docs/06-ARCHITECTURE.md §5).
+/// The single application DbContext.
 /// Identity shares this context. Marketplace aggregates are added in later phases.
 /// </summary>
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

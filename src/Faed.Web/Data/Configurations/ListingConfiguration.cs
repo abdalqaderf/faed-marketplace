@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -38,13 +38,13 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
         builder.Property(l => l.IncludedItemsText).HasMaxLength(Listing.MaxPolicyTextLength);
         builder.Property(l => l.MissingItemsText).HasMaxLength(Listing.MaxPolicyTextLength);
 
-        // JOD is stored with three decimal places everywhere (AGENTS.md §6).
+        // JOD is stored with three decimal places everywhere.
         builder.Property(l => l.ReferencePrice).HasColumnType("decimal(18,3)");
         builder.Property(l => l.RetailPrice).HasColumnType("decimal(18,3)");
         builder.Property(l => l.WholesaleIndicativeUnitPrice).HasColumnType("decimal(18,3)");
 
         // Persist the workflow enum as text so moderation queues and ad-hoc DB reads stay
-        // legible (docs/19-CODING-CONVENTIONS.md "Enums vs tables").
+        // legible.
         builder.Property(l => l.Status)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -58,7 +58,7 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
         builder.HasIndex(l => new { l.MerchantProfileId, l.Status });
 
         // Catalog and merchant references are all restricted: a populated category, grade or
-        // merchant must never take listings with it (docs/04-DOMAIN-MODEL.md §12).
+        // merchant must never take listings with it.
         builder.HasOne<MerchantProfile>()
             .WithMany()
             .HasForeignKey(l => l.MerchantProfileId)

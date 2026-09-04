@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Buyer.Controllers;
 
 /// <summary>
-/// The single-listing B2C order builder and checkout (tasks/TASK-006-B2C-ORDERS.md). Any
-/// Buyer accounts and merchants acting as consumers may buy; administrators may not
-/// (docs/16-PERMISSIONS-MATRIX.md "Create B2C order"). An anonymous visitor is sent to sign
+/// The single-listing B2C order builder and checkout. Any
+/// Buyer accounts and merchants acting as consumers may buy; administrators may not.
+/// An anonymous visitor is sent to sign
 /// in first.
 /// </summary>
 [Area("Buyer")]

@@ -1,17 +1,16 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Services.Ordering;
 
 // ---- Inputs ------------------------------------------------------------------------
 
 /// <summary>One requested variant line. The price is never supplied by the caller — it is
-/// loaded from the listing server-side (docs/08-SECURITY-AND-PRIVACY.md §7).</summary>
+/// loaded from the listing server-side.</summary>
 public sealed record OrderLineInput(Guid VariantId, int Quantity);
 
 /// <summary>
 /// Everything needed to place a B2C order. The selling merchant is resolved from the
 /// requested variants, never trusted from input; all money is computed server-side
-/// (docs/08-SECURITY-AND-PRIVACY.md §6-7).
 /// </summary>
 public sealed record PlaceOrderInput(
     IReadOnlyList<OrderLineInput> Lines,

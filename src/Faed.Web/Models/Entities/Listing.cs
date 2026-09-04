@@ -6,16 +6,15 @@ namespace Faed.Web.Models.Entities;
 /// <summary>
 /// A merchant's offer of surplus or non-perfect stock: the aggregate root that owns its
 /// options, sellable variants, media, discount reasons, reference-price evidence and
-/// moderation history (docs/04-DOMAIN-MODEL.md §3-5).
-///
+/// moderation history.
 /// Two rules shape this type:
 /// <list type="bullet">
 /// <item>It holds no authoritative stock quantity. Inventory lives on
-/// <see cref="ListingVariant"/> (AGENTS.md Rule A, docs/adr/0002).</item>
+/// <see cref="ListingVariant"/>.</item>
 /// <item>A merchant cannot change what a published listing materially claims without a new
 /// review. Every material mutator routes through <c>ApplyMaterialChange</c>, which takes a
 /// Live listing out of public view and opens a fresh <see cref="ListingModeration"/> row
-/// (AGENTS.md §8, docs/02-SCOPE-AND-DECISIONS.md "Listing moderation policy").</item>
+///.</item>
 /// </list>
 /// </summary>
 public class Listing
@@ -62,7 +61,7 @@ public class Listing
 
     public Guid Id { get; private set; }
 
-    /// <summary>The selling merchant. A listing belongs to exactly one (docs/17-DATA-INVARIANTS.md).</summary>
+    /// <summary>The selling merchant. A listing belongs to exactly one.</summary>
     public Guid MerchantProfileId { get; private set; }
 
     public Guid CategoryId { get; private set; }
@@ -73,7 +72,7 @@ public class Listing
 
     public string Title { get; private set; } = null!;
 
-    /// <summary>Public routing identifier. Never an authorization key (docs/06-ARCHITECTURE.md §12).</summary>
+    /// <summary>Public routing identifier. Never an authorization key.</summary>
     public string Slug { get; private set; } = null!;
 
     public string Description { get; private set; } = null!;
@@ -94,7 +93,7 @@ public class Listing
 
     public bool AllowB2B { get; private set; }
 
-    /// <summary>Whether mixed variants may be combined toward the B2B minimum (docs/03-BUSINESS-RULES.md §11).</summary>
+    /// <summary>Whether mixed variants may be combined toward the B2B minimum.</summary>
     public bool AllowMixedVariantB2B { get; private set; }
 
     public string? ReturnPolicyText { get; private set; }
@@ -114,8 +113,7 @@ public class Listing
     /// <summary>
     /// True while this listing is Hidden specifically because an admin took it down for a
     /// policy reason, as opposed to the merchant pausing it themselves. Only
-    /// <see cref="RestoreByAdmin"/> can clear it (docs/16-PERMISSIONS-MATRIX.md
-    /// "Moderate listing — Admin only").
+    /// <see cref="RestoreByAdmin"/> can clear it.
     /// </summary>
     public bool HiddenByAdmin { get; private set; }
 
@@ -139,7 +137,7 @@ public class Listing
 
     public IReadOnlyCollection<ListingModeration> Moderations => _moderations.AsReadOnly();
 
-    /// <summary>Only a Live listing is public (docs/03-BUSINESS-RULES.md §2).</summary>
+    /// <summary>Only a Live listing is public.</summary>
     public bool IsPubliclyVisible => Status == ListingStatus.Live;
 
     /// <summary>Sum of available stock across sellable variants. Derived, never stored.</summary>
@@ -160,7 +158,7 @@ public class Listing
 
     /// <summary>
     /// Applies the merchant's business details in one operation. Fields the moderation
-    /// policy calls material (docs/02-SCOPE-AND-DECISIONS.md) are compared against the
+    /// policy calls material are compared against the
     /// stored values, and any difference sends a published listing back for review.
     /// </summary>
     public void UpdateDetails(
@@ -332,7 +330,7 @@ public class Listing
 
     /// <summary>
     /// Adds a sellable variant. The combination must name exactly one value per listing
-    /// option and must not duplicate an existing variant (docs/17-DATA-INVARIANTS.md).
+    /// option and must not duplicate an existing variant.
     /// </summary>
     public ListingVariant AddVariant(
         string sku,
@@ -369,7 +367,6 @@ public class Listing
         if (variant.ReservedQuantity > 0 || variant.SoldQuantity > 0)
         {
             // Transactional history must survive; deactivate instead of deleting
-            // (docs/04-DOMAIN-MODEL.md §12).
             throw new DomainException(
                 "This variant has reserved or sold stock. Deactivate it instead of removing it.");
         }
@@ -403,9 +400,8 @@ public class Listing
     /// Image kinds that are part of what the listing publicly claims, so adding or removing
     /// one on a published listing is a material change that must be re-reviewed before it is
     /// visible: the primary <see cref="ListingMediaType.Product"/> gallery a buyer judges the
-    /// item by, and <see cref="ListingMediaType.Defect"/> disclosure evidence
-    /// (AGENTS.md §8 "Do not let a merchant edit a live listing … and bypass review",
-    /// docs/03-BUSINESS-RULES.md §3). Ordinary packaging shots are not on this list.
+    /// item by, and <see cref="ListingMediaType.Defect"/> disclosure evidence.
+    /// Ordinary packaging shots are not on this list.
     /// </summary>
     private static bool IsMaterialMedia(ListingMediaType mediaType) =>
         mediaType is ListingMediaType.Product or ListingMediaType.Defect;
@@ -487,7 +483,7 @@ public class Listing
         {
             // Same reasoning as the last-product-photo guard: this listing's condition grade or
             // discount reason discloses a physical imperfection, so it must keep at least one
-            // defect or packaging photo showing it (docs/03-BUSINESS-RULES.md §3). Removing an
+            // defect or packaging photo showing it. Removing an
             // ordinary packaging photo is not otherwise material and does not re-run the
             // submission checks, so the aggregate refuses outright rather than let the listing
             // stay/return public with no visual evidence.
@@ -557,10 +553,8 @@ public class Listing
 
     /// <summary>
     /// Condition grades whose own description names a physical imperfection
-    /// (docs/12-SEED-DATA.md: Grade B "packaging imperfection", Grade D "cosmetic
-    /// imperfection") — a listing carrying one of these must show the imperfection, not
-    /// merely claim it (docs/03-BUSINESS-RULES.md §3 "defects must be disclosed and
-    /// visually evidenced where applicable").
+    /// — a listing carrying one of these must show the imperfection, not
+    /// merely claim it.
     /// </summary>
     private static readonly HashSet<string> ConditionGradeCodesRequiringEvidence =
         new(StringComparer.OrdinalIgnoreCase) { "B", "D" };
@@ -571,9 +565,9 @@ public class Listing
 
     /// <summary>
     /// True when this listing's condition grade or one of its discount reasons is itself a
-    /// claim about a physical imperfection, which must be shown and not merely stated
-    /// (docs/03-BUSINESS-RULES.md §3). Both codes are resolved by the caller — the aggregate
-    /// stores only the catalog ids (docs/06-ARCHITECTURE.md "Enums vs tables").
+    /// claim about a physical imperfection, which must be shown and not merely stated.
+    /// Both codes are resolved by the caller — the aggregate
+    /// stores only the catalog ids.
     /// </summary>
     public bool DisclosesAPhysicalImperfection(
         string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes) =>
@@ -582,7 +576,7 @@ public class Listing
 
     /// <summary>
     /// Everything that stops this listing being published, as merchant-facing sentences.
-    /// Empty means the listing is submittable (docs/17-DATA-INVARIANTS.md "Listing").
+    /// Empty means the listing is submittable.
     /// </summary>
     /// <param name="conditionGradeCode">The stable <see cref="ConditionGrade.Code"/> for
     /// <see cref="ConditionGradeId"/>.</param>
@@ -591,7 +585,6 @@ public class Listing
     /// <remarks>
     /// Both parameters are resolved by the caller: the aggregate stores only the catalog
     /// ids, never a denormalized copy of admin-managed reference text
-    /// (docs/06-ARCHITECTURE.md, "Enums vs tables").
     /// </remarks>
     public IReadOnlyList<string> DescribeSubmissionBlockers(
         string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes)
@@ -686,7 +679,7 @@ public class Listing
             nowUtc);
 
         // A listing approved with no sellable stock is published as SoldOut rather than Live:
-        // it stays addressable but is not purchasable (docs/03-BUSINESS-RULES.md §2).
+        // it stays addressable but is not purchasable.
         Status = AvailableUnits > 0 ? ListingStatus.Live : ListingStatus.SoldOut;
         PublishedAtUtc = nowUtc;
         Touch(nowUtc);
@@ -705,11 +698,10 @@ public class Listing
     }
 
     /// <summary>
-    /// Admin takes a published listing out of public view for a policy reason
-    /// (docs/04-DOMAIN-MODEL.md §10). Marked distinctly from a merchant's own
+    /// Admin takes a published listing out of public view for a policy reason.
+    /// Marked distinctly from a merchant's own
     /// <see cref="Hide"/> so the merchant cannot silently reverse an admin takedown through
     /// <see cref="Restore"/> — only <see cref="RestoreByAdmin"/> can lift it
-    /// (docs/16-PERMISSIONS-MATRIX.md "Moderate listing — Admin only").
     /// </summary>
     public void HideByAdmin(string adminUserId, string reason, DateTime nowUtc)
     {
@@ -753,7 +745,7 @@ public class Listing
 
     /// <summary>
     /// Admin republishes a listing it (or the merchant) hid — the only way to lift an admin
-    /// takedown (docs/16-PERMISSIONS-MATRIX.md).
+    /// takedown.
     /// </summary>
     public void RestoreByAdmin(string adminUserId, DateTime nowUtc)
     {
@@ -792,7 +784,7 @@ public class Listing
     /// <summary>
     /// Reconciles publication with stock after a non-material inventory change: a published
     /// listing with nothing sellable becomes SoldOut, and returns to Live when stock is
-    /// replenished (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2). This never re-opens
+    /// replenished. This never re-opens
     /// moderation — a quantity is not a claim about the product. Uses <see cref="AvailableUnits"/>
     /// computed from the currently loaded <see cref="Variants"/>.
     /// </summary>
@@ -807,8 +799,7 @@ public class Listing
     /// fully depleted listing incorrectly <see cref="ListingStatus.Live"/>. Forcing the
     /// listing row into every reserving transaction's write set makes those orders serialize
     /// on this row: the loser gets a concurrency conflict and re-reads the true remaining
-    /// stock (docs/17-DATA-INVARIANTS.md "No transaction may reserve more than current
-    /// available stock", docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2).
+    /// stock.
     /// </summary>
     public void RegisterStockReservation(DateTime nowUtc) => Touch(nowUtc);
 
@@ -819,8 +810,8 @@ public class Listing
     /// so a release and a competing reservation touching <em>different</em> variants of the
     /// same listing serialize on this row instead of both committing against a stale
     /// availability view — which could otherwise leave the listing wrongly
-    /// <see cref="ListingStatus.SoldOut"/> or wrongly <see cref="ListingStatus.Live"/>
-    /// (docs/17-DATA-INVARIANTS.md, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2). The loser
+    /// <see cref="ListingStatus.SoldOut"/> or wrongly <see cref="ListingStatus.Live"/>.
+    /// The loser
     /// gets a concurrency conflict and re-reads the true remaining stock.
     /// </summary>
     public void RegisterStockRelease(DateTime nowUtc) => Touch(nowUtc);
@@ -862,7 +853,7 @@ public class Listing
             case ListingStatus.Live:
             case ListingStatus.SoldOut:
                 // The published version no longer matches what the merchant is claiming, so it
-                // leaves public view until an admin reviews the change (AGENTS.md §8).
+                // leaves public view until an admin reviews the change.
                 Status = ListingStatus.PendingReview;
                 SubmittedAtUtc = nowUtc;
                 OpenModeration(change, nowUtc);
@@ -1005,8 +996,8 @@ public class Listing
 
     /// <summary>
     /// Rejects anything but an absolute <c>http</c>/<c>https</c> URL. A reference-price link
-    /// is stored and later rendered as a clickable <c>&lt;a href&gt;</c>
-    /// (docs/07-UI-UX-SPEC.md §9); an unchecked scheme would let a merchant plant a
+    /// is stored and later rendered as a clickable <c>&lt;a href&gt;</c>;
+    /// An unchecked scheme would let a merchant plant a
     /// <c>javascript:</c> or similarly hostile URL for an admin or buyer to click.
     /// </summary>
     private static string? RequireHttpUrl(string? value)

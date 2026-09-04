@@ -1,9 +1,5 @@
 # IMPORTANT:
-# Project engineering documentation IS intentionally version-controlled.
-# Do NOT ignore:
-#   AGENTS.md
-#   docs/
-#   tasks/ (removed once the finalization sequence closes)
+# docs/ is intentionally version-controlled — do not ignore it.
 
 ## .NET build output
 bin/

@@ -1,11 +1,10 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Trust;
 
 /// <summary>
-/// Merchant reviews left after a completed transaction (docs/03-BUSINESS-RULES.md §13,
-/// docs/10-IMPLEMENTATION-PLAN.md Phase 8). A review is allowed only when the transaction is
+/// Merchant reviews left after a completed transaction. A review is allowed only when the transaction is
 /// <c>Completed</c>, the reviewer took part, and they have not already reviewed it; the
 /// duplicate rule is also a database unique constraint.
 /// </summary>

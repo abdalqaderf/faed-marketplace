@@ -6,8 +6,8 @@ using Faed.Web.Services.Common;
 namespace Faed.Web.Services.Merchants;
 
 /// <summary>
-/// Server-side validation of an uploaded verification document
-/// (docs/08-SECURITY-AND-PRIVACY.md §3-4). The client-supplied file name is never trusted
+/// Server-side validation of an uploaded verification document.
+/// The client-supplied file name is never trusted
 /// for storage; the client-supplied content type and extension are trusted only after
 /// they agree with each other <em>and</em> with the file's actual structure.
 /// </summary>
@@ -86,7 +86,6 @@ public static class VerificationDocumentValidator
 
     /// <summary>
     /// Performs bounded, fail-closed structural inspection of the complete buffered upload.
-    /// See docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md.
     /// </summary>
     public static Result ValidatePayload(ReadOnlySpan<byte> content, string contentType)
     {
@@ -484,7 +483,7 @@ public static class VerificationDocumentValidator
             : distanceUp <= distanceUpperLeft ? up : upperLeft;
     }
 
-    /// <summary>Slices the <c>&lt;&lt; ... &gt;&gt;</c> dictionary that starts at <paramref name="start"/>.</summary>
+    /// <summary>Slices the <c>&lt;&lt;... &gt;&gt;</c> dictionary that starts at <paramref name="start"/>.</summary>
     private static bool TryGetNestedPdfDictionary(
         ReadOnlySpan<byte> bytes,
         int start,
@@ -2112,7 +2111,6 @@ public static class VerificationDocumentValidator
     /// <c>startxref</c> names an offset inside the file, <c>%%EOF</c> terminates it, and the
     /// offset lands on either a classic <c>xref</c> table with a <c>/Root</c> trailer or a
     /// PDF 1.5+ cross-reference stream object.
-    ///
     /// Earlier revisions of this method also required exactly one <c>startxref</c> and one
     /// <c>%%EOF</c> in the whole file. That rejected every linearized ("Fast Web View") and
     /// incrementally-saved PDF — 8 of 10 real-world sample documents — without adding any

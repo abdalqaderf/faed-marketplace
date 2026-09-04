@@ -1,11 +1,10 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace Faed.Web.Rendering;
 
 /// <summary>
 /// View helper for displaying stored UTC timestamps in Jordan local time. Timestamps are
-/// stored in UTC and displayed for <c>Asia/Amman</c> (AGENTS.md §3 "English UI",
-/// docs/02-SCOPE-AND-DECISIONS.md).
+/// stored in UTC and displayed for <c>Asia/Amman</c>.
 /// </summary>
 public static class AmmanTime
 {

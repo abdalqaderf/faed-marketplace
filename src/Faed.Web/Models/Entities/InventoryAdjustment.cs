@@ -1,10 +1,9 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// Append-only audit of a manual stock correction (docs/03-BUSINESS-RULES.md §6,
-/// docs/04-DOMAIN-MODEL.md §4). Every adjustment records who changed what, the quantity
+/// Append-only audit of a manual stock correction. Every adjustment records who changed what, the quantity
 /// before and after, and a merchant-supplied reason, so a variant's available quantity can
 /// always be explained rather than merely observed.
 /// </summary>

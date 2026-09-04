@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
@@ -9,7 +9,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// Merchant listing management: create, edit variants/media/evidence, and submit for
-/// moderation (tasks/TASK-004-LISTINGS-AND-INVENTORY.md). Gated by the
+/// moderation. Gated by the
 /// <c>ApprovedMerchant</c> policy; the service layer re-checks ownership on every call.
 /// </summary>
 [Area("Merchant")]

@@ -27,10 +27,10 @@ public sealed class ReviewConfiguration : IEntityTypeConfiguration<Review>
         builder.Property(r => r.ReviewerUserId).IsRequired().HasMaxLength(450);
         builder.Property(r => r.Comment).HasMaxLength(Review.MaxCommentLength);
 
-        // "One allowed review per reviewer/transaction" (docs/17-DATA-INVARIANTS.md). Each
+        // "One allowed review per reviewer/transaction". Each
         // transaction has exactly one eligible reviewer, so uniqueness on the transaction FK
-        // is the database backstop for the duplicate-review rule
-        // (docs/03-BUSINESS-RULES.md §13). Filtered so the many NULLs on the other FK do not
+        // is the database backstop for the duplicate-review rule.
+        // Filtered so the many NULLs on the other FK do not
         // collide.
         builder.HasIndex(r => r.OrderId)
             .IsUnique()
@@ -45,7 +45,7 @@ public sealed class ReviewConfiguration : IEntityTypeConfiguration<Review>
         builder.HasIndex(r => new { r.ReviewedMerchantProfileId, r.CreatedAtUtc });
 
         // Reviews are transactional history: never cascade-deleted with the merchant, the
-        // transaction, or the reviewer (docs/04-DOMAIN-MODEL.md §12).
+        // transaction, or the reviewer.
         builder.HasOne<MerchantProfile>()
             .WithMany()
             .HasForeignKey(r => r.ReviewedMerchantProfileId)

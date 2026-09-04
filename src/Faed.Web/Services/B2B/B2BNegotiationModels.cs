@@ -1,17 +1,17 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Services.B2B;
 
 // ---- Inputs ------------------------------------------------------------------------
 
 /// <summary>One requested variant line on an offer. The price is never per-line — the whole
-/// offer carries a single proposed unit price (docs/04-DOMAIN-MODEL.md §7).</summary>
+/// offer carries a single proposed unit price.</summary>
 public sealed record B2BOfferLineInput(Guid VariantId, int Quantity);
 
 /// <summary>
 /// A merchant's first offer that opens a negotiation. The selling merchant, the current
 /// listing price basis and every monetary total are resolved server-side; nothing here is
-/// trusted straight from the request (docs/08-SECURITY-AND-PRIVACY.md §6-7).
+/// trusted straight from the request.
 /// </summary>
 public sealed record StartNegotiationInput(
     string ListingSlug,

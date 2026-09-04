@@ -1,8 +1,8 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// How a B2C order is handed over (docs/03-BUSINESS-RULES.md §12). Faed operates no
-/// warehouse or delivery fleet in the MVP (AGENTS.md §3): pickup happens at a
+/// How a B2C order is handed over. Faed operates no
+/// warehouse or delivery fleet in the MVP: pickup happens at a
 /// merchant-defined location and delivery is performed by the merchant within a
 /// merchant-defined zone for a merchant-defined fee.
 /// </summary>

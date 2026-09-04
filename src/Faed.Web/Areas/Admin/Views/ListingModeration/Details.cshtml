@@ -1,4 +1,4 @@
-@model ListingModerationDetailPageModel
+﻿@model ListingModerationDetailPageModel
 @{
     ViewData["Title"] = Model.Listing.Title;
     var listing = Model.Listing;
@@ -140,7 +140,7 @@
                 </div>
             }
         }
-        @* Matched by the reason's stable Code (tasks/TASK-003-CATALOG.md seed), not its
+        @* Matched by the reason's stable Code , not its
            display Name — renaming the reason in a later catalog-management task must not
            silently disable this warning. *@
         @if (listing.DefectPhotos.Count == 0 && listing.DiscountReasonCodes.Contains("CosmeticDefect"))

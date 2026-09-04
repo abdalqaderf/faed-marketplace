@@ -1,4 +1,4 @@
-using Faed.Web.Authorization;
+﻿using Faed.Web.Authorization;
 using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
@@ -26,7 +26,6 @@ public sealed class ReviewService(
         }
 
         // A review is left by the buyer, never by an administrator
-        // (docs/16-PERMISSIONS-MATRIX.md "Leave review — Admin ❌").
         if (await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken))
         {
             return Result<Guid>.Forbidden("Administrators cannot leave reviews.");
@@ -51,7 +50,7 @@ public sealed class ReviewService(
 
         if (!eligibility.IsParticipant)
         {
-            // A non-participant learns nothing (docs/08-SECURITY-AND-PRIVACY.md §9).
+            // A non-participant learns nothing.
             return Result<Guid>.NotFound("That transaction was not found.");
         }
 
@@ -83,7 +82,7 @@ public sealed class ReviewService(
         catch (DbUpdateException ex)
         {
             // The filtered unique index on the transaction FK is the backstop for the
-            // duplicate-review rule (docs/03-BUSINESS-RULES.md §13). Two submissions racing
+            // duplicate-review rule. Two submissions racing
             // each other both pass the pre-check; the loser lands here.
             logger.LogInformation(ex, "Duplicate review rejected for user {UserId} on {Type} {TransactionId}",
                 userId, input.TransactionType, input.TransactionId);
@@ -233,7 +232,6 @@ public sealed class ReviewService(
         }
 
         // Only the buying merchant reviews the selling merchant for a wholesale deal
-        // (docs/03-BUSINESS-RULES.md §13 "reviewer participated in the transaction").
         var buyingMerchantUserId = await db.MerchantProfiles
             .AsNoTracking()
             .Where(m => m.Id == deal.BuyingMerchantProfileId)

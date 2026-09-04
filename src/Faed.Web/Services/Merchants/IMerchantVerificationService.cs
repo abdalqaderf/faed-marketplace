@@ -1,12 +1,11 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Merchants;
 
 /// <summary>
 /// Use cases for merchant application, private document handling and admin review
-/// (tasks/TASK-002-MERCHANT-VERIFICATION.md, docs/10-IMPLEMENTATION-PLAN.md Phase 1).
 /// All authorization-sensitive identity is passed explicitly by the caller and
-/// re-checked here; nothing is trusted from the browser (docs/08-SECURITY-AND-PRIVACY.md §6).
+/// re-checked here; nothing is trusted from the browser.
 /// </summary>
 public interface IMerchantVerificationService
 {
@@ -42,7 +41,7 @@ public interface IMerchantVerificationService
 
     /// <summary>
     /// Streams a private verification document to an authorized admin and records the
-    /// access in the audit log (docs/08-SECURITY-AND-PRIVACY.md §3).
+    /// access in the audit log.
     /// </summary>
     Task<Result<StoredFileContent>> OpenVerificationDocumentAsync(string adminUserId, Guid documentId, CancellationToken cancellationToken = default);
 }

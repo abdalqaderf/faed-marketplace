@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Entities;
 using Faed.Web.Services.Listings;
 
@@ -7,7 +7,6 @@ namespace Faed.Web.Areas.Merchant.ViewModels;
 /// <summary>
 /// Input model for a listing's business details. Deliberately carries no status, merchant id
 /// or stock field — those are never bound from a request
-/// (docs/08-SECURITY-AND-PRIVACY.md §6).
 /// </summary>
 public sealed class ListingFormModel
 {

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
@@ -27,7 +27,6 @@ public sealed class MerchantAddEvidenceFormModel
 /// A merchant raising a dispute over a transaction it takes part in — a wholesale deal it
 /// buys or sells, or a B2C order it sells. The same server-side participant and eligibility
 /// checks in <c>DisputeService</c> apply regardless of which surface starts the flow
-/// (docs/16-PERMISSIONS-MATRIX.md "File eligible dispute — participant ✅").
 /// </summary>
 public sealed class MerchantFileDisputeFormModel
 {

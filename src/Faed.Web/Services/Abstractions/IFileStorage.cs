@@ -1,8 +1,7 @@
-namespace Faed.Web.Services.Abstractions;
+﻿namespace Faed.Web.Services.Abstractions;
 
 /// <summary>
-/// Abstraction over private object storage (docs/06-ARCHITECTURE.md §8,
-/// docs/08-SECURITY-AND-PRIVACY.md §3). Implementations must:
+/// Abstraction over private object storage. Implementations must:
 /// generate the object key server-side, never expose a public URL, and keep bytes
 /// outside any web-served directory.
 /// </summary>

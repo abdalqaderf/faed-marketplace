@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Buyer.ViewModels;
+﻿using Faed.Web.Areas.Buyer.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
@@ -10,10 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Buyer.Controllers;
 
 /// <summary>
-/// A buyer's disputes over their own B2C orders (docs/03-BUSINESS-RULES.md §14,
-/// docs/16-PERMISSIONS-MATRIX.md "File eligible dispute — participant ✅"). The dispute
+/// A buyer's disputes over their own B2C orders. The dispute
 /// service re-checks participation on every call, so a guessed id reveals nothing
-/// (docs/08-SECURITY-AND-PRIVACY.md §9).
 /// </summary>
 [Area("Buyer")]
 [Authorize(Policy = FaedPolicies.CanPlaceB2COrder)]

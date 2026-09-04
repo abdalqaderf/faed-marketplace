@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Faed.Web.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -7,7 +7,7 @@ namespace Faed.Web.Services.Storage;
 
 /// <summary>
 /// Development <see cref="IFileStorage"/> that writes to a private directory on disk,
-/// outside <c>wwwroot</c> (docs/08-SECURITY-AND-PRIVACY.md §3). Object keys are generated
+/// outside <c>wwwroot</c>. Object keys are generated
 /// server-side and validated on read to prevent path traversal.
 /// </summary>
 public sealed partial class LocalFileStorage : IFileStorage

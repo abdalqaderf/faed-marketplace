@@ -1,11 +1,11 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A geographic area a merchant will deliver B2C orders to, with its own fee and optional
-/// minimum order value (docs/03-BUSINESS-RULES.md §12, docs/04-DOMAIN-MODEL.md §1). Faed
-/// stores the fee and estimate but never books or prices carriage itself (AGENTS.md §3).
+/// minimum order value. Faed
+/// stores the fee and estimate but never books or prices carriage itself.
 /// The fee in force at checkout is snapshotted onto the order.
 /// </summary>
 public class MerchantDeliveryZone

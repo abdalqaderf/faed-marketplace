@@ -1,9 +1,9 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Rendering;
 
 /// <summary>View helper: maps a verification status to its badge class and human label
-/// (docs/07-UI-UX-SPEC.md §8 — never show a bare code without meaning).</summary>
+///.</summary>
 public static class MerchantStatusDisplay
 {
     public static string BadgeClass(MerchantVerificationStatus status) => status switch

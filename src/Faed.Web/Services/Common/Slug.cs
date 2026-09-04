@@ -1,15 +1,14 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 
 namespace Faed.Web.Services.Common;
 
 /// <summary>
 /// Turns merchant free text into a human-readable public identifier. Slugs are display and
-/// routing identifiers only, never authorization keys (docs/06-ARCHITECTURE.md §12), so a
+/// routing identifiers only, never authorization keys, so a
 /// collision is resolved by appending a counter rather than by rejecting the input.
-///
 /// Merchant product text is Unicode-safe in storage; only the slug is reduced to ASCII,
-/// because it appears in URLs (docs/02-SCOPE-AND-DECISIONS.md "English UI decision").
+/// because it appears in URLs.
 /// </summary>
 public static class Slug
 {

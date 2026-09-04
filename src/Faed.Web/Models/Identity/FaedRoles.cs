@@ -1,10 +1,9 @@
-namespace Faed.Web.Models.Identity;
+﻿namespace Faed.Web.Models.Identity;
 
 /// <summary>
 /// Canonical ASP.NET Core Identity role names for Faed.
-/// Roles are an Identity concern; merchant verification is a separate domain state
-/// (see docs/08-SECURITY-AND-PRIVACY.md and docs/04-DOMAIN-MODEL.md).
-/// No magic strings for roles anywhere else in the codebase (AGENTS.md §6).
+/// Roles are an Identity concern; merchant verification is a separate domain state.
+/// No magic strings for roles anywhere else in the codebase.
 /// </summary>
 public static class FaedRoles
 {

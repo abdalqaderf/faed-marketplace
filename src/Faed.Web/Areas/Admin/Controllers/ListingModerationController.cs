@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Admin.ViewModels;
+﻿using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
@@ -9,8 +9,6 @@ namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// Admin listing moderation queue, review detail and decisions
-/// (tasks/TASK-004-LISTINGS-AND-INVENTORY.md, docs/02-SCOPE-AND-DECISIONS.md
-/// "Listing moderation policy").
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]

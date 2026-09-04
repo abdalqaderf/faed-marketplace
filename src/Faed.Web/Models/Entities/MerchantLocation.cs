@@ -1,10 +1,9 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// A physical pickup point a merchant offers for B2C orders (docs/03-BUSINESS-RULES.md §12,
-/// docs/04-DOMAIN-MODEL.md §1). Faed does not operate warehouses; the address, instructions
+/// A physical pickup point a merchant offers for B2C orders. Faed does not operate warehouses; the address, instructions
 /// and hours are merchant-supplied free text and are snapshotted onto the order at checkout.
 /// </summary>
 public class MerchantLocation

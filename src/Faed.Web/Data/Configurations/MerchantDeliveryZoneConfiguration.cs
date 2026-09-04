@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +19,7 @@ public sealed class MerchantDeliveryZoneConfiguration : IEntityTypeConfiguration
         builder.Property(z => z.Name).IsRequired().HasMaxLength(MerchantDeliveryZone.MaxNameLength);
         builder.Property(z => z.EstimatedDeliveryText).HasMaxLength(MerchantDeliveryZone.MaxEstimateLength);
 
-        // JOD is stored with three decimal places everywhere (AGENTS.md §6).
+        // JOD is stored with three decimal places everywhere.
         builder.Property(z => z.DeliveryFee).HasColumnType("decimal(18,3)");
         builder.Property(z => z.MinimumOrderValue).HasColumnType("decimal(18,3)");
 

@@ -1,4 +1,4 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
@@ -30,7 +30,7 @@ public sealed class MerchantListingService(
     public async Task<ListingReferenceData> GetReferenceDataAsync(CancellationToken cancellationToken = default)
     {
         // Categories, grades and reasons are admin-managed reference data; the form must read
-        // them from the database rather than hard-code the launch taxonomy (TASK-003).
+        // them from the database rather than hard-code the launch taxonomy.
         var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
             db, activeOnly: true, includeRoot: false, cancellationToken);
         var categories = await db.Categories
@@ -267,7 +267,6 @@ public sealed class MerchantListingService(
         {
             // The adjustment audit outlives the variant it describes, so a variant whose stock
             // has already been corrected is deactivated rather than deleted
-            // (docs/03-BUSINESS-RULES.md §6, docs/04-DOMAIN-MODEL.md §12).
             if (await db.InventoryAdjustments.AnyAsync(a => a.ListingVariantId == variantId, cancellationToken))
             {
                 return Result.Validation(
@@ -474,7 +473,6 @@ public sealed class MerchantListingService(
     /// Loads the caller's own listing, runs one aggregate mutation and saves. Ownership is
     /// re-resolved from the database on every call, so a guessed listing id reads as
     /// "not found" rather than exposing another merchant's stock
-    /// (docs/08-SECURITY-AND-PRIVACY.md §9).
     /// </summary>
     private async Task<Result> MutateAsync(
         string userId,
@@ -525,7 +523,7 @@ public sealed class MerchantListingService(
         catch (DbUpdateException ex) when (IsUniqueIndexViolation(ex, "IX_ListingVariants_ListingId_OptionCombinationKey"))
         {
             // The aggregate already refuses duplicates; this is the database backstop for two
-            // concurrent requests adding the same combination (docs/17-DATA-INVARIANTS.md).
+            // concurrent requests adding the same combination.
             return Result.Conflict("A variant with this combination already exists on this listing.");
         }
         catch (DbUpdateException ex) when (IsForeignKeyViolation(ex, B2BOfferLineVariantForeignKey))
@@ -567,12 +565,11 @@ public sealed class MerchantListingService(
     /// <summary>
     /// Checks everything the aggregate cannot see for itself: that the referenced catalog rows
     /// exist and are active, and that the B2B minimum respects the configured launch floor
-    /// (docs/03-BUSINESS-RULES.md §11 — a policy default, not a domain constant).
     /// </summary>
     private async Task<Result> ValidateDetailsAsync(ListingDetailsInput input, CancellationToken cancellationToken)
     {
         // A listing attaches to a leaf category, never a sector root: "Fashion Overstock"
-        // itself is not a shoppable category (docs/04-DOMAIN-MODEL.md §2), and the reference
+        // itself is not a shoppable category, and the reference
         // data offered to the form already excludes it — this rejects a crafted request that
         // posts the root id directly.
         var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
@@ -629,7 +626,7 @@ public sealed class MerchantListingService(
         }
 
         // Defence in depth: the MVC route already requires the ApprovedMerchant policy, but a
-        // suspension between the two checks must still stop the write (AGENTS.md §3).
+        // suspension between the two checks must still stop the write.
         return profile.VerificationStatus == MerchantVerificationStatus.Approved
             ? Result<Guid>.Success(profile.Id)
             : Result<Guid>.Forbidden(
@@ -659,7 +656,6 @@ public sealed class MerchantListingService(
     /// <summary>
     /// Buffers the upload once so its bytes can be inspected before anything is stored, and so
     /// the recorded length is the real one rather than a client-reported figure
-    /// (docs/08-SECURITY-AND-PRIVACY.md §4).
     /// </summary>
     private async Task<Result<StoredUpload>> BufferValidateAndStoreAsync(
         string container,

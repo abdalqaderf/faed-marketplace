@@ -1,12 +1,11 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Ordering;
 
 /// <summary>
 /// Merchant-managed fulfilment configuration: pickup locations and delivery zones
-/// (docs/03-BUSINESS-RULES.md §12, tasks/TASK-006-B2C-ORDERS.md "Pickup", "MerchantDelivery").
 /// Ownership is re-resolved from the database on every call — a merchant only ever touches
-/// its own rows (docs/03-BUSINESS-RULES.md §16).
+/// its own rows.
 /// </summary>
 public interface IMerchantStoreService
 {

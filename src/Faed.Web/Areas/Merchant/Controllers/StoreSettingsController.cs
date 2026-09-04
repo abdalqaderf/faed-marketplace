@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
@@ -9,7 +9,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// Merchant fulfilment configuration: pickup locations and delivery zones a B2C order can
-/// use (docs/03-BUSINESS-RULES.md §12, docs/07-UI-UX-SPEC.md §6 "Store Settings"). Without
+/// use. Without
 /// at least one active option a merchant cannot receive orders.
 /// </summary>
 [Area("Merchant")]

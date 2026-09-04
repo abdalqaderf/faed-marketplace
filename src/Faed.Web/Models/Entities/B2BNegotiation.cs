@@ -4,18 +4,13 @@ using Faed.Web.Models.Enums;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// A structured wholesale negotiation between two verified merchants over one listing
-/// (docs/03-BUSINESS-RULES.md §9, docs/04-DOMAIN-MODEL.md §7,
-/// docs/adr/0004-B2B-NEGOTIATION-SEPARATE-FROM-DEAL.md). It owns an append-only history of
-/// immutable <see cref="B2BOfferRevision"/>s: a counter-offer is a brand-new revision, never
-/// an edit of the previous one (AGENTS.md Rule C — "B2B negotiation is not the accepted
-/// deal").
-///
+/// A structured wholesale negotiation between two verified merchants over one listing.
+/// It owns an append-only history of immutable <see cref="B2BOfferRevision"/>s: a
+/// counter-offer is a brand-new revision, never an edit of the previous one.
 /// This aggregate models the <em>negotiation</em> only. Accepting the current revision moves
 /// it to <see cref="B2BNegotiationStatus.Accepted"/> and records which revision both sides
 /// agreed on; it reserves no stock and creates no fulfillment record. The atomic stock
-/// reservation and the <c>B2BDeal</c> are TASK-008 (tasks/TASK-007-B2B-NEGOTIATION.md
-/// "No stock is permanently consumed by negotiation alone").
+/// reservation and the <c>B2BDeal</c> are a separate aggregate.
 /// </summary>
 public class B2BNegotiation
 {
@@ -29,9 +24,8 @@ public class B2BNegotiation
     /// Opens a negotiation with the buying merchant's first offer (revision 1). The first
     /// revision is always proposed by the buying merchant — a negotiation starts when a
     /// merchant makes an offer on another merchant's listing
-    /// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §5).
     /// </summary>
-    /// <param name="listingMinimumOrderQuantity">The listing's <see cref="Listing.WholesaleMinQuantity"/> (docs/03-BUSINESS-RULES.md §11).</param>
+    /// <param name="listingMinimumOrderQuantity">The listing's <see cref="Listing.WholesaleMinQuantity"/>.</param>
     /// <param name="listingAllowsMixedVariantLots">The listing's <see cref="Listing.AllowMixedVariantB2B"/>.</param>
     public B2BNegotiation(
         Guid listingId,
@@ -44,8 +38,7 @@ public class B2BNegotiation
     {
         if (sellingMerchantProfileId == buyingMerchantProfileId)
         {
-            // AGENTS.md §3 (individuals/merchants cannot buy from themselves),
-            // docs/17-DATA-INVARIANTS.md "Selling and buying merchants cannot be the same merchant".
+            // Selling and buying merchants cannot be the same merchant.
             throw new DomainException("A merchant cannot open a wholesale negotiation on its own listing.");
         }
 
@@ -121,7 +114,6 @@ public class B2BNegotiation
     /// Records a counter-offer as a new immutable revision. The proposer must be the merchant
     /// whose turn it is (the one who did not make the current offer) — a merchant cannot
     /// counter its own offer, and the sides strictly alternate
-    /// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §5).
     /// </summary>
     public B2BOfferRevision Counter(
         Guid proposingMerchantProfileId,
@@ -140,9 +132,8 @@ public class B2BNegotiation
 
     /// <summary>
     /// Accepts the current offer revision. Only the merchant it is addressed to can accept it,
-    /// and only while it has not expired (docs/17-DATA-INVARIANTS.md "Only the active
-    /// non-expired revision can be accepted"). This does not reserve stock or create a deal —
-    /// that is TASK-008.
+    /// and only while it has not expired. This does not reserve stock or create a deal —
+    /// that is a separate step handled by the deal service.
     /// </summary>
     public void Accept(Guid acceptingMerchantProfileId, DateTime nowUtc)
     {
@@ -168,7 +159,7 @@ public class B2BNegotiation
     /// <summary>
     /// A participating merchant withdraws from the negotiation before it is accepted. Either
     /// side may do this while the negotiation is open — a reversible default in the absence of
-    /// a stricter rule (docs/13-OPEN-QUESTIONS.md). Terminal.
+    /// a stricter rule. Terminal.
     /// </summary>
     public void Cancel(Guid cancellingMerchantProfileId, DateTime nowUtc)
     {
@@ -186,9 +177,8 @@ public class B2BNegotiation
     }
 
     /// <summary>
-    /// Closes an open negotiation whose current offer has lapsed
-    /// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §5 "Active revision expires -> Negotiation
-    /// Expired"). Idempotent: returns <c>false</c> and changes nothing when the negotiation is
+    /// Closes an open negotiation whose current offer has lapsed.
+    /// Idempotent: returns <c>false</c> and changes nothing when the negotiation is
     /// not open or the offer has not expired.
     /// </summary>
     public bool ExpireIfLapsed(DateTime nowUtc)
@@ -263,7 +253,7 @@ public class B2BNegotiation
             throw new DomainException("The offer's expiry must be in the future.");
         }
 
-        // MOQ (docs/03-BUSINESS-RULES.md §11). When the seller allows mixed-lot purchase the
+        // MOQ. When the seller allows mixed-lot purchase the
         // quantities across variants count together toward the listing minimum; otherwise each
         // variant is its own lot and must reach the minimum on its own.
         if (minimumOrderQuantity > 0)
@@ -328,7 +318,7 @@ public sealed record ProposedOfferLine(Guid ListingVariantId, int Quantity);
 /// The terms of a single proposed offer or counter-offer, handed to
 /// <see cref="B2BNegotiation"/> which turns it into an immutable <see cref="B2BOfferRevision"/>.
 /// The service builds this from validated input and a server-resolved expiry timestamp —
-/// no value here is trusted straight from the request (docs/08-SECURITY-AND-PRIVACY.md §6-7).
+/// no value here is trusted straight from the request.
 /// </summary>
 public sealed record ProposedOffer(
     decimal UnitPrice,

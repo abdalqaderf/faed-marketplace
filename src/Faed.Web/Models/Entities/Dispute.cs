@@ -5,28 +5,21 @@ namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A post-transaction complaint raised by a participant against exactly one transaction
-/// context — a B2C <see cref="Order"/> or a B2B <see cref="B2BDeal"/>, never both
-/// (docs/03-BUSINESS-RULES.md §14, docs/04-DOMAIN-MODEL.md §9,
-/// docs/17-DATA-INVARIANTS.md "Dispute"). A database check constraint enforces the
+/// context — a B2C <see cref="Order"/> or a B2B <see cref="B2BDeal"/>, never both.
+/// A database check constraint enforces the
 /// exactly-one rule; the raiser's participation is checked by the dispute service before this
-/// aggregate is created (docs/08-SECURITY-AND-PRIVACY.md §9).
-///
+/// aggregate is created.
 /// The dispute has its own lifecycle
-/// (<see cref="DisputeStatus.Open"/> → <see cref="DisputeStatus.UnderReview"/> →
-/// <see cref="DisputeStatus.Resolved"/> | <see cref="DisputeStatus.Rejected"/>,
-/// docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10) and never touches the order/deal status or
+/// and never touches the order/deal status or
 /// its stock — resolution is an administrative record, not a fulfilment transition. An
 /// <see cref="DisputeStatus.Open"/> dispute is never closed directly: an administrator must
 /// first <see cref="StartReview"/> it, and every such move is written to the admin audit log
-/// by the service (docs/17-DATA-INVARIANTS.md "Resolution actor must be Admin", "Dispute
-/// resolution is auditable").
-///
+/// by the service.
 /// <see cref="ActiveTransactionKey"/> is a filtered-unique key: it holds a per-transaction
 /// value while the dispute is active (<see cref="DisputeStatus.Open"/> /
 /// <see cref="DisputeStatus.UnderReview"/>) and is cleared when the dispute closes. A unique
-/// index on it lets the database — not just an application read — enforce
-/// docs/03-BUSINESS-RULES.md §14: at most one active dispute per transaction, even when two
-/// filings race (AGENTS.md §7).
+/// index on it lets the database — not just an application read — enforce the rule that
+/// at most one active dispute may exist per transaction, even when two filings race.
 /// </summary>
 public class Dispute
 {
@@ -106,7 +99,7 @@ public class Dispute
     /// <summary>
     /// A per-transaction token while the dispute is active, <c>null</c> once it closes. Backed
     /// by a filtered unique index so the database rejects a second concurrent filing for the
-    /// same transaction (docs/03-BUSINESS-RULES.md §14, AGENTS.md §7).
+    /// same transaction.
     /// </summary>
     public string? ActiveTransactionKey { get; private set; }
 
@@ -139,7 +132,6 @@ public class Dispute
     /// <summary>
     /// Attaches an evidence file. Evidence is always private: it is streamed only to the
     /// dispute's participants and administrators, never from a public URL
-    /// (docs/08-SECURITY-AND-PRIVACY.md §3-4).
     /// </summary>
     public DisputeEvidence AddEvidence(
         string uploadedByUserId,
@@ -177,7 +169,6 @@ public class Dispute
     /// An administrator upholds the dispute and records the outcome. Only a dispute already
     /// <see cref="DisputeStatus.UnderReview"/> can be closed — an <see cref="DisputeStatus.Open"/>
     /// dispute must be picked up with <see cref="StartReview"/> first
-    /// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10).
     /// </summary>
     public void Resolve(string adminUserId, string resolution, DateTime nowUtc)
         => Close(DisputeStatus.Resolved, adminUserId, resolution, nowUtc);

@@ -1,4 +1,4 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
@@ -6,7 +6,7 @@ namespace Faed.Web.Models.Entities;
 /// <summary>
 /// A merchant business account. 1:1 with an Identity user. Selling is gated on
 /// <see cref="VerificationStatus"/> being <see cref="MerchantVerificationStatus.Approved"/> —
-/// the Merchant role alone is never sufficient (AGENTS.md §3, docs/03-BUSINESS-RULES.md §1).
+/// the Merchant role alone is never sufficient.
 /// </summary>
 public class MerchantProfile
 {
@@ -37,7 +37,7 @@ public class MerchantProfile
 
     public string BusinessName { get; private set; } = null!;
 
-    /// <summary>Human-readable public storefront identifier. Not an authorization key (docs/06-ARCHITECTURE.md §12).</summary>
+    /// <summary>Human-readable public storefront identifier. Not an authorization key.</summary>
     public string PublicSlug { get; private set; } = null!;
 
     public string? ContactEmail { get; private set; }

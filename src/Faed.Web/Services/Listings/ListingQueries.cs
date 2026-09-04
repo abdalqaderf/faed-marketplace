@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Faed.Web.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +26,6 @@ internal static class ListingQueries
     /// <summary>
     /// Builds the display projection, resolving the catalog and merchant names the listing
     /// only stores as foreign keys. Names come from the database, never from constants
-    /// (tasks/TASK-003-CATALOG.md "no catalog values hard-coded").
     /// </summary>
     internal static async Task<ListingDetailView> ToDetailViewAsync(
         this Listing listing,
@@ -68,7 +67,7 @@ internal static class ListingQueries
             .OrderBy(r => r.Name)
             .Select(r => r.Name)
             .ToListAsync(cancellationToken);
-        // Codes are the stable natural key (docs/13-CATALOG seed); prefer them over Name for
+        // Codes are the stable natural key; prefer them over Name for
         // any logic branch, since an admin renaming a reason's display text must not silently
         // change behaviour that depends on which reason is selected.
         var reasonCodes = await db.DiscountReasons
@@ -159,7 +158,6 @@ internal static class ListingQueries
     /// <see cref="Listing.SubmitForReview"/>, <see cref="Listing.RemoveMedia"/> and
     /// <see cref="Listing.DisclosesAPhysicalImperfection"/> need to decide whether a physical
     /// imperfection must be photographed — the aggregate stores only the catalog ids
-    /// (docs/03-BUSINESS-RULES.md §3, "defects must be disclosed and visually evidenced").
     /// </summary>
     internal static async Task<(string ConditionGradeCode, IReadOnlyCollection<string> DiscountReasonCodes)>
         LoadDisclosureCodesAsync(this Listing listing, IApplicationDbContext db, CancellationToken cancellationToken)

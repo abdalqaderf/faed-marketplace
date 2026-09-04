@@ -1,8 +1,7 @@
-namespace Faed.Web.Services.Merchants;
+﻿namespace Faed.Web.Services.Merchants;
 
 /// <summary>
-/// Configurable merchant-verification upload limits (docs/06-ARCHITECTURE.md §11,
-/// docs/08-SECURITY-AND-PRIVACY.md §3). Bound from configuration in the web host;
+/// Configurable merchant-verification upload limits. Bound from configuration in the web host;
 /// the defaults here are safe and reversible.
 /// </summary>
 public sealed class MerchantVerificationOptions

@@ -4,14 +4,13 @@ using Faed.Web.Services.Merchants;
 namespace Faed.Web.Services.Listings;
 
 /// <summary>
-/// Server-side validation of an uploaded listing image or reference-price evidence file
-/// (docs/08-SECURITY-AND-PRIVACY.md §4). The client-supplied file name, extension and
+/// Server-side validation of an uploaded listing image or reference-price evidence file.
+/// The client-supplied file name, extension and
 /// content type are never trusted on their own: they must agree with each other and with
 /// the bytes.
-///
 /// Structural inspection is delegated to
 /// <see cref="VerificationDocumentValidator.ValidatePayload"/>, which already walks JPEG,
-/// PNG and PDF fail-closed (docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md). Listing
+/// PNG and PDF fail-closed. Listing
 /// uploads face the same threat as verification uploads, so they get the same scanner
 /// rather than a second, weaker one.
 /// </summary>

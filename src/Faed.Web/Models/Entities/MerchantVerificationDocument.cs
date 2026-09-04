@@ -1,11 +1,10 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A single private business-verification file attached to a <see cref="MerchantProfile"/>.
 /// Only a protected storage object key and metadata are kept; a public URL is never stored
-/// (docs/04-DOMAIN-MODEL.md §1, docs/08-SECURITY-AND-PRIVACY.md §3).
 /// </summary>
 public class MerchantVerificationDocument
 {

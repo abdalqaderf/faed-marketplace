@@ -1,13 +1,13 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Ordering;
 
 /// <summary>
-/// B2C ordering use cases (tasks/TASK-006-B2C-ORDERS.md). Reservation, cancellation,
+/// B2C ordering use cases. Reservation, cancellation,
 /// completion and expiry each run inside an explicit transaction so stock and order state
-/// move together or not at all (docs/06-ARCHITECTURE.md §6). Every method re-resolves the
+/// move together or not at all. Every method re-resolves the
 /// caller's buyer identity or merchant ownership from the database — a guessed order id is
-/// never enough (docs/08-SECURITY-AND-PRIVACY.md §9).
+/// never enough.
 /// </summary>
 public interface IOrderService
 {
@@ -32,8 +32,7 @@ public interface IOrderService
 
     /// <summary>
     /// The buyer confirms they received the order, moving it to <c>Completed</c> and its
-    /// reserved stock to sold (docs/01-PRD.md §4 "confirm receipt",
-    /// docs/03-BUSINESS-RULES.md §7). Only valid from <c>ReadyForPickup</c> / <c>OutForDelivery</c>.
+    /// reserved stock to sold. Only valid from <c>ReadyForPickup</c> / <c>OutForDelivery</c>.
     /// </summary>
     Task<Result> ConfirmReceiptAsync(
         string buyerUserId, Guid orderId, CancellationToken cancellationToken = default);
@@ -65,8 +64,7 @@ public interface IOrderService
     /// <summary>
     /// Releases the reserved stock of every <see cref="Models.Enums.OrderStatus.Pending"/> order
     /// whose reservation window has elapsed and cancels it. Safe to call repeatedly — an order
-    /// already released is not processed again (docs/03-BUSINESS-RULES.md §7,
-    /// docs/09-TEST-STRATEGY.md "repeated expiry job is idempotent"). Returns the number of
+    /// already released is not processed again. Returns the number of
     /// orders released.
     /// </summary>
     Task<int> ReleaseExpiredReservationsAsync(CancellationToken cancellationToken = default);

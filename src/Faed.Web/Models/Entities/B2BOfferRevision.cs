@@ -3,10 +3,9 @@ using Faed.Web.Models;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One immutable proposal in a <see cref="B2BNegotiation"/> (docs/03-BUSINESS-RULES.md §9,
-/// docs/04-DOMAIN-MODEL.md §7). Every counter-offer is a new revision with the next
-/// <see cref="RevisionNumber"/>; an existing revision is never edited or overwritten
-/// (docs/17-DATA-INVARIANTS.md "Previous revisions are immutable"). The type exposes no
+/// One immutable proposal in a <see cref="B2BNegotiation"/>. Every counter-offer is a new revision with the next
+/// <see cref="RevisionNumber"/>; an existing revision is never edited or overwritten.
+/// The type exposes no
 /// mutators for that reason — it is created once by <see cref="B2BNegotiation"/> and only
 /// ever read afterwards.
 /// </summary>
@@ -44,8 +43,7 @@ public class B2BOfferRevision
         }
 
         // The total is derived from the proposed unit price and the summed line quantities —
-        // it is not accepted from input (docs/08-SECURITY-AND-PRIVACY.md §7,
-        // docs/04-DOMAIN-MODEL.md §7 "The revision total quantity is the sum of lines").
+        // it is not accepted from input.
         ProposedTotal = proposedUnitPrice * TotalQuantity;
     }
 
@@ -53,7 +51,7 @@ public class B2BOfferRevision
 
     public Guid B2BNegotiationId { get; private set; }
 
-    /// <summary>Strictly increasing within its negotiation, starting at 1 (docs/17-DATA-INVARIANTS.md).</summary>
+    /// <summary>Strictly increasing within its negotiation, starting at 1.</summary>
     public int RevisionNumber { get; private set; }
 
     /// <summary>Which merchant put this proposal forward.</summary>
@@ -67,8 +65,8 @@ public class B2BOfferRevision
     public string? Message { get; private set; }
 
     /// <summary>
-    /// When this offer lapses. Distinct from a deal's <c>ReservationExpiresAt</c>
-    /// (docs/adr/0004): once past, the revision can no longer be accepted and the negotiation
+    /// When this offer lapses. Distinct from a deal's <c>ReservationExpiresAt</c>:
+    /// Once past, the revision can no longer be accepted and the negotiation
     /// expires.
     /// </summary>
     public DateTime OfferExpiresAtUtc { get; private set; }
@@ -97,8 +95,8 @@ public class B2BOfferRevision
 }
 
 /// <summary>
-/// A requested quantity of one sellable variant within a <see cref="B2BOfferRevision"/>
-/// (docs/04-DOMAIN-MODEL.md §7). Immutable, like the revision that owns it.
+/// A requested quantity of one sellable variant within a <see cref="B2BOfferRevision"/>.
+/// Immutable, like the revision that owns it.
 /// </summary>
 public class B2BOfferLine
 {

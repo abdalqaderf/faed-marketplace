@@ -1,12 +1,11 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// One variant line on a B2C order. Every price and descriptive field is a snapshot taken
 /// when the order was placed and never changes afterwards
-/// (docs/03-BUSINESS-RULES.md §7, docs/17-DATA-INVARIANTS.md "Order price snapshots never
-/// change after creation") — the listing it came from can later be edited, repriced or
+/// — the listing it came from can later be edited, repriced or
 /// archived without rewriting history.
 /// </summary>
 public class OrderItem

@@ -3,14 +3,12 @@ using Faed.Web.Models;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// The commercial/operational reason a merchant is selling below their normal channel
-/// (docs/01-PRD.md §7, docs/04-DOMAIN-MODEL.md §2). A DB reference table rather than an
-/// enum (docs/19-CODING-CONVENTIONS.md "Enums vs tables"), and deliberately independent of
-/// <see cref="ConditionGrade"/> (docs/adr/0003-CONDITION-VS-DISCOUNT-REASON.md). A listing
+/// The commercial/operational reason a merchant is selling below their normal channel.
+/// A DB reference table rather than an
+/// enum, and deliberately independent of
+/// <see cref="ConditionGrade"/>. A listing
 /// may carry more than one reason.
-///
 /// The MVP seeds all eight PRD-approved reasons, including <c>OtherApprovedReason</c>
-/// (tasks/TASK-003-CATALOG.md).
 /// </summary>
 public class DiscountReason
 {
@@ -43,7 +41,7 @@ public class DiscountReason
     public bool IsActive { get; private set; }
 
     /// <summary>
-    /// Admin edit of the display fields (docs/16-PERMISSIONS-MATRIX.md). The <see cref="Code"/>
+    /// Admin edit of the display fields. The <see cref="Code"/>
     /// is the stable natural key seeding and existing listings rely on, so it is never changed.
     /// </summary>
     public void UpdateDetails(string name, string? description)

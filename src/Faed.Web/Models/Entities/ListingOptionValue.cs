@@ -1,8 +1,8 @@
-namespace Faed.Web.Models.Entities;
+﻿namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// One selectable value of a <see cref="ListingOption"/> — <c>M</c>, <c>Black</c>,
-/// <c>42</c> (docs/04-DOMAIN-MODEL.md §4). Values are merchant free text: the platform
+/// <c>42</c>. Values are merchant free text: the platform
 /// deliberately does not ship a fixed size or colour vocabulary.
 /// </summary>
 public class ListingOptionValue

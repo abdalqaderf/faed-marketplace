@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +12,6 @@ public sealed class ListingVariantConfiguration : IEntityTypeConfiguration<Listi
         {
             // Quantities are guarded at the strongest available layer as well as in the
             // aggregate, so no code path — present or future — can persist negative stock
-            // (docs/17-DATA-INVARIANTS.md "Inventory").
             table.HasCheckConstraint("CK_ListingVariants_Quantities_NonNegative",
                 "[InitialQuantity] >= 0 AND [AvailableQuantity] >= 0 " +
                 "AND [ReservedQuantity] >= 0 AND [SoldQuantity] >= 0");
@@ -32,13 +31,13 @@ public sealed class ListingVariantConfiguration : IEntityTypeConfiguration<Listi
             .HasMaxLength(ListingVariant.MaxOptionCombinationKeyLength);
 
         // Optimistic concurrency is present from the first variant migration: two requests
-        // for the last unit must not both succeed (AGENTS.md §7, docs/adr/0002).
+        // for the last unit must not both succeed.
         builder.Property(v => v.RowVersion).IsRowVersion();
 
         builder.HasIndex(v => new { v.ListingId, v.Sku }).IsUnique();
 
         // "One Listing cannot have duplicate option-value combinations"
-        // (docs/17-DATA-INVARIANTS.md) — enforced by the database, not only by the aggregate.
+        // — enforced by the database, not only by the aggregate.
         builder.HasIndex(v => new { v.ListingId, v.OptionCombinationKey })
             .IsUnique()
             .HasDatabaseName("IX_ListingVariants_ListingId_OptionCombinationKey");

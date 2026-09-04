@@ -1,9 +1,9 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Rendering;
 
 /// <summary>View helper: maps listing workflow enums to badge classes and human labels
-/// (docs/07-UI-UX-SPEC.md §8 — never show a bare status code without meaning).</summary>
+///.</summary>
 public static class ListingStatusDisplay
 {
     public static string BadgeClass(ListingStatus status) => status switch

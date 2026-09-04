@@ -1,16 +1,14 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One image attached to a listing (docs/04-DOMAIN-MODEL.md §3). Only the private storage
+/// One image attached to a listing. Only the private storage
 /// object key is kept, never a public URL: the bytes are served through an authorized
 /// endpoint so a non-Live listing's photography cannot be reached by guessing a path
-/// (docs/08-SECURITY-AND-PRIVACY.md §3-4).
-///
 /// <see cref="MediaType"/> keeps defect evidence distinguishable from ordinary product
 /// photography, which is what lets the buyer-facing pages put a disclosed fault in front of
-/// the buyer instead of burying it (docs/01-PRD.md §8).
+/// the buyer instead of burying it.
 /// </summary>
 public class ListingMedia
 {

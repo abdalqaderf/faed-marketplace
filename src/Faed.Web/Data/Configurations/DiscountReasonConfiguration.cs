@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -27,6 +27,6 @@ public sealed class DiscountReasonConfiguration : IEntityTypeConfiguration<Disco
             .HasMaxLength(DiscountReason.MaxDescriptionLength);
 
         // No relationship to ConditionGrade: physical state and discount reason are
-        // independent concepts (docs/adr/0003-CONDITION-VS-DISCOUNT-REASON.md).
+        // independent concepts.
     }
 }

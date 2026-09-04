@@ -1,7 +1,7 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// Provenance of a listing's reference price (docs/03-BUSINESS-RULES.md §4). A reference
+/// Provenance of a listing's reference price. A reference
 /// price is only meaningful when the merchant can say where the number came from, so the
 /// source kind is recorded alongside the URL, uploaded evidence file or note.
 /// </summary>

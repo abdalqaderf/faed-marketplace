@@ -1,10 +1,9 @@
-namespace Faed.Web.Services.Common;
+﻿namespace Faed.Web.Services.Common;
 
 /// <summary>
 /// Shared paging constants. Every list, queue and history surface returns a bounded
 /// <see cref="PagedResult{T}"/> so a merchant, buyer or administrator with a long history
-/// never triggers an unbounded query (docs/06-ARCHITECTURE.md §13 "paging",
-/// tasks/TASK-011-HARDENING-AND-DEMO.md "performance/paging review").
+/// never triggers an unbounded query.
 /// </summary>
 public static class Paging
 {

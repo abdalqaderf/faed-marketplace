@@ -1,4 +1,4 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Trust;
@@ -15,7 +15,6 @@ public sealed record DisputeEvidenceUpload(
 /// <summary>
 /// A participant's request to open a dispute. The transaction and the raiser's participation
 /// are resolved and re-checked server-side; nothing here is trusted straight from the request
-/// (docs/08-SECURITY-AND-PRIVACY.md §6, §9).
 /// </summary>
 public sealed record FileDisputeInput(
     TrustTransactionType TransactionType,
@@ -105,7 +104,7 @@ public sealed record AdminDisputeDetailView(
     public bool CanStartReview => Status == DisputeStatus.Open;
 
     /// <summary>An outcome can be recorded only once the dispute is under review
-    /// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10).</summary>
+    ///.</summary>
     public bool CanClose => Status == DisputeStatus.UnderReview;
 }
 
@@ -114,7 +113,7 @@ public sealed record AdminDisputeDetailView(
 /// <summary>
 /// A buyer's request to review a merchant after a completed transaction. Eligibility (the
 /// transaction is <c>Completed</c>, the reviewer took part, and has not already reviewed it)
-/// is enforced server-side (docs/03-BUSINESS-RULES.md §13).
+/// is enforced server-side.
 /// </summary>
 public sealed record SubmitReviewInput(
     TrustTransactionType TransactionType,
@@ -141,7 +140,7 @@ public sealed record MerchantReviewView(
     string ReviewerLabel,
     DateTime CreatedAtUtc);
 
-/// <summary>Aggregate rating for a merchant (docs/07-UI-UX-SPEC.md §4 "aggregate trust signals").</summary>
+/// <summary>Aggregate rating for a merchant.</summary>
 public sealed record MerchantRatingSummary(int ReviewCount, double AverageRating)
 {
     public bool HasReviews => ReviewCount > 0;

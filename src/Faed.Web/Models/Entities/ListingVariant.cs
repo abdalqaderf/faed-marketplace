@@ -3,13 +3,12 @@ using Faed.Web.Models;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// The sellable SKU and the single authoritative stock record for a listing
-/// (AGENTS.md Rule A, docs/adr/0002-INVENTORY-AT-VARIANT-LEVEL.md). A listing never holds
+/// The sellable SKU and the single authoritative stock record for a listing.
+/// A listing never holds
 /// an aggregate quantity: <c>Black / M = 4</c> and <c>Black / L = 2</c> are independent
 /// records with independent concurrency protection.
-///
 /// <see cref="RowVersion"/> is a SQL Server <c>rowversion</c> present from the first
-/// variant migration (AGENTS.md §7); every quantity movement must run inside a transaction
+/// variant migration; every quantity movement must run inside a transaction
 /// that fails rather than overwrite a competing one.
 /// </summary>
 public class ListingVariant
@@ -62,7 +61,7 @@ public class ListingVariant
     /// <summary>
     /// Deterministic fingerprint of this variant's option-value combination. It exists so
     /// "one listing cannot have duplicate option-value combinations"
-    /// (docs/17-DATA-INVARIANTS.md) is enforced by a unique database index, which a join
+    /// is enforced by a unique database index, which a join
     /// table alone cannot express.
     /// </summary>
     public string OptionCombinationKey { get; private set; } = null!;
@@ -82,7 +81,7 @@ public class ListingVariant
 
     public DateTime UpdatedAtUtc { get; private set; }
 
-    /// <summary>SQL Server <c>rowversion</c> optimistic concurrency token (AGENTS.md §7).</summary>
+    /// <summary>SQL Server <c>rowversion</c> optimistic concurrency token.</summary>
     public byte[] RowVersion { get; private set; } = [];
 
     public IReadOnlyCollection<ListingVariantOptionValue> OptionValues => _optionValues.AsReadOnly();
@@ -93,7 +92,7 @@ public class ListingVariant
     /// <summary>
     /// Applies a manual stock correction and returns the new available quantity. Callers
     /// record the movement as an <see cref="InventoryAdjustment"/> in the same transaction —
-    /// stock is never silently overwritten (docs/03-BUSINESS-RULES.md §6).
+    /// stock is never silently overwritten.
     /// </summary>
     public int AdjustAvailable(int quantityDelta, DateTime nowUtc)
     {
@@ -110,19 +109,17 @@ public class ListingVariant
         }
 
         // InitialQuantity is deliberately not moved: it is the opening balance of the
-        // stock-accounting invariant in docs/03-BUSINESS-RULES.md §5, and the adjustment
-        // totals live in InventoryAdjustment rows.
+        // stock-accounting invariant, and the adjustment totals live in InventoryAdjustment rows.
         AvailableQuantity = (int)target;
         UpdatedAtUtc = nowUtc;
         return AvailableQuantity;
     }
 
     /// <summary>
-    /// Moves <paramref name="quantity"/> units from available to reserved for a B2C order
-    /// (docs/03-BUSINESS-RULES.md §7). The caller runs this inside a transaction whose write
+    /// Moves <paramref name="quantity"/> units from available to reserved for a B2C order.
+    /// The caller runs this inside a transaction whose write
     /// is protected by <see cref="RowVersion"/>, so two orders racing for the last unit
-    /// cannot both succeed (AGENTS.md §7, docs/17-DATA-INVARIANTS.md "No transaction may
-    /// reserve more than current available stock").
+    /// cannot both succeed.
     /// </summary>
     public void Reserve(int quantity, DateTime nowUtc)
     {
@@ -146,9 +143,8 @@ public class ListingVariant
 
     /// <summary>
     /// Returns <paramref name="quantity"/> reserved units to available stock when an order is
-    /// cancelled, expires, or is marked no-show (docs/03-BUSINESS-RULES.md §7). Each
+    /// cancelled, expires, or is marked no-show. Each
     /// reservation is released exactly once over its lifecycle
-    /// (docs/17-DATA-INVARIANTS.md "Stock release/consume occurs exactly once").
     /// </summary>
     public void ReleaseReservation(int quantity, DateTime nowUtc)
     {
@@ -167,7 +163,7 @@ public class ListingVariant
 
     /// <summary>
     /// Converts <paramref name="quantity"/> reserved units into sold units when an order
-    /// completes (docs/03-BUSINESS-RULES.md §7). Reserved stock never returns to available
+    /// completes. Reserved stock never returns to available
     /// once it is sold.
     /// </summary>
     public void ConfirmSale(int quantity, DateTime nowUtc)

@@ -4,14 +4,12 @@ using Faed.Web.Models.Enums;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// A rating and comment a buyer leaves for a merchant after a completed transaction
-/// (docs/03-BUSINESS-RULES.md §13, docs/04-DOMAIN-MODEL.md §9, docs/17-DATA-INVARIANTS.md
-/// "Review"). A review references exactly one completed transaction context — a B2C
+/// A rating and comment a buyer leaves for a merchant after a completed transaction.
+/// A review references exactly one completed transaction context — a B2C
 /// <see cref="Order"/> or a B2B <see cref="B2BDeal"/> — enforced by a database check
 /// constraint. Eligibility (the transaction is <c>Completed</c>, the reviewer took part, and
 /// they have not already reviewed it) is enforced by the review service, and the
 /// "one review per transaction" rule is also a filtered unique index on each transaction FK
-/// (docs/03-BUSINESS-RULES.md §13 "unique database constraint where practical").
 /// </summary>
 public class Review
 {

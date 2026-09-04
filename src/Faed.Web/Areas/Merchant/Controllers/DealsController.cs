@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
@@ -11,9 +11,9 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// A merchant's accepted wholesale deals: the fulfilment queue for deals it sells and the
-/// deals it buys (tasks/TASK-008-B2B-DEALS.md, docs/07-UI-UX-SPEC.md §6). Gated by the
+/// deals it buys. Gated by the
 /// <c>CanNegotiateB2B</c> policy; the service re-checks role eligibility and participation on
-/// every call (docs/16-PERMISSIONS-MATRIX.md).
+/// every call.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.CanNegotiateB2B)]
@@ -51,7 +51,7 @@ public sealed class DealsController(
 
         var forThisDeal = await disputes.GetDisputesForTransactionAsync(
             userId, TrustTransactionType.B2BDeal, id, cancellationToken);
-        // Only an Open/UnderReview dispute suppresses a new filing (docs/03-BUSINESS-RULES.md §14).
+        // Only an Open/UnderReview dispute suppresses a new filing.
         var activeDispute = forThisDeal.FirstOrDefault(d => d.IsActive);
 
         return View(new B2BDealDetailPageModel
@@ -65,7 +65,7 @@ public sealed class DealsController(
     }
 
     /// <summary>The buying merchant reviews the seller once the deal is completed
-    /// (docs/03-BUSINESS-RULES.md §13).</summary>
+    ///.</summary>
     [HttpPost]
     public async Task<IActionResult> Review(Guid id, MerchantLeaveReviewFormModel form, CancellationToken cancellationToken)
     {

@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
@@ -12,8 +12,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// A merchant's disputes over the transactions it takes part in — the B2C orders it sells
-/// and the wholesale deals it buys or sells (docs/03-BUSINESS-RULES.md §14,
-/// docs/16-PERMISSIONS-MATRIX.md "File eligible dispute — participant ✅"). Every filing goes
+/// and the wholesale deals it buys or sells. Every filing goes
 /// through <see cref="IDisputeService.FileDisputeAsync"/>, which re-checks participation and
 /// eligibility server-side regardless of which page started the flow.
 /// </summary>
@@ -104,7 +103,7 @@ public sealed class DisputesController(
     /// Confirms the caller takes part in the referenced transaction (via the same read paths
     /// the deal / order pages use) and builds the "raise a dispute" page. Returns <c>null</c>
     /// when the transaction is not the caller's to dispute — the POST then 404s, exactly as a
-    /// guessed id would (docs/08-SECURITY-AND-PRIVACY.md §9).
+    /// guessed id would.
     /// </summary>
     private async Task<MerchantFileDisputePageModel?> BuildPageAsync(
         TrustTransactionType type, Guid id, MerchantFileDisputeFormModel form, CancellationToken cancellationToken)

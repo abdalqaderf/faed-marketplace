@@ -5,19 +5,16 @@ namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// An accepted merchant-to-merchant deal: the fulfillment record created when a
-/// <see cref="B2BNegotiation"/> participant accepts the current offer revision
-/// (docs/03-BUSINESS-RULES.md §10, docs/04-DOMAIN-MODEL.md §8,
-/// docs/adr/0004-B2B-NEGOTIATION-SEPARATE-FROM-DEAL.md). It is distinct from the negotiation:
+/// <see cref="B2BNegotiation"/> participant accepts the current offer revision.
+/// It is distinct from the negotiation:
 /// the accepted terms are snapshotted here and never read back from the mutable listing, and
 /// the deal carries its own <see cref="ReservationExpiresAtUtc"/>, separate from a revision's
-/// <c>OfferExpiresAtUtc</c> (AGENTS.md Rule C).
-///
+/// <c>OfferExpiresAtUtc</c>.
 /// Like <see cref="Order"/>, this aggregate owns the fulfillment state machine but not the
 /// stock movements: it records the transition and its timestamp, and the deal service moves
 /// the reserved / available / sold quantities on each <see cref="B2BDealLine"/>'s variant
-/// inside the same transaction (docs/06-ARCHITECTURE.md §6). The atomic reservation of every
-/// line happens once, when the deal is created (docs/17-DATA-INVARIANTS.md "Inventory for all
-/// deal lines reserves atomically or not at all").
+/// inside the same transaction. The atomic reservation of every
+/// line happens once, when the deal is created.
 /// </summary>
 public class B2BDeal
 {
@@ -35,11 +32,8 @@ public class B2BDeal
     /// accepted revision's server-derived total (accepted unit price × agreed quantity) and
     /// nothing else; the deal's <see cref="TotalSnapshot"/> is computed here from the subtotal
     /// plus any agreed <paramref name="shippingCostSnapshot"/> — a caller cannot inject a
-    /// standalone total (docs/08-SECURITY-AND-PRIVACY.md §7, docs/17-DATA-INVARIANTS.md
-    /// "Order/deal total = server-calculated line totals + eligible fulfillment/shipping
-    /// snapshot"). A direct-pickup deal carries no shipment reference and no shipping cost:
+    /// standalone total. A direct-pickup deal carries no shipment reference and no shipping cost:
     /// shipping information belongs only to a seller-arranged-shipping deal
-    /// (docs/03-BUSINESS-RULES.md §12).
     /// </summary>
     public B2BDeal(
         Guid b2bNegotiationId,
@@ -78,8 +72,7 @@ public class B2BDeal
         if (fulfillmentType == B2BFulfillmentType.Pickup && (normalizedReference is not null || shippingCostSnapshot is not null))
         {
             // A pickup deal with a shipment reference or a shipping charge is contradictory
-            // fulfilment data (docs/03-BUSINESS-RULES.md §12 — shipping information belongs to
-            // seller-arranged shipping only).
+            // fulfilment data.
             throw new DomainException("A direct-pickup deal cannot carry a shipment reference or a shipping cost.");
         }
 
@@ -104,7 +97,7 @@ public class B2BDeal
 
     public Guid B2BNegotiationId { get; private set; }
 
-    /// <summary>The revision both merchants agreed on. Every deal line corresponds to it (docs/17-DATA-INVARIANTS.md).</summary>
+    /// <summary>The revision both merchants agreed on. Every deal line corresponds to it.</summary>
     public Guid AcceptedRevisionId { get; private set; }
 
     public Guid SellingMerchantProfileId { get; private set; }
@@ -115,7 +108,7 @@ public class B2BDeal
 
     public B2BFulfillmentType FulfillmentType { get; private set; }
 
-    /// <summary>Seller-entered shipment reference. Faed does not book or price shipping (docs/03-BUSINESS-RULES.md §12).</summary>
+    /// <summary>Seller-entered shipment reference. Faed does not book or price shipping.</summary>
     public string? ShipmentReference { get; private set; }
 
     public decimal AcceptedUnitPriceSnapshot { get; private set; }
@@ -128,10 +121,9 @@ public class B2BDeal
 
     /// <summary>
     /// When the stock reservation lapses while the deal is still
-    /// <see cref="B2BDealStatus.AwaitingFulfillment"/> (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §7).
+    /// <see cref="B2BDealStatus.AwaitingFulfillment"/>.
     /// Cleared once the seller starts fulfilling it — the stock is then held until the deal is
     /// delivered or cancelled. The window is configuration, not a domain constant
-    /// (docs/13-OPEN-QUESTIONS.md §15).
     /// </summary>
     public DateTime? ReservationExpiresAtUtc { get; private set; }
 
@@ -252,7 +244,7 @@ public class B2BDeal
 
     /// <summary>
     /// Fulfilment is finished; the deal service converts the reserved stock to sold in the
-    /// same transaction (docs/03-BUSINESS-RULES.md §10 "On completion: Reserved -> Sold").
+    /// same transaction.
     /// </summary>
     public void Complete(DateTime nowUtc)
     {
@@ -266,8 +258,7 @@ public class B2BDeal
 
     /// <summary>
     /// A participant withdraws from the deal before it completes; the deal service releases
-    /// the reserved stock in the same transaction (docs/03-BUSINESS-RULES.md §10 "If deal
-    /// expires/cancels before stock is consumed: Reserved -> Available").
+    /// the reserved stock in the same transaction.
     /// </summary>
     public void Cancel(string reason, DateTime nowUtc)
     {
@@ -299,8 +290,7 @@ public class B2BDeal
     /// <summary>
     /// A fulfilment step must not advance a deal whose stock reservation has already lapsed:
     /// doing so would clear <see cref="ReservationExpiresAtUtc"/> and hold the stock
-    /// indefinitely on the strength of a passed deadline (the same rule as
-    /// <see cref="Order.Confirm"/>, docs/03-BUSINESS-RULES.md §10). The deal stays
+    /// indefinitely on the strength of a passed deadline. The deal stays
     /// <see cref="B2BDealStatus.AwaitingFulfillment"/> so the expiry sweep releases it.
     /// </summary>
     private void RequireReservationNotExpired(DateTime nowUtc)
