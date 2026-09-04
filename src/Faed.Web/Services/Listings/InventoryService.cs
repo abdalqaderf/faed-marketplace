@@ -55,6 +55,7 @@ public sealed class InventoryService(
         var pageVariantIds = pagedIds.Items.Select(r => r.VariantId).ToHashSet();
         var listingsForPage = await db.Listings
             .AsNoTracking()
+            .AsSplitQuery()
             .Where(l => l.MerchantProfileId == merchantId && l.Variants.Any(v => pageVariantIds.Contains(v.Id)))
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)

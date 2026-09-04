@@ -31,12 +31,13 @@ Non-secret settings live in `appsettings.json` (committed). **Secrets are never 
 host's secret store. ASP.NET Core maps `__` in an environment variable name to a config
 section separator.
 
-**The database connection string is not committed.** It lives only in
-`appsettings.Development.json` for local work; `appsettings.json` has no `ConnectionStrings`
-section. On startup in any non-`Development`, non-`Testing` environment the app **fails
-fast** (throws before serving a request) if `ConnectionStrings__DefaultConnection` is
-missing, or if it still points at SQL Server LocalDB — a copy-pasted development string
-cannot reach production silently (`DependencyInjection.ResolveConnectionString`).
+**No production database connection string is committed.** The repository does commit a
+passwordless LocalDB connection string in `appsettings.Development.json` for local work;
+`appsettings.json` has no `ConnectionStrings` section. On startup in any non-`Development`,
+non-`Testing` environment the app **fails fast** (throws before serving a request) if
+`ConnectionStrings__DefaultConnection` is missing, or if it still points at SQL Server
+LocalDB — a copy-pasted development string cannot reach production silently
+(`DependencyInjection.ResolveConnectionString`).
 
 ### Required in Production
 

@@ -601,6 +601,7 @@ public sealed class B2BNegotiationService(
     private Task<Listing?> LoadListingAggregateBySlugAsync(string slug, CancellationToken cancellationToken) =>
         db.Listings
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .SingleOrDefaultAsync(l => l.Slug == slug, cancellationToken);
@@ -608,6 +609,7 @@ public sealed class B2BNegotiationService(
     private Task<Listing?> LoadListingAggregateByIdAsync(Guid listingId, CancellationToken cancellationToken) =>
         db.Listings
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .SingleOrDefaultAsync(l => l.Id == listingId, cancellationToken);

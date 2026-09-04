@@ -16,9 +16,9 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 public sealed class ReviewsController(IReviewService reviews) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(int page = 1, CancellationToken cancellationToken = default)
     {
-        var received = await reviews.GetReviewsForOwnerAsync(User.RequireUserId(), cancellationToken);
+        var received = await reviews.GetReviewsForOwnerAsync(User.RequireUserId(), page, cancellationToken);
         return View(new MerchantReviewsPageModel { Reviews = received });
     }
 }

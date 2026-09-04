@@ -17,12 +17,27 @@
 | TASK-011 — Hardening, Demo Data and Delivery | 11 | Completed |
 | TASK-012 — Final UI/UX Completion | 12 | Completed |
 | TASK-013 — Final Visual Design & Polish | 13 | Completed |
+| TASK-014 — Final Runtime Audit | Finalization | Completed with notes |
+| TASK-015 — Final Runtime Fixes | Finalization | Completed with notes |
 
-All thirteen planned tasks are complete. The MVP is feature-complete for field validation and
-demonstration; the remaining items are infrastructure decisions and manual delivery steps
-recorded in `docs/24-DELIVERY-AND-HARDENING.md` §11 and `DEPLOYMENT.md` §3.
+The MVP implementation phases are complete and the repository is in the coordinated finalization
+sequence tracked by `tasks/FINALIZATION_PROGRESS.md`.
 
 ## Current state
+
+**TASK-015 — Final Runtime Fixes complete. Status: `COMPLETED WITH NOTES`. Next: TASK-016.**
+
+TASK-015 made normal registration atomically assign the Buyer role, restricted B2C authorization
+to Buyer/Merchant identities, added database paging to merchant-owned review history, and applied
+local split-query loading to the audited multi-collection listing aggregates. The latest confirmed
+complete run passed all 464 tests (270 unit + 194 SQL Server integration), with 0 failed and 0
+skipped. Restore, Release build, EF model-drift, fresh migration, Development startup, demo seed,
+and HTTP smoke checks also passed. A later verification-only rerun encountered LocalDB saturation
+while test databases were being created in `MigrateAsync`; affected tests did not enter their test
+bodies, so this is recorded as a non-blocking environment limitation rather than an application
+regression. See `FINAL_RUNTIME_FIX_REPORT.md` for exact evidence.
+
+### Previous phase — TASK-013
 
 **Phase 13 — Final Visual Design & Polish complete (TASK-013). Status: `PASS WITH DOCUMENTED LIMITATIONS`.**
 
@@ -515,10 +530,8 @@ implemented.
 
 ## Active task
 
-None. TASK-013 is closed and the planned task queue (TASK-001 – TASK-013) is complete.
-
-Next step is demo/deployment: the manual delivery items in `DEPLOYMENT.md` §3, not another
-general UI/UX phase.
+TASK-016 — Realistic Demo Data & Media. The authoritative handoff and task ownership are in
+`tasks/FINALIZATION_PROGRESS.md`.
 
 ## TASK-011 — Hardening, Demo Data and Delivery
 

@@ -533,7 +533,7 @@ public sealed class B2BDealServiceTests(FaedWebApplicationFactory factory)
             _scope.ServiceProvider.GetRequiredService<IOptions<B2BDealOptions>>(),
             _scope.ServiceProvider.GetRequiredService<ILogger<B2BDealService>>());
 
-        public async Task<string> CreateUserAsync(string? role = null)
+        public async Task<string> CreateUserAsync(string? role = FaedRoles.Buyer)
         {
             var users = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var user = new ApplicationUser

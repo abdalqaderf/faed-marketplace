@@ -65,12 +65,15 @@ builder.Services.AddAuthorization(options =>
             .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin))
             .AddRequirements(new ApprovedMerchantRequirement()));
 
-    // B2C ordering is closed to administrators (docs/16-PERMISSIONS-MATRIX.md). The service
-    // layer re-checks this too, so a stale cookie cannot slip past
-    // (docs/08-SECURITY-AND-PRIVACY.md §2).
+    // B2C ordering belongs to Buyer accounts and merchants acting as buyers. Administrators
+    // remain excluded even if a misconfigured account also carries another role
+    // (docs/04-DOMAIN-MODEL.md §1, docs/16-PERMISSIONS-MATRIX.md).
     options.AddPolicy(FaedPolicies.CanPlaceB2COrder, policy =>
         policy.RequireAuthenticatedUser()
-            .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin)));
+            .RequireAssertion(context =>
+                !context.User.IsInRole(FaedRoles.Admin)
+                && (context.User.IsInRole(FaedRoles.Buyer)
+                    || context.User.IsInRole(FaedRoles.Merchant))));
 });
 
 builder.Services.AddControllersWithViews(options =>

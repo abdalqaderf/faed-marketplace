@@ -10,8 +10,9 @@ namespace Faed.Web.Areas.Buyer.Controllers;
 
 /// <summary>
 /// The single-listing B2C order builder and checkout (tasks/TASK-006-B2C-ORDERS.md). Any
-/// authenticated non-administrator may buy (docs/16-PERMISSIONS-MATRIX.md "Create B2C
-/// order" — Admin ❌); an anonymous visitor is sent to sign in first.
+/// Buyer accounts and merchants acting as consumers may buy; administrators may not
+/// (docs/16-PERMISSIONS-MATRIX.md "Create B2C order"). An anonymous visitor is sent to sign
+/// in first.
 /// </summary>
 [Area("Buyer")]
 [Authorize(Policy = FaedPolicies.CanPlaceB2COrder)]

@@ -73,7 +73,7 @@ internal sealed class TrustScope(FaedWebApplicationFactory factory) : IAsyncDisp
         _scope.ServiceProvider.GetRequiredService<IOptions<TrustOptions>>(),
         _scope.ServiceProvider.GetRequiredService<ILogger<DisputeService>>());
 
-    public async Task<string> CreateUserAsync(string? role = null)
+    public async Task<string> CreateUserAsync(string? role = FaedRoles.Buyer)
     {
         var users = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = new ApplicationUser
@@ -120,7 +120,9 @@ internal sealed class TrustScope(FaedWebApplicationFactory factory) : IAsyncDisp
         return result.Value;
     }
 
-    private async Task<(Guid ListingId, Guid VariantId)> CreateLiveB2CListingAsync(string merchantUserId)
+    private async Task<(Guid ListingId, Guid VariantId)> CreateLiveB2CListingAsync(
+        string merchantUserId,
+        int initialQuantity = 10)
     {
         var reference = await Listings.GetReferenceDataAsync();
         var categoryId = reference.Categories[0].Id;
@@ -139,7 +141,8 @@ internal sealed class TrustScope(FaedWebApplicationFactory factory) : IAsyncDisp
         Assert.True((await Listings.AddOptionValueAsync(merchantUserId, listingId, optionId, "M")).Succeeded);
         var valueId = await Db.Set<ListingOptionValue>().Where(v => v.ListingOptionId == optionId).Select(v => v.Id).SingleAsync();
         Assert.True((await Listings.AddVariantAsync(
-            merchantUserId, listingId, new AddVariantInput($"JKT-{Guid.NewGuid():N}", [valueId], 10))).Succeeded);
+            merchantUserId, listingId, new AddVariantInput(
+                $"JKT-{Guid.NewGuid():N}", [valueId], initialQuantity))).Succeeded);
         Assert.True((await Listings.AddImageAsync(merchantUserId, listingId, new AddListingImageInput(
             ListingMediaType.Product, TestImages.MinimalPngStream(), "front.png", "image/png",
             TestImages.MinimalPng.Length, "Front"))).Succeeded);
@@ -178,6 +181,39 @@ internal sealed class TrustScope(FaedWebApplicationFactory factory) : IAsyncDisp
     {
         Assert.True((await Orders.MarkReadyForPickupAsync(merchantUserId, orderId)).Succeeded);
         Assert.True((await Orders.CompleteAsync(merchantUserId, orderId)).Succeeded);
+    }
+
+    public async Task CreateCompletedReviewHistoryAsync(string merchantUserId, int reviewCount)
+    {
+        var locationId = await AddPickupLocationAsync(merchantUserId);
+        var (_, variantId) = await CreateLiveB2CListingAsync(merchantUserId, reviewCount);
+        var buyerUserId = await CreateUserAsync();
+
+        for (var index = 1; index <= reviewCount; index++)
+        {
+            var placed = await Orders.PlaceOrderAsync(buyerUserId, new PlaceOrderInput(
+                [new OrderLineInput(variantId, 1)],
+                OrderFulfillmentType.Pickup,
+                locationId,
+                null,
+                null,
+                "Review Buyer",
+                "0790000000",
+                null));
+            Assert.True(placed.Succeeded, placed.Error);
+            Assert.True((await Orders.ConfirmAsync(merchantUserId, placed.Value)).Succeeded);
+            Assert.True((await Orders.MarkReadyForPickupAsync(merchantUserId, placed.Value)).Succeeded);
+            Assert.True((await Orders.CompleteAsync(merchantUserId, placed.Value)).Succeeded);
+
+            var reviewed = await Reviews.SubmitReviewAsync(
+                buyerUserId,
+                new SubmitReviewInput(
+                    TrustTransactionType.B2COrder,
+                    placed.Value,
+                    ((index - 1) % Review.MaxRating) + 1,
+                    $"Paged review {index:D2}"));
+            Assert.True(reviewed.Succeeded, reviewed.Error);
+        }
     }
 
     private async Task<(string Slug, IReadOnlyList<Guid> VariantIds)> CreateLiveB2BListingAsync(string merchantUserId)

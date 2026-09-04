@@ -24,9 +24,9 @@ public static class FaedPolicies
     public const string CanNegotiateB2B = "CanNegotiateB2B";
 
     /// <summary>
-    /// Requires an authenticated user who is not an administrator. Individual buyers (and
-    /// merchants acting as consumers) may place B2C orders; administrators may not
-    /// (docs/16-PERMISSIONS-MATRIX.md "Create B2C order — Admin ❌").
+    /// Requires a Buyer or Merchant role and excludes administrators. Merchant remains an
+    /// additive role, so an approved merchant can still act as a consumer
+    /// (docs/16-PERMISSIONS-MATRIX.md "Create B2C order").
     /// </summary>
     public const string CanPlaceB2COrder = "CanPlaceB2COrder";
 }

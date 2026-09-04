@@ -60,16 +60,19 @@
                            identity separation preserved"). *@
                         @if (User.Identity?.IsAuthenticated == true && !User.IsInRole(FaedRoles.Admin))
                         {
-                            <li class="nav-item">
-                                <a class="nav-link @(area == "Buyer" && controller == "Orders" ? "is-active" : "")"
-                                   aria-current="@(area == "Buyer" && controller == "Orders" ? "page" : null)"
-                                   asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(area == "Buyer" && controller == "Disputes" ? "is-active" : "")"
-                                   aria-current="@(area == "Buyer" && controller == "Disputes" ? "page" : null)"
-                                   asp-area="Buyer" asp-controller="Disputes" asp-action="Index">My Disputes</a>
-                            </li>
+                            @if (User.IsInRole(FaedRoles.Buyer) || User.IsInRole(FaedRoles.Merchant))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(area == "Buyer" && controller == "Orders" ? "is-active" : "")"
+                                       aria-current="@(area == "Buyer" && controller == "Orders" ? "page" : null)"
+                                       asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(area == "Buyer" && controller == "Disputes" ? "is-active" : "")"
+                                       aria-current="@(area == "Buyer" && controller == "Disputes" ? "page" : null)"
+                                       asp-area="Buyer" asp-controller="Disputes" asp-action="Index">My Disputes</a>
+                                </li>
+                            }
                             <li class="nav-item">
                                 <a class="nav-link faed-navbar__workspace-link @(area == "Merchant" ? "is-active" : "")"
                                    aria-current="@(area == "Merchant" ? "page" : null)"

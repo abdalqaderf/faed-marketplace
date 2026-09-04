@@ -382,6 +382,37 @@ public sealed class TrustServiceTests(FaedWebApplicationFactory factory)
         Assert.Equal(4, summary.Summary.AverageRating);
     }
 
+    [SkippableFact]
+    public async Task MerchantReviewHistory_BeyondOnePage_IsDatabasePagedAndFullyReachable()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new TrustScope(factory);
+        var (merchantUserId, _) = await scope.CreateApprovedMerchantAsync();
+        var reviewCount = Paging.DefaultPageSize + 1;
+        await scope.CreateCompletedReviewHistoryAsync(merchantUserId, reviewCount);
+
+        var first = await scope.Reviews.GetReviewsForOwnerAsync(merchantUserId, page: 1);
+        var second = await scope.Reviews.GetReviewsForOwnerAsync(merchantUserId, page: 2);
+
+        Assert.Equal(reviewCount, first.Summary.ReviewCount);
+        Assert.Equal(reviewCount, first.Reviews.TotalCount);
+        Assert.Equal(2, first.Reviews.TotalPages);
+        Assert.Equal(Paging.DefaultPageSize, first.Reviews.Items.Count);
+        Assert.Single(second.Reviews.Items);
+        Assert.Empty(first.Reviews.Items.Select(review => review.Comment)
+            .Intersect(second.Reviews.Items.Select(review => review.Comment)));
+
+        var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, merchantUserId);
+
+        var html = await client.GetStringAsync("/Merchant/Reviews?page=2");
+        Assert.Contains("Page 2 of 2", html);
+        Assert.Contains("Showing 26", html);
+    }
+
     // ---- Helpers ----------------------------------------------------------
 
     private static FileDisputeInput OrderDispute(Guid orderId) => new(

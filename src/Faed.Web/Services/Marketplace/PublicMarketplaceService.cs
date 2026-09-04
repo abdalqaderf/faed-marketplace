@@ -264,6 +264,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
         var listing = await PublicLiveListings()
             .Where(l => launchCategoryIds.Contains(l.CategoryId))
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .Include(l => l.Media)
@@ -559,6 +560,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
         var listings = await PublicLiveListings()
             .Where(l => ids.Contains(l.Id))
+            .AsSplitQuery()
             .Include(l => l.Media)
             .Include(l => l.DiscountReasons)
             .Include(l => l.Variants)

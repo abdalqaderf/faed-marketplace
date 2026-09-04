@@ -80,6 +80,7 @@ public sealed class B2BDealService(
         }
 
         var listing = await db.Listings
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .SingleOrDefaultAsync(l => l.Id == negotiation.ListingId, cancellationToken);

@@ -15,6 +15,7 @@ internal static class ListingQueries
     /// <summary>The whole aggregate, tracked, for a use case that is about to change it.</summary>
     internal static IQueryable<Listing> WithAggregate(this IQueryable<Listing> listings) =>
         listings
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .Include(l => l.Media)

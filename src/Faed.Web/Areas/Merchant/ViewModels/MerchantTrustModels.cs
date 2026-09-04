@@ -61,7 +61,7 @@ public sealed class MerchantFileDisputePageModel
 
 public sealed class MerchantReviewsPageModel
 {
-    public required MerchantReviewsView Reviews { get; init; }
+    public required MerchantReviewHistoryView Reviews { get; init; }
 }
 
 /// <summary>A buying merchant reviewing the seller after a completed wholesale deal.</summary>

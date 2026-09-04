@@ -1,4 +1,5 @@
 using Faed.Web.Models.Enums;
+using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Trust;
 
@@ -149,3 +150,12 @@ public sealed record MerchantRatingSummary(int ReviewCount, double AverageRating
 public sealed record MerchantReviewsView(
     MerchantRatingSummary Summary,
     IReadOnlyList<MerchantReviewView> Reviews);
+
+/// <summary>
+/// The merchant-owner view keeps the all-time aggregate separate from the bounded page of
+/// review rows, so an established merchant can reach their complete history without loading
+/// it all at once.
+/// </summary>
+public sealed record MerchantReviewHistoryView(
+    MerchantRatingSummary Summary,
+    PagedResult<MerchantReviewView> Reviews);

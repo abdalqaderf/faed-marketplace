@@ -41,6 +41,12 @@ public sealed class TestAuthHandler(
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(role => new Claim(ClaimTypes.Role, role)));
         }
+        else
+        {
+            // A normal registered Faed account is a Buyer. Tests that model an administrator
+            // or another explicit role supply X-Test-Roles and replace this default.
+            claims.Add(new Claim(ClaimTypes.Role, Faed.Web.Models.Identity.FaedRoles.Buyer));
+        }
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);

@@ -214,6 +214,33 @@ public sealed class OrderServiceTests(FaedWebApplicationFactory factory)
     }
 
     [SkippableFact]
+    public async Task PlaceOrder_ByARolelessAccount_IsForbidden_ServerSide()
+    {
+        Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
+        await using var scope = new OrderScope(factory);
+        var (merchantUserId, _) = await scope.CreateApprovedMerchantAsync();
+        var locationId = await scope.AddPickupLocationAsync(merchantUserId);
+        var (_, variantId) = await scope.CreateLiveListingAsync(merchantUserId, initialQuantity: 5);
+        var rolelessUserId = await scope.CreateUserAsync(role: null);
+
+        var placed = await scope.Orders.PlaceOrderAsync(
+            rolelessUserId,
+            PickupInput(variantId, 1, locationId));
+
+        Assert.True(placed.Failed);
+        Assert.Equal(ResultErrorKind.Forbidden, placed.ErrorKind);
+        Assert.Empty(await scope.Db.Orders.AsNoTracking()
+            .Where(order => order.BuyerUserId == rolelessUserId)
+            .ToListAsync());
+
+        var checkout = await scope.Orders.GetCheckoutAsync(
+            rolelessUserId,
+            await scope.SlugForVariantAsync(variantId));
+        Assert.True(checkout.Failed);
+        Assert.Equal(ResultErrorKind.Forbidden, checkout.ErrorKind);
+    }
+
+    [SkippableFact]
     public async Task Order_BuyerUserId_IsReferentiallyBoundToAnIdentityUser()
     {
         Skip.IfNot(factory.DatabaseReady, "SQL Server not reachable.");
@@ -508,7 +535,7 @@ public sealed class OrderServiceTests(FaedWebApplicationFactory factory)
                 .Join(Db.Listings.AsNoTracking(), v => v.ListingId, l => l.Id, (_, l) => l.Slug)
                 .SingleAsync();
 
-        public async Task<string> CreateUserAsync(string? role = null)
+        public async Task<string> CreateUserAsync(string? role = FaedRoles.Buyer)
         {
             var users = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var user = new ApplicationUser

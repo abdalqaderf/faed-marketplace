@@ -126,43 +126,27 @@ public sealed class ReviewService(
     public async Task<MerchantReviewsView> GetMerchantReviewsAsync(
         Guid merchantProfileId, int take, CancellationToken cancellationToken = default)
     {
-        var stats = await db.Reviews
-            .AsNoTracking()
-            .Where(r => r.ReviewedMerchantProfileId == merchantProfileId)
-            .GroupBy(r => 1)
-            .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
-            .SingleOrDefaultAsync(cancellationToken);
+        var summary = await GetRatingSummaryAsync(merchantProfileId, cancellationToken);
 
-        var summary = stats is null
-            ? new MerchantRatingSummary(0, 0)
-            : new MerchantRatingSummary(stats.Count, Math.Round(stats.Average, 2));
-
-        var recent = await db.Reviews
+        var reviews = await db.Reviews
             .AsNoTracking()
             .Where(r => r.ReviewedMerchantProfileId == merchantProfileId)
             .OrderByDescending(r => r.CreatedAtUtc)
+            .ThenByDescending(r => r.Id)
             .Take(Math.Clamp(take, 1, 50))
-            .Select(r => new
-            {
+            .Select(r => new MerchantReviewView(
                 r.Rating,
                 r.Comment,
-                Type = r.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
-                r.CreatedAtUtc,
-            })
-            .ToListAsync(cancellationToken);
-
-        var reviews = recent
-            .Select(r => new MerchantReviewView(
-                r.Rating, r.Comment, r.Type,
-                r.Type == TrustTransactionType.B2COrder ? "Individual buyer" : "Wholesale buyer",
+                r.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
+                r.OrderId != null ? "Individual buyer" : "Wholesale buyer",
                 r.CreatedAtUtc))
-            .ToList();
+            .ToListAsync(cancellationToken);
 
         return new MerchantReviewsView(summary, reviews);
     }
 
-    public async Task<MerchantReviewsView> GetReviewsForOwnerAsync(
-        string merchantUserId, CancellationToken cancellationToken = default)
+    public async Task<MerchantReviewHistoryView> GetReviewsForOwnerAsync(
+        string merchantUserId, int page = 1, CancellationToken cancellationToken = default)
     {
         var merchantId = await db.MerchantProfiles
             .AsNoTracking()
@@ -170,9 +154,43 @@ public sealed class ReviewService(
             .Select(p => (Guid?)p.Id)
             .SingleOrDefaultAsync(cancellationToken);
 
-        return merchantId is null
-            ? new MerchantReviewsView(new MerchantRatingSummary(0, 0), [])
-            : await GetMerchantReviewsAsync(merchantId.Value, 50, cancellationToken);
+        if (merchantId is null)
+        {
+            return new MerchantReviewHistoryView(
+                new MerchantRatingSummary(0, 0),
+                PagedResult<MerchantReviewView>.Empty(page, Paging.DefaultPageSize));
+        }
+
+        var summary = await GetRatingSummaryAsync(merchantId.Value, cancellationToken);
+        var reviews = await db.Reviews
+            .AsNoTracking()
+            .Where(r => r.ReviewedMerchantProfileId == merchantId.Value)
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .ThenByDescending(r => r.Id)
+            .Select(r => new MerchantReviewView(
+                r.Rating,
+                r.Comment,
+                r.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
+                r.OrderId != null ? "Individual buyer" : "Wholesale buyer",
+                r.CreatedAtUtc))
+            .ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
+
+        return new MerchantReviewHistoryView(summary, reviews);
+    }
+
+    private async Task<MerchantRatingSummary> GetRatingSummaryAsync(
+        Guid merchantProfileId, CancellationToken cancellationToken)
+    {
+        var stats = await db.Reviews
+            .AsNoTracking()
+            .Where(r => r.ReviewedMerchantProfileId == merchantProfileId)
+            .GroupBy(r => 1)
+            .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return stats is null
+            ? new MerchantRatingSummary(0, 0)
+            : new MerchantRatingSummary(stats.Count, Math.Round(stats.Average, 2));
     }
 
     // ---- Internals ---------------------------------------------------------

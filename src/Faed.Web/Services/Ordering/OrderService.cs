@@ -39,6 +39,11 @@ public sealed class OrderService(
             return Result<CheckoutView>.Forbidden("Administrators cannot place B2C orders.");
         }
 
+        if (!await CanBuyAsync(buyerUserId, cancellationToken))
+        {
+            return Result<CheckoutView>.Forbidden("A Buyer or Merchant account is required to place an order.");
+        }
+
         var listing = await marketplace.GetListingBySlugAsync(listingSlug, cancellationToken);
         if (listing is null)
         {
@@ -104,6 +109,11 @@ public sealed class OrderService(
             return Result<Guid>.Forbidden("Administrators cannot place B2C orders.");
         }
 
+        if (!await CanBuyAsync(buyerUserId, cancellationToken))
+        {
+            return Result<Guid>.Forbidden("A Buyer or Merchant account is required to place an order.");
+        }
+
         var requested = (input.Lines ?? [])
             .Where(l => l.Quantity > 0)
             .GroupBy(l => l.VariantId)
@@ -137,6 +147,7 @@ public sealed class OrderService(
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
 
         var listings = await db.Listings
+            .AsSplitQuery()
             .Include(l => l.Options).ThenInclude(o => o.Values)
             .Include(l => l.Variants).ThenInclude(v => v.OptionValues)
             .Include(l => l.DiscountReasons)
@@ -719,6 +730,10 @@ public sealed class OrderService(
             .Where(p => p.UserId == userId && p.VerificationStatus == MerchantVerificationStatus.Approved)
             .Select(p => (Guid?)p.Id)
             .SingleOrDefaultAsync(cancellationToken);
+
+    private async Task<bool> CanBuyAsync(string userId, CancellationToken cancellationToken) =>
+        await userRoles.IsInRoleAsync(userId, FaedRoles.Buyer, cancellationToken)
+        || await userRoles.IsInRoleAsync(userId, FaedRoles.Merchant, cancellationToken);
 
     private async Task<OrderDetailView> ToDetailViewAsync(Order order, CancellationToken cancellationToken)
     {

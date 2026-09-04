@@ -117,8 +117,9 @@ public sealed class OrderHttpTests(FaedWebApplicationFactory factory)
             .Where(v => v.Id == variantId).Select(v => v.ListingId).SingleAsync();
         var slug = await scope.Db.Listings.AsNoTracking()
             .Where(l => l.Id == listingId).Select(l => l.Slug).SingleAsync();
+        var buyerId = await scope.CreateUserAsync();
 
-        var response = await As(Guid.NewGuid().ToString()).GetAsync($"/Buyer/Checkout?slug={slug}");
+        var response = await As(buyerId).GetAsync($"/Buyer/Checkout?slug={slug}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
@@ -141,7 +142,7 @@ public sealed class OrderHttpTests(FaedWebApplicationFactory factory)
 
         public ApplicationDbContext Db => _scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        public async Task<string> CreateUserAsync(string? role = null)
+        public async Task<string> CreateUserAsync(string? role = FaedRoles.Buyer)
         {
             var users = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var user = new ApplicationUser

@@ -22,6 +22,6 @@ public interface IReviewService
         Guid merchantProfileId, int take, CancellationToken cancellationToken = default);
 
     /// <summary>The reviews a signed-in merchant has received, for their own dashboard.</summary>
-    Task<MerchantReviewsView> GetReviewsForOwnerAsync(
-        string merchantUserId, CancellationToken cancellationToken = default);
+    Task<MerchantReviewHistoryView> GetReviewsForOwnerAsync(
+        string merchantUserId, int page = 1, CancellationToken cancellationToken = default);
 }

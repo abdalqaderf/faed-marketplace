@@ -182,7 +182,8 @@ dotnet test Faed.slnx
 CI runs restore, build, unit tests and integration tests against a SQL Server service
 container on every push and pull request (`.github/workflows/ci.yml`).
 
-Latest local run: **456 passed** (270 unit + 186 SQL Server integration), 0 failed, 0 skipped.
+Latest confirmed full local run (2026-09-04): **464 passed** (270 unit + 194 SQL Server
+integration), 0 failed, 0 skipped.
 
 ---
 
