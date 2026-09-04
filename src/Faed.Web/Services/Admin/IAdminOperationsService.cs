@@ -1,3 +1,5 @@
+using Faed.Web.Services.Common;
+
 namespace Faed.Web.Services.Admin;
 
 /// <summary>
@@ -12,19 +14,19 @@ public interface IAdminOperationsService
 {
     Task<AdminDashboardView> GetDashboardAsync(CancellationToken cancellationToken = default);
 
-    Task<AdminPagedResult<AdminOrderRow>> GetOrdersAsync(
+    Task<PagedResult<AdminOrderRow>> GetOrdersAsync(
         AdminOrderFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     Task<AdminOrderDetailView?> GetOrderAsync(Guid orderId, CancellationToken cancellationToken = default);
 
-    Task<AdminPagedResult<AdminDealRow>> GetDealsAsync(
+    Task<PagedResult<AdminDealRow>> GetDealsAsync(
         AdminDealFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     Task<AdminDealDetailView?> GetDealAsync(Guid dealId, CancellationToken cancellationToken = default);
 
-    Task<AdminPagedResult<AdminReviewRow>> GetReviewsAsync(
+    Task<PagedResult<AdminReviewRow>> GetReviewsAsync(
         int page = 1, CancellationToken cancellationToken = default);
 
-    Task<AdminPagedResult<AdminAuditLogRow>> GetAuditLogAsync(
+    Task<PagedResult<AdminAuditLogRow>> GetAuditLogAsync(
         AdminAuditLogFilter filter, int page = 1, CancellationToken cancellationToken = default);
 }

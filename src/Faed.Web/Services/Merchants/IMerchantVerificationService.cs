@@ -27,7 +27,8 @@ public interface IMerchantVerificationService
 
     // --- Admin review ---
 
-    Task<IReadOnlyList<MerchantQueueItem>> GetQueueAsync(MerchantQueueFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<MerchantQueueItem>> GetQueueAsync(
+        MerchantQueueFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     Task<MerchantReviewDetail?> GetForReviewAsync(Guid merchantProfileId, CancellationToken cancellationToken = default);
 

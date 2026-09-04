@@ -15,8 +15,14 @@ public static class TestSqlServer
 
     public const string WebDatabaseName = "Faed_WebTests";
 
+    /// <summary>
+    /// A third disposable catalog for the demo-seed test, isolated from the shared
+    /// <see cref="WebDatabaseName"/> catalog that the other web tests exercise.
+    /// </summary>
+    public const string DemoSeedDatabaseName = "Faed_DemoSeedTests";
+
     private static readonly HashSet<string> AllowedDatabaseNames =
-        new(StringComparer.Ordinal) { PersistenceDatabaseName, WebDatabaseName };
+        new(StringComparer.Ordinal) { PersistenceDatabaseName, WebDatabaseName, DemoSeedDatabaseName };
 
     private const string DefaultLocalDbConnection =
         $"Server=(localdb)\\MSSQLLocalDB;Database={PersistenceDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true";

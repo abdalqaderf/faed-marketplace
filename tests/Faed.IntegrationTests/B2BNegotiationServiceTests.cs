@@ -309,7 +309,7 @@ public sealed class B2BNegotiationServiceTests(FaedWebApplicationFactory factory
             new Result[] { forbiddenCounter, forbiddenAccept, forbiddenReject, forbiddenCancel },
             result => Assert.Equal(ResultErrorKind.Forbidden, result.ErrorKind));
         Assert.Equal(ResultErrorKind.Forbidden, forbiddenStart.ErrorKind);
-        Assert.Empty(await scope.Negotiations.GetMyNegotiationsAsync(sellerUserId, B2BNegotiationFilter.All));
+        Assert.Empty((await scope.Negotiations.GetMyNegotiationsAsync(sellerUserId, B2BNegotiationFilter.All)).Items);
         Assert.Null(await scope.Negotiations.GetNegotiationAsync(sellerUserId, start.Value));
 
         var persisted = await scope.Db.B2BNegotiations.AsNoTracking()

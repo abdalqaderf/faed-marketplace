@@ -9,12 +9,17 @@ public static class FaedPolicies
     /// <summary>Requires the <c>Admin</c> role.</summary>
     public const string AdminOnly = "AdminOnly";
 
-    /// <summary>Requires an Identity user whose merchant profile is Approved.</summary>
+    /// <summary>
+    /// Selling authorization: an Identity user whose merchant profile is Approved and who is
+    /// <em>not</em> an administrator. An administrator account can never hold a selling
+    /// merchant identity — moderation stays independent of the merchants it moderates
+    /// (docs/16-PERMISSIONS-MATRIX.md). The service layer repeats this check.
+    /// </summary>
     public const string ApprovedMerchant = "ApprovedMerchant";
 
     /// <summary>
     /// Requires an approved merchant who is not an administrator. Administrators may monitor
-    /// B2B activity in a later task, but cannot participate in negotiations.
+    /// B2B activity, but cannot participate in negotiations.
     /// </summary>
     public const string CanNegotiateB2B = "CanNegotiateB2B";
 

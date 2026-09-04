@@ -36,8 +36,8 @@ public interface IB2BNegotiationService
     Task<Result> CancelAsync(
         string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<B2BNegotiationSummaryView>> GetMyNegotiationsAsync(
-        string merchantUserId, B2BNegotiationFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<B2BNegotiationSummaryView>> GetMyNegotiationsAsync(
+        string merchantUserId, B2BNegotiationFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>How many open negotiations are waiting for this merchant to respond.</summary>
     Task<int> GetAwaitingResponseCountAsync(

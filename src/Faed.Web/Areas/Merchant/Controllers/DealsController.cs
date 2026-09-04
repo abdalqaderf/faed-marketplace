@@ -22,10 +22,10 @@ public sealed class DealsController(
 {
     [HttpGet]
     public async Task<IActionResult> Index(
-        B2BDealFilter filter = B2BDealFilter.Active, CancellationToken cancellationToken = default)
+        B2BDealFilter filter = B2BDealFilter.Active, int page = 1, CancellationToken cancellationToken = default)
     {
         var userId = User.RequireUserId();
-        var items = await deals.GetMyDealsAsync(userId, filter, cancellationToken);
+        var items = await deals.GetMyDealsAsync(userId, filter, page, cancellationToken);
         var actionable = await deals.GetActionableDealCountAsync(userId, cancellationToken);
 
         return View(new B2BDealListPageModel
@@ -49,9 +49,8 @@ public sealed class DealsController(
         var eligibility = await reviews.GetEligibilityAsync(
             userId, TrustTransactionType.B2BDeal, id, cancellationToken);
 
-        var forThisDeal = (await disputes.GetMyDisputesAsync(userId, cancellationToken))
-            .Where(d => d.TransactionType == TrustTransactionType.B2BDeal && d.TransactionId == id)
-            .ToList();
+        var forThisDeal = await disputes.GetDisputesForTransactionAsync(
+            userId, TrustTransactionType.B2BDeal, id, cancellationToken);
         // Only an Open/UnderReview dispute suppresses a new filing (docs/03-BUSINESS-RULES.md §14).
         var activeDispute = forThisDeal.FirstOrDefault(d => d.IsActive);
 

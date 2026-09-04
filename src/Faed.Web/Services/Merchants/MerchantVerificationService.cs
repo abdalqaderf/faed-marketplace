@@ -39,8 +39,24 @@ public sealed class MerchantVerificationService(
         return profile is null ? null : MapApplication(profile);
     }
 
+    /// <summary>
+    /// An administrator account cannot hold a selling merchant identity: it cannot create or
+    /// edit a merchant application, and it cannot be approved into one
+    /// (docs/16-PERMISSIONS-MATRIX.md "Create merchant application — Admin ❌"). This keeps
+    /// moderation independent of the merchants being moderated — an administrator must not be
+    /// able to create, then approve, their own storefront.
+    /// </summary>
+    private const string AdministratorCannotSellMessage =
+        "Administrator accounts cannot hold a selling merchant identity (docs/16-PERMISSIONS-MATRIX.md). " +
+        "Use a separate, non-administrator account to sell on Faed.";
+
     public async Task<Result<Guid>> SaveDraftAsync(string userId, MerchantApplicationInput input, CancellationToken cancellationToken = default)
     {
+        if (await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken))
+        {
+            return Result<Guid>.Forbidden(AdministratorCannotSellMessage);
+        }
+
         var businessName = (input.BusinessName ?? string.Empty).Trim();
         if (businessName.Length is < 2 or > 200)
         {
@@ -147,6 +163,11 @@ public sealed class MerchantVerificationService(
 
     public async Task<Result<Guid>> AddDocumentAsync(string userId, AddVerificationDocumentInput input, CancellationToken cancellationToken = default)
     {
+        if (await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken))
+        {
+            return Result<Guid>.Forbidden(AdministratorCannotSellMessage);
+        }
+
         var metadata = VerificationDocumentValidator.ValidateMetadata(input, _options);
         if (metadata.Failed)
         {
@@ -262,6 +283,11 @@ public sealed class MerchantVerificationService(
 
     public async Task<Result> SubmitForReviewAsync(string userId, CancellationToken cancellationToken = default)
     {
+        if (await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken))
+        {
+            return Result.Forbidden(AdministratorCannotSellMessage);
+        }
+
         var profile = await db.MerchantProfiles
             .Include(p => p.Documents)
             .SingleOrDefaultAsync(p => p.UserId == userId, cancellationToken);
@@ -298,7 +324,8 @@ public sealed class MerchantVerificationService(
             .AsNoTracking()
             .AnyAsync(p => p.UserId == userId && p.VerificationStatus == MerchantVerificationStatus.Approved, cancellationToken);
 
-    public async Task<IReadOnlyList<MerchantQueueItem>> GetQueueAsync(MerchantQueueFilter filter, CancellationToken cancellationToken = default)
+    public Task<PagedResult<MerchantQueueItem>> GetQueueAsync(
+        MerchantQueueFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query = db.MerchantProfiles.AsNoTracking();
 
@@ -311,7 +338,7 @@ public sealed class MerchantVerificationService(
             _ => query,
         };
 
-        return await query
+        return query
             .OrderBy(p => p.VerificationStatus == MerchantVerificationStatus.PendingReview ? 0 : 1)
             .ThenBy(p => p.SubmittedAtUtc ?? p.CreatedAtUtc)
             .Select(p => new MerchantQueueItem(
@@ -321,7 +348,7 @@ public sealed class MerchantVerificationService(
                 p.SubmittedAtUtc,
                 p.CreatedAtUtc,
                 p.Documents.Count(d => d.IsActive)))
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(page, Paging.AdminPageSize, cancellationToken);
     }
 
     public async Task<MerchantReviewDetail?> GetForReviewAsync(Guid merchantProfileId, CancellationToken cancellationToken = default)
@@ -466,6 +493,16 @@ public sealed class MerchantVerificationService(
         if (profile is null)
         {
             return Result.NotFound("The merchant application was not found.");
+        }
+
+        // An administrator account must never gain selling authorization: refuse to approve
+        // or reinstate a profile whose owner now holds the Admin role. (Draft creation is
+        // already blocked for administrators; this covers a profile whose owner was made an
+        // administrator afterwards — docs/16-PERMISSIONS-MATRIX.md.)
+        if (grantMerchantRole
+            && await userRoles.IsInRoleAsync(profile.UserId, FaedRoles.Admin, cancellationToken))
+        {
+            return Result.Forbidden(AdministratorCannotSellMessage);
         }
 
         try

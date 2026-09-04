@@ -20,9 +20,9 @@ public sealed class DisputesController(IDisputeService disputes) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
-        DisputeQueueFilter filter = DisputeQueueFilter.Active, CancellationToken cancellationToken = default)
+        DisputeQueueFilter filter = DisputeQueueFilter.Active, int page = 1, CancellationToken cancellationToken = default)
     {
-        var items = await disputes.GetQueueAsync(filter, cancellationToken);
+        var items = await disputes.GetQueueAsync(filter, page, cancellationToken);
         var openCount = await disputes.GetOpenDisputeCountAsync(cancellationToken);
 
         return View(new DisputeQueuePageModel

@@ -21,13 +21,13 @@ public sealed class OrdersController(IOrderService orders, IDisputeService dispu
 {
     [HttpGet]
     public async Task<IActionResult> Index(
-        MerchantOrderFilter filter = MerchantOrderFilter.Open, CancellationToken cancellationToken = default)
+        MerchantOrderFilter filter = MerchantOrderFilter.Open,
+        int page = 1,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.RequireUserId();
-        var items = await orders.GetMerchantOrdersAsync(userId, filter, cancellationToken);
-        var needsConfirmation = filter == MerchantOrderFilter.NeedsConfirmation
-            ? items.Count
-            : await orders.GetMerchantOpenOrderCountAsync(userId, cancellationToken);
+        var items = await orders.GetMerchantOrdersAsync(userId, filter, page, cancellationToken);
+        var needsConfirmation = await orders.GetMerchantOpenOrderCountAsync(userId, cancellationToken);
 
         return View(new MerchantOrderListPageModel
         {
@@ -47,9 +47,8 @@ public sealed class OrdersController(IOrderService orders, IDisputeService dispu
             return NotFound();
         }
 
-        var forThisOrder = (await disputes.GetMyDisputesAsync(userId, cancellationToken))
-            .Where(d => d.TransactionType == TrustTransactionType.B2COrder && d.TransactionId == id)
-            .ToList();
+        var forThisOrder = await disputes.GetDisputesForTransactionAsync(
+            userId, TrustTransactionType.B2COrder, id, cancellationToken);
         var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
 
         return View(new MerchantOrderDetailPageModel

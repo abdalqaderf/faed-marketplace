@@ -19,8 +19,16 @@ public interface IDisputeService
     Task<Result> AddEvidenceAsync(
         string userId, Guid disputeId, IReadOnlyList<DisputeEvidenceUpload> files, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<DisputeSummaryView>> GetMyDisputesAsync(
-        string userId, CancellationToken cancellationToken = default);
+    Task<PagedResult<DisputeSummaryView>> GetMyDisputesAsync(
+        string userId, int page = 1, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The caller's disputes for one specific transaction (order or deal) — the bounded set a
+    /// transaction detail page needs, without paging the caller's whole dispute history.
+    /// </summary>
+    Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForTransactionAsync(
+        string userId, Models.Enums.TrustTransactionType transactionType, Guid transactionId,
+        CancellationToken cancellationToken = default);
 
     Task<DisputeDetailView?> GetMyDisputeAsync(
         string userId, Guid disputeId, CancellationToken cancellationToken = default);
@@ -31,8 +39,8 @@ public interface IDisputeService
 
     // ---- Administrator ------------------------------------------------------
 
-    Task<IReadOnlyList<DisputeSummaryView>> GetQueueAsync(
-        DisputeQueueFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<DisputeSummaryView>> GetQueueAsync(
+        DisputeQueueFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     Task<int> GetOpenDisputeCountAsync(CancellationToken cancellationToken = default);
 

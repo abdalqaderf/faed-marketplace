@@ -22,8 +22,8 @@ public interface IB2BDealService
     Task<Result<Guid>> AcceptOfferAsync(
         string merchantUserId, Guid negotiationId, AcceptOfferInput input, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<B2BDealSummaryView>> GetMyDealsAsync(
-        string merchantUserId, B2BDealFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<B2BDealSummaryView>> GetMyDealsAsync(
+        string merchantUserId, B2BDealFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>How many active deals need this merchant to act (seller fulfilment steps, buyer confirmation).</summary>
     Task<int> GetActionableDealCountAsync(

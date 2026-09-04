@@ -91,7 +91,12 @@ public sealed class PublicMarketplaceHttpTests(FaedWebApplicationFactory factory
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/listing/{slug}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/store/{merchantSlug}")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/listing-images/{mediaId}")).StatusCode);
+
+        // A private image is now indistinguishable from one that does not exist: an
+        // unauthorized caller and a bogus id both get 404, so probing never confirms the
+        // image exists (docs/08-SECURITY-AND-PRIVACY.md §9, TASK-011 finding 7).
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/listing-images/{mediaId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/listing-images/{Guid.NewGuid()}")).StatusCode);
 
         // The owning (now-suspended) merchant can still reach the image directly.
         var ownerClient = CreateClient();

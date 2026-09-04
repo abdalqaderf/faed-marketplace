@@ -21,9 +21,9 @@ public sealed class OrdersController(
     IOrderService orders, IReviewService reviews, IDisputeService disputes) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(int page = 1, CancellationToken cancellationToken = default)
     {
-        var mine = await orders.GetMyOrdersAsync(User.RequireUserId(), cancellationToken);
+        var mine = await orders.GetMyOrdersAsync(User.RequireUserId(), page, cancellationToken);
         return View(new BuyerOrderListPageModel { Orders = mine });
     }
 
@@ -40,9 +40,8 @@ public sealed class OrdersController(
         var eligibility = await reviews.GetEligibilityAsync(
             userId, TrustTransactionType.B2COrder, id, cancellationToken);
 
-        var forThisOrder = (await disputes.GetMyDisputesAsync(userId, cancellationToken))
-            .Where(d => d.TransactionType == TrustTransactionType.B2COrder && d.TransactionId == id)
-            .ToList();
+        var forThisOrder = await disputes.GetDisputesForTransactionAsync(
+            userId, TrustTransactionType.B2COrder, id, cancellationToken);
         // Only an Open/UnderReview dispute suppresses a new filing; a closed one is history
         // and the authoritative rules may allow another dispute (docs/03-BUSINESS-RULES.md §14).
         var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);

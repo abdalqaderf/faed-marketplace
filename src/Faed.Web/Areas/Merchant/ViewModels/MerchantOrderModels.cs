@@ -1,3 +1,4 @@
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Trust;
 
@@ -7,7 +8,7 @@ public sealed class MerchantOrderListPageModel
 {
     public required MerchantOrderFilter Filter { get; init; }
 
-    public required IReadOnlyList<OrderSummaryView> Orders { get; init; }
+    public required PagedResult<OrderSummaryView> Orders { get; init; }
 
     public int NeedsConfirmationCount { get; init; }
 }

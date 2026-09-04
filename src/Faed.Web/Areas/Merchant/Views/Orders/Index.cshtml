@@ -37,7 +37,7 @@
         }
     </nav>
 
-    @if (Model.Orders.Count == 0)
+    @if (Model.Orders.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No orders here</div>
@@ -59,7 +59,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var order in Model.Orders)
+                    @foreach (var order in Model.Orders.Items)
                     {
                         <tr class="@(order.Status == OrderStatus.Pending ? "faed-row--attention" : "")">
                             <td><a asp-action="Details" asp-route-id="@order.Id">@AmmanTime.FormatDateTime(order.CreatedAtUtc)</a></td>
@@ -73,5 +73,7 @@
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Orders, "Index", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "order")' />
     }
 </div>

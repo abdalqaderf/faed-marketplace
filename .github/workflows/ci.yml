@@ -4,6 +4,12 @@ name: CI
 # tests. The integration suite needs a real SQL Server (never InMemory or SQLite), so one
 # runs as a service container and is addressed through Faed_TEST_CONNECTION. `CI=true` is
 # set by GitHub Actions, which makes an unreachable server a hard failure instead of a skip.
+#
+# The SQL Server SA password is supplied only by the `CI_SQL_PASSWORD` repository/organization
+# secret — there is no committed fallback (docs/08-SECURITY-AND-PRIVACY.md §11). The
+# "Require CI SQL secret" step below fails the run early, with a clear message, if it is
+# missing. Set it under Settings → Secrets and variables → Actions with a value that meets
+# SQL Server's password-complexity policy.
 
 on:
   push:
@@ -20,16 +26,24 @@ jobs:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: "Y"
-          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_PASSWORD || 'Faed_Ci_Password_1' }}
+          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_PASSWORD }}
         ports:
           - 1433:1433
 
     env:
       DOTNET_NOLOGO: "true"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-      Faed_TEST_CONNECTION: "Server=localhost,1433;User Id=sa;Password=${{ secrets.CI_SQL_PASSWORD || 'Faed_Ci_Password_1' }};TrustServerCertificate=true"
+      Faed_TEST_CONNECTION: "Server=localhost,1433;User Id=sa;Password=${{ secrets.CI_SQL_PASSWORD }};TrustServerCertificate=true"
 
     steps:
+      - name: Require CI SQL secret
+        run: |
+          if [ -z "${{ secrets.CI_SQL_PASSWORD }}" ]; then
+            echo "::error::The CI_SQL_PASSWORD secret is not set. Add it under" \
+                 "Settings → Secrets and variables → Actions. There is no committed fallback."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4

@@ -2,24 +2,8 @@ using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Services.Admin;
 
-public static class AdminPaging
-{
-    public const int PageSize = 50;
-}
-
-/// <summary>A bounded page over an append-only or transactional admin history.</summary>
-public sealed record AdminPagedResult<T>(
-    IReadOnlyList<T> Items,
-    int TotalCount,
-    int Page,
-    int PageSize)
-{
-    public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
-
-    public int FirstItemNumber => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
-
-    public int LastItemNumber => TotalCount == 0 ? 0 : FirstItemNumber + Items.Count - 1;
-}
+// Admin operational surfaces are paged with the shared Faed.Web.Services.Common.PagedResult<T>
+// and Paging.AdminPageSize (tasks/TASK-011-HARDENING-AND-DEMO.md "performance/paging review").
 
 // ---- Dashboard -------------------------------------------------------------------
 

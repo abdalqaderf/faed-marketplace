@@ -1,6 +1,7 @@
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Catalog;
+using Faed.Web.Services.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace Faed.Web.Services.Admin;
@@ -54,7 +55,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
 
     // ---- Orders ---------------------------------------------------------------
 
-    public async Task<AdminPagedResult<AdminOrderRow>> GetOrdersAsync(
+    public async Task<PagedResult<AdminOrderRow>> GetOrdersAsync(
         AdminOrderFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query =
@@ -79,8 +80,8 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
         var rows = await query
             .OrderByDescending(x => x.o.CreatedAtUtc)
             .ThenByDescending(x => x.o.Id)
-            .Skip((page - 1) * AdminPaging.PageSize)
-            .Take(AdminPaging.PageSize)
+            .Skip((page - 1) * Paging.AdminPageSize)
+            .Take(Paging.AdminPageSize)
             .Select(x => new AdminOrderRow(
                 x.o.Id,
                 x.o.CreatedAtUtc,
@@ -92,7 +93,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                 x.o.Total))
             .ToListAsync(cancellationToken);
 
-        return new AdminPagedResult<AdminOrderRow>(rows, totalCount, page, AdminPaging.PageSize);
+        return new PagedResult<AdminOrderRow>(rows, totalCount, page, Paging.AdminPageSize);
     }
 
     public async Task<AdminOrderDetailView?> GetOrderAsync(Guid orderId, CancellationToken cancellationToken = default)
@@ -144,7 +145,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
 
     // ---- Deals ---------------------------------------------------------------
 
-    public async Task<AdminPagedResult<AdminDealRow>> GetDealsAsync(
+    public async Task<PagedResult<AdminDealRow>> GetDealsAsync(
         AdminDealFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query =
@@ -167,8 +168,8 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
         var rows = await query
             .OrderByDescending(x => x.d.CreatedAtUtc)
             .ThenByDescending(x => x.d.Id)
-            .Skip((page - 1) * AdminPaging.PageSize)
-            .Take(AdminPaging.PageSize)
+            .Skip((page - 1) * Paging.AdminPageSize)
+            .Take(Paging.AdminPageSize)
             .Select(x => new AdminDealRow(
                 x.d.Id,
                 x.d.CreatedAtUtc,
@@ -180,7 +181,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                 x.d.TotalSnapshot))
             .ToListAsync(cancellationToken);
 
-        return new AdminPagedResult<AdminDealRow>(rows, totalCount, page, AdminPaging.PageSize);
+        return new PagedResult<AdminDealRow>(rows, totalCount, page, Paging.AdminPageSize);
     }
 
     public async Task<AdminDealDetailView?> GetDealAsync(Guid dealId, CancellationToken cancellationToken = default)
@@ -240,7 +241,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
 
     // ---- Reviews -----------------------------------------------------------
 
-    public async Task<AdminPagedResult<AdminReviewRow>> GetReviewsAsync(
+    public async Task<PagedResult<AdminReviewRow>> GetReviewsAsync(
         int page = 1, CancellationToken cancellationToken = default)
     {
         var query =
@@ -253,8 +254,8 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
         var rows = await query
             .OrderByDescending(x => x.Review.CreatedAtUtc)
             .ThenByDescending(x => x.Review.Id)
-            .Skip((page - 1) * AdminPaging.PageSize)
-            .Take(AdminPaging.PageSize)
+            .Skip((page - 1) * Paging.AdminPageSize)
+            .Take(Paging.AdminPageSize)
             .Select(x => new AdminReviewRow(
                 x.Review.Id,
                 x.Review.CreatedAtUtc,
@@ -266,12 +267,12 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                 x.Review.OrderId != null ? x.Review.OrderId.Value : x.Review.B2BDealId!.Value))
             .ToListAsync(cancellationToken);
 
-        return new AdminPagedResult<AdminReviewRow>(rows, totalCount, page, AdminPaging.PageSize);
+        return new PagedResult<AdminReviewRow>(rows, totalCount, page, Paging.AdminPageSize);
     }
 
     // ---- Audit log -------------------------------------------------------
 
-    public async Task<AdminPagedResult<AdminAuditLogRow>> GetAuditLogAsync(
+    public async Task<PagedResult<AdminAuditLogRow>> GetAuditLogAsync(
         AdminAuditLogFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query =
@@ -310,8 +311,8 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
         var rows = await query
             .OrderByDescending(x => x.log.CreatedAtUtc)
             .ThenByDescending(x => x.log.Id)
-            .Skip((page - 1) * AdminPaging.PageSize)
-            .Take(AdminPaging.PageSize)
+            .Skip((page - 1) * Paging.AdminPageSize)
+            .Take(Paging.AdminPageSize)
             .Select(x => new AdminAuditLogRow(
                 x.log.Id,
                 x.log.CreatedAtUtc,
@@ -322,7 +323,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                 x.log.Notes))
             .ToListAsync(cancellationToken);
 
-        return new AdminPagedResult<AdminAuditLogRow>(rows, totalCount, page, AdminPaging.PageSize);
+        return new PagedResult<AdminAuditLogRow>(rows, totalCount, page, Paging.AdminPageSize);
     }
 
     // ---- Internals -----------------------------------------------------
@@ -345,7 +346,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
 
     private static int NormalizePage(int requestedPage, int totalCount)
     {
-        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)AdminPaging.PageSize));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)Paging.AdminPageSize));
         return Math.Clamp(requestedPage, 1, totalPages);
     }
 }

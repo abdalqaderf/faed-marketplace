@@ -1,0 +1,40 @@
+@model Faed.Web.ViewModels.PaginationViewModel
+
+@{
+    var previousData = Model.RouteValuesForPage(Model.Page - 1);
+    var nextData = Model.RouteValuesForPage(Model.Page + 1);
+    if (Model.Controller is { Length: > 0 } controller)
+    {
+        previousData["controller"] = controller;
+        nextData["controller"] = controller;
+    }
+}
+@if (Model.TotalPages > 1)
+{
+    <nav class="faed-pagination" aria-label="Pagination">
+        @if (Model.HasPreviousPage)
+        {
+            <a class="faed-btn faed-btn--ghost faed-btn--sm"
+               asp-action="@Model.Action"
+               asp-all-route-data="previousData"
+               rel="prev">Previous</a>
+        }
+        <span class="faed-pagination__status">Page @Model.Page of @Model.TotalPages</span>
+        @if (Model.HasNextPage)
+        {
+            <a class="faed-btn faed-btn--ghost faed-btn--sm"
+               asp-action="@Model.Action"
+               asp-all-route-data="nextData"
+               rel="next">Next</a>
+        }
+    </nav>
+}
+
+@{
+    var noun = Model.TotalCount == 1
+        ? Model.ItemNoun
+        : Model.ItemNoun.EndsWith("y") ? Model.ItemNoun[..^1] + "ies" : Model.ItemNoun + "s";
+}
+<p class="faed-section__hint">
+    Showing @Model.FirstItemNumber&ndash;@Model.LastItemNumber of @Model.TotalCount @noun.
+</p>

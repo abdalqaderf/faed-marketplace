@@ -275,7 +275,7 @@ public sealed class B2BDealServiceTests(FaedWebApplicationFactory factory)
 
         var act = await scope.Deals.CancelAsync(strangerUserId, accept.Value, "not mine");
         Assert.Equal(ResultErrorKind.NotFound, act.ErrorKind);
-        Assert.Empty(await scope.Deals.GetMyDealsAsync(strangerUserId, B2BDealFilter.All));
+        Assert.Empty((await scope.Deals.GetMyDealsAsync(strangerUserId, B2BDealFilter.All)).Items);
     }
 
     // ---- Post-review regressions (Codex review — TASK-008) ---------------------

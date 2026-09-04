@@ -1,144 +1,209 @@
 # Faed — Surplus Inventory Marketplace
 
-**Faed** is a specialized marketplace for surplus and non-perfect merchant inventory in Jordan.
+**Faed** is a specialized marketplace for verified merchants in Jordan to recover value from
+surplus and non-perfect inventory by selling the same stock to individual buyers (`B2C`) or
+to other verified merchants (`B2B`) through structured, trusted workflows.
 
-A verified merchant lists inventory once and can sell from the same stock through:
+Faed is **not** a general classifieds platform. Its product identity is built around
+structured condition disclosure, verified business sellers, quantity integrity, trusted
+transactions and inventory-recovery analytics.
 
-- `B2C` — individual buyers purchase units.
-- `B2B` — verified merchants negotiate and buy quantities/lots.
+## MVP scope
 
-Faed is not a general classifieds platform. Its product identity is built around structured condition disclosure, verified business sellers, quantity integrity, trusted transactions, and inventory-recovery analytics.
-
-## MVP
-
-- Market: Amman, Jordan
-- UI: English
-- Currency: JOD
-- Sellers: verified merchants only
-- Buyers: individuals + verified merchants
-- Launch sector: Fashion Overstock
-- Launch categories:
-  - Clothing
-  - Shoes
-  - Bags & Accessories
+| | |
+|---|---|
+| Market | Amman, Jordan |
+| UI language | English only |
+| Currency | JOD, stored with 3 decimal places |
+| Sellers | Verified merchants only (individuals can buy but cannot sell) |
+| Buyers | Individuals and verified merchants |
+| Launch sector | Fashion Overstock |
+| Launch categories | Clothing · Shoes · Bags & Accessories |
 
 ## Tech
 
-- ASP.NET Core MVC / .NET 10 LTS
-- Entity Framework Core + SQL Server
-- ASP.NET Core Identity
-- Razor Views + Bootstrap 5 + JavaScript
-- Single-project organized MVC: all app code in `src/Faed.Web`
-  (`Models`, `Data`, `Services`, `Areas`, `ViewModels`) — see `docs/adr/0006-SINGLE-PROJECT-MVC.md`
-- SQL Server `rowversion` for stock concurrency
+- ASP.NET Core MVC on **.NET 10 LTS**
+- Entity Framework Core + **SQL Server** (SQL Server `rowversion` for stock concurrency)
+- ASP.NET Core Identity (roles: Buyer, Merchant, Admin)
+- Razor Views + Bootstrap 5 + vanilla JavaScript
+- **Single-project organized MVC** — all application code lives in `src/Faed.Web`
+  (`Models`, `Data`, `Services`, `Areas`, `ViewModels`); see
+  `docs/adr/0006-SINGLE-PROJECT-MVC.md`
+- Cloud object storage and email are behind interfaces (`IFileStorage`, `IEmailSender`)
 
-## Local development
-
-Prerequisites: .NET 10 SDK and SQL Server LocalDB (`(localdb)\MSSQLLocalDB`, installed with
-Visual Studio or the standalone SqlLocalDB installer).
-
-```bash
-# restore + build the whole solution
-dotnet build Faed.slnx
-
-# create / update the local database
-# (migrations live in src/Faed.Web/Data/Migrations; the connection string is resolved
-#  from appsettings + user secrets + environment variables)
-dotnet ef database update --project src/Faed.Web
-
-# run the web app
-dotnet run --project src/Faed.Web
-
-# run all tests (unit + SQL Server integration)
-dotnet test Faed.slnx
+```text
+Faed.slnx
+src/Faed.Web/
+  Areas/{Admin,Merchant,Buyer,Identity}/
+  Controllers/                 public MVC endpoints
+  Models/{Entities,Enums,Identity}/
+  ViewModels/
+  Data/{ApplicationDbContext.cs,Configurations/,Migrations/,Seed/}
+  Services/                    business logic (may use ApplicationDbContext directly)
+  Authorization/               policy names + handlers
+  Rendering/                   view-only display helpers
+tests/
+  Faed.UnitTests/              references Faed.Web
+  Faed.IntegrationTests/       references Faed.Web; needs SQL Server
 ```
 
-The development connection string in `src/Faed.Web/appsettings.json` targets a local
-LocalDB database named `Faed` and contains no secrets. Override it with user secrets
-(`dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<value>"` in
-`src/Faed.Web`) or the `ConnectionStrings__DefaultConnection` environment variable — both
-the app and the `dotnet ef` command above honour the override because they share the
-`Faed.Web` configuration. The Identity roles (`Buyer`, `Merchant`, `Admin`) are seeded
-automatically and idempotently on startup.
+---
 
-An optional confirmed development admin can also be seeded from user secrets. It is created
-only while the app runs in the `Development` environment:
+## Prerequisites
+
+- **.NET 10 SDK**
+- **SQL Server** — SQL Server LocalDB (`(localdb)\MSSQLLocalDB`, installed with Visual
+  Studio or the standalone SqlLocalDB installer) is enough for local development. Any
+  reachable SQL Server instance (including a container) also works.
+- `dotnet-ef` for migrations: `dotnet tool install --global dotnet-ef`
+
+---
+
+## Run from a clean environment
+
+```bash
+# 1. restore + build
+dotnet build Faed.slnx
+
+# 2. create the database from scratch (applies every migration to an empty catalog)
+dotnet ef database update --project src/Faed.Web
+
+# 3. run
+dotnet run --project src/Faed.Web
+```
+
+On startup the app **idempotently** seeds the fixed Identity roles (`Buyer`, `Merchant`,
+`Admin`) and the catalog reference data (condition grades A–D, the eight approved discount
+reasons, and the `Fashion Overstock` launch taxonomy). It does **not** apply migrations,
+create the database, or drop anything on startup — run step 2 whenever migrations change.
+Migrations apply cleanly to a completely empty catalog (step 2 is exactly that path, and
+the integration-test host re-proves it on every run by dropping and re-migrating its
+databases).
+
+The development connection string lives **only** in
+`src/Faed.Web/appsettings.Development.json` (a passwordless LocalDB database named `Faed`).
+The committed `appsettings.json` has **no** connection string. Every non-`Development`
+environment must supply its own via `ConnectionStrings__DefaultConnection`; the app
+**fails fast at startup** if a Production/Staging environment has none, or is still pointed
+at the local LocalDB database (`DependencyInjection.ResolveDatabaseConnectionString`,
+`DEPLOYMENT.md` §2). A non-Development environment also requires a real private
+`IFileStorage` — `LocalFileStorage` is Development-only.
+
+Override the development connection string with either:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<value>" --project src/Faed.Web
+# or
+export ConnectionStrings__DefaultConnection="<value>"
+```
+
+Both the app and `dotnet ef` honour the override because they share the `Faed.Web`
+configuration. `dotnet ef` runs in the `Development` environment by default, so with no
+override it uses the `appsettings.Development.json` database.
+
+### Optional: a development administrator
 
 ```bash
 dotnet user-secrets set "Faed:AdminSeed:Email" "admin@faed.local" --project src/Faed.Web
 dotnet user-secrets set "Faed:AdminSeed:Password" "<development-password>" --project src/Faed.Web
 ```
 
-The password stays outside the repository. Re-running the app is safe: an existing account
-is reused and assigned the `Admin` role if needed.
+Seeded only in the `Development` environment. The password stays outside the repository
+(`docs/08-SECURITY-AND-PRIVACY.md` §12). Re-running is safe.
 
-The SQL Server integration tests create, use and drop only the explicitly allow-listed
-databases `Faed_IntegrationTests` and `Faed_WebTests`. They take the server and credentials
-from a separate `Faed_TEST_CONNECTION` environment variable (default: LocalDB), replace any
-configured catalog with one of those two fixed test catalogs, and never write to the
-application database — `TestHostDatabaseTargetTests` asserts that the hosted application's
-`DbContext` really does target `Faed_WebTests`.
+---
 
-These integration tests need a reachable SQL Server. When none is reachable and none was
-configured they **skip** on a developer workstation (the unit tests still run and
-`dotnet test` is green with a lower executed count). They **fail** when `Faed_TEST_CONNECTION`
-is set but unreachable, and on CI — the runner is detected by `CI=true` — so a green pipeline
-always means the SQL Server exit criteria actually executed. To run them where LocalDB is
-unavailable, point `Faed_TEST_CONNECTION` at any SQL Server instance (a container is fine):
+## Demo / field-validation data set
+
+A deterministic demo data set (two approved merchants, one pending merchant, two buyers,
+four listings including a sold-out one, and one of every transaction scenario — active and
+completed B2C orders, an open B2B negotiation, a counter-offer chain, a completed B2B deal,
+a dispute and a review) is available for demonstrations and field validation.
+
+It is **Development-only**, **opt-in**, and **password-gated**, and it builds every record by
+calling the same application services a real user would — nothing bypasses moderation,
+authorization, price integrity or stock concurrency (`docs/12-SEED-DATA.md`,
+`docs/24-DELIVERY-AND-HARDENING.md` §10).
 
 ```bash
+# enable it and set the shared password for every demo account (never committed)
+dotnet user-secrets set "Faed:DemoSeed:Enabled" "true"        --project src/Faed.Web
+dotnet user-secrets set "Faed:DemoSeed:Password" "<demo-password>" --project src/Faed.Web
+
+dotnet ef database update --project src/Faed.Web   # start from a clean database
+dotnet run --project src/Faed.Web                  # seeds on first startup, idempotent
+```
+
+Demo accounts (all share the password above):
+
+| Email | Role |
+|---|---|
+| `demo-admin@faed.local` | Administrator |
+| `merchant-a@faed.local` | Approved merchant — *Amman Threads* |
+| `merchant-b@faed.local` | Approved merchant — *Petra Footwear* |
+| `pending-merchant@faed.local` | Merchant awaiting verification |
+| `buyer-a@faed.local`, `buyer-b@faed.local` | Individual buyers |
+
+Re-running the app never duplicates the data. If a previous seed was interrupted, the next
+start detects the partial data, removes it, and rebuilds the set — so a restart is enough
+to recover. For a clean rebuild from nothing, drop and re-create the database
+(`dotnet ef database drop --project src/Faed.Web` then `database update`).
+
+---
+
+## Tests
+
+```bash
+dotnet test Faed.slnx
+```
+
+- **Unit tests** run everywhere.
+- **Integration tests** need a reachable SQL Server (never InMemory or SQLite — SQL Server
+  `rowversion` concurrency is tested against SQL Server, `docs/09-TEST-STRATEGY.md` §2). They
+  take the server from a separate `Faed_TEST_CONNECTION` variable (default: LocalDB) and
+  **destructively manage** — create, `EnsureDeleted` + migrate at the start of each run, and
+  drop on dispose — only these three explicitly allow-listed catalogs (the application's own
+  database is never touched, and `TestSqlServer.AssertSafeTestDatabase` re-checks the target
+  immediately before every destructive operation):
+    - `Faed_IntegrationTests` — the persistence / EF-mapping tests
+    - `Faed_WebTests` — the hosted-app (`WebApplicationFactory`) tests
+    - `Faed_DemoSeedTests` — the demo-seed end-to-end test, isolated from the shared web
+      catalog
+  They **skip** on a workstation with no SQL Server and no `Faed_TEST_CONNECTION`; they
+  **fail** when `Faed_TEST_CONNECTION` is set but unreachable, and on CI (`CI=true`), so a
+  green pipeline always means the SQL Server exit criteria actually executed.
+
+```bash
+# run the integration tests against any SQL Server (e.g. a container)
 export Faed_TEST_CONNECTION="Server=localhost,1433;User Id=sa;Password=<pw>;TrustServerCertificate=true"
 dotnet test Faed.slnx
 ```
 
 CI runs restore, build, unit tests and integration tests against a SQL Server service
-container on every push and pull request (`.github/workflows/ci.yml`,
-`docs/09-TEST-STRATEGY.md` §6).
+container on every push and pull request (`.github/workflows/ci.yml`).
 
-## Read before coding
+Latest local run: **456 passed** (270 unit + 186 SQL Server integration), 0 failed, 0 skipped.
 
-1. `AGENTS.md` — engineering contract and precedence.
-2. `docs/00-SPEC-MAP.md` — map of every specification file.
-3. All files under `/docs` in numeric order.
-4. `tasks/TASK-001-FOUNDATION.md` — first executable task.
+---
 
-## Start
+## Deployment
 
-Give your coding agent the contents of `START_PROMPT.md`, or simply tell it:
+Production configuration, the required manual delivery steps (cloud object storage, email
+provider) and the deployment checklist are in **[`DEPLOYMENT.md`](DEPLOYMENT.md)**.
 
-> Read `AGENTS.md` and execute `tasks/TASK-001-FOUNDATION.md`.
+The TASK-011 hardening pass (authorization, validation, upload, concurrency, responsive,
+accessibility and paging audits) and the acceptance-criteria verification are in
+**[`docs/24-DELIVERY-AND-HARDENING.md`](docs/24-DELIVERY-AND-HARDENING.md)**.
 
-The full implementation task queue (`TASK-001` through `TASK-011`) is included under `/tasks`.
+---
 
-The `/reference` directory is historical context only.
+## Specification
 
+Faed is spec-driven. Read in this order before changing anything:
 
-## Claude skills
+1. `AGENTS.md` — engineering contract and source-of-truth precedence
+2. `docs/00-SPEC-MAP.md` — map of every specification file
+3. All files under `/docs` in numeric order
+4. `PROJECT_STATUS.md` — current implementation state and task history
 
-This repository includes project-specific Claude skills under:
-
-```text
-.claude/skills/
-```
-
-Use them together with any relevant built-in/workspace Claude skills available in your account.
-See:
-- `docs/21-CLAUDE-SKILLS-USAGE.md`
-
-## Visual Studio-first foundation workflow
-
-The initial `Faed.Web` project is intentionally created manually in Visual Studio using:
-
-- ASP.NET Core MVC
-- .NET 10
-- Individual Accounts / Identity
-- HTTPS
-
-Then the coding agent executes TASK-001.
-
-TASK-001 does **not** recreate the Web project. It begins with a mandatory baseline audit and adopts the generated project.
-
-See:
-- `docs/22-VISUAL-STUDIO-BASELINE.md`
-- `docs/23-GITHUB-REPOSITORY-POLICY.md`
-- `tasks/TASK-001-FOUNDATION.md`
+The `/reference` directory (if present) is historical context only and is not authoritative.

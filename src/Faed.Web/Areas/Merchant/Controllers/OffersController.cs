@@ -20,13 +20,13 @@ public sealed class OffersController(IB2BNegotiationService negotiations, IB2BDe
 {
     [HttpGet]
     public async Task<IActionResult> Index(
-        B2BNegotiationFilter filter = B2BNegotiationFilter.AwaitingMe, CancellationToken cancellationToken = default)
+        B2BNegotiationFilter filter = B2BNegotiationFilter.AwaitingMe,
+        int page = 1,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.RequireUserId();
-        var items = await negotiations.GetMyNegotiationsAsync(userId, filter, cancellationToken);
-        var awaitingMe = filter == B2BNegotiationFilter.AwaitingMe
-            ? items.Count
-            : await negotiations.GetAwaitingResponseCountAsync(userId, cancellationToken);
+        var items = await negotiations.GetMyNegotiationsAsync(userId, filter, page, cancellationToken);
+        var awaitingMe = await negotiations.GetAwaitingResponseCountAsync(userId, cancellationToken);
 
         return View(new B2BNegotiationListPageModel
         {

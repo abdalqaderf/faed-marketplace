@@ -50,14 +50,6 @@
                 </tbody>
             </table>
         </div>
-        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
-            {
-                Action = "Index",
-                Page = Model.Reviews.Page,
-                TotalPages = Model.Reviews.TotalPages,
-                TotalCount = Model.Reviews.TotalCount,
-                FirstItemNumber = Model.Reviews.FirstItemNumber,
-                LastItemNumber = Model.Reviews.LastItemNumber,
-            })" />
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Reviews, "Index", itemNoun: "review")' />
     }
 </div>

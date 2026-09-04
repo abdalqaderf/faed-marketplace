@@ -20,8 +20,8 @@ public interface IOrderService
     Task<Result<Guid>> PlaceOrderAsync(
         string buyerUserId, PlaceOrderInput input, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<OrderSummaryView>> GetMyOrdersAsync(
-        string buyerUserId, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderSummaryView>> GetMyOrdersAsync(
+        string buyerUserId, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>The buyer's own order, or <c>null</c> when it is not theirs.</summary>
     Task<OrderDetailView?> GetMyOrderAsync(
@@ -38,8 +38,8 @@ public interface IOrderService
     Task<Result> ConfirmReceiptAsync(
         string buyerUserId, Guid orderId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<OrderSummaryView>> GetMerchantOrdersAsync(
-        string merchantUserId, MerchantOrderFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderSummaryView>> GetMerchantOrdersAsync(
+        string merchantUserId, MerchantOrderFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     Task<int> GetMerchantOpenOrderCountAsync(
         string merchantUserId, CancellationToken cancellationToken = default);

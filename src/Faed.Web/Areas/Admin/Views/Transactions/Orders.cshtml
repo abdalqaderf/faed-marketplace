@@ -65,15 +65,6 @@
                 </tbody>
             </table>
         </div>
-        <partial name="_AdminPagination" model="@(new AdminPaginationPageModel
-            {
-                Action = "Orders",
-                Filter = Model.Filter.ToString(),
-                Page = Model.Orders.Page,
-                TotalPages = Model.Orders.TotalPages,
-                TotalCount = Model.Orders.TotalCount,
-                FirstItemNumber = Model.Orders.FirstItemNumber,
-                LastItemNumber = Model.Orders.LastItemNumber,
-            })" />
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Orders, "Orders", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "order")' />
     }
 </div>

@@ -1,3 +1,4 @@
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Merchants;
 
 namespace Faed.Web.Areas.Admin.ViewModels;
@@ -7,7 +8,7 @@ public sealed class MerchantQueuePageModel
 {
     public required MerchantQueueFilter Filter { get; init; }
 
-    public required IReadOnlyList<MerchantQueueItem> Items { get; init; }
+    public required PagedResult<MerchantQueueItem> Items { get; init; }
 
     public required int PendingCount { get; init; }
 }

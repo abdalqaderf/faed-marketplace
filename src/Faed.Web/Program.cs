@@ -49,8 +49,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(FaedPolicies.AdminOnly, policy =>
         policy.RequireRole(FaedRoles.Admin));
 
+    // Selling authorization: an approved merchant who is not an administrator. An
+    // administrator account can never hold a selling merchant identity — moderation stays
+    // independent of the merchants being moderated (docs/16-PERMISSIONS-MATRIX.md). The
+    // service layer repeats this check.
     options.AddPolicy(FaedPolicies.ApprovedMerchant, policy =>
-        policy.RequireAuthenticatedUser().AddRequirements(new ApprovedMerchantRequirement()));
+        policy.RequireAuthenticatedUser()
+            .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin))
+            .AddRequirements(new ApprovedMerchantRequirement()));
 
     // B2B participation is merchant-only even when an approved merchant profile belongs to
     // an administrator (docs/16-PERMISSIONS-MATRIX.md). The service repeats this check.
@@ -121,6 +127,10 @@ await CatalogDataSeeder.SeedAsync(app.Services);
 if (app.Environment.IsDevelopment())
 {
     await IdentityDataSeeder.SeedDevelopmentAdminAsync(app.Services);
+
+    // Deterministic demo/field-validation data set. Opt-in and password-gated; never runs
+    // outside Development (docs/12-SEED-DATA.md, tasks/TASK-011-HARDENING-AND-DEMO.md).
+    await DemoDataSeeder.SeedAsync(app.Services, app.Environment);
 }
 
 app.Run();

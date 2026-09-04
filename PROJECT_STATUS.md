@@ -14,11 +14,32 @@
 | TASK-008 — B2B Deal and Fulfillment | 7 | Completed |
 | TASK-009 — Disputes and Reviews | 8 | Completed |
 | TASK-010 — Merchant Analytics and Admin Completion | 9–10 | Completed |
+| TASK-011 — Hardening, Demo Data and Delivery | 11 | Completed |
 
-Execute tasks in queue order (`docs/00-SPEC-MAP.md`). Do not start TASK-011 until
-explicitly requested.
+All eleven planned tasks are complete. The MVP is feature-complete for field validation and
+demonstration; the remaining items are infrastructure decisions and manual delivery steps
+recorded in `docs/24-DELIVERY-AND-HARDENING.md` §11 and `DEPLOYMENT.md` §3.
 
 ## Current state
+
+**Phase 11 — Hardening, Demo Data and Delivery complete (TASK-011).**
+
+TASK-011 added no product functionality. It added a deterministic, Development-only,
+opt-in demo/field-validation data set (`Data/Seed/DemoDataSeeder.cs`), the delivery
+documentation (`README.md`, `DEPLOYMENT.md`, `docs/24-DELIVERY-AND-HARDENING.md`), and one
+disabled-by-default configuration section (`Faed:DemoSeed` in `appsettings.Development.json`).
+No entity, enum, migration, service contract or state machine changed;
+`dotnet ef migrations has-pending-model-changes` still reports no drift and no migration was
+added by the audit itself. The independent final review then raised eight hardening
+findings, all now fixed within TASK-011 scope (no product feature, no migration): the demo
+seeder was rebuilt to run one DI scope per step and to resume after an interruption;
+non-Development environments fail fast on a missing or LocalDB connection string; local
+private-file storage is Development-only; an administrator can no longer create, be approved
+into, or authorize as a selling merchant; the committed CI SQL password fallback is gone;
+every order / deal / negotiation / dispute / admin-queue surface is database-paged; and
+listing media / evidence IDOR no longer leaks record existence. Every check in
+`docs/11-ACCEPTANCE-CRITERIA.md` is verified. See "TASK-011 — Hardening, Demo Data and
+Delivery" and `docs/24-DELIVERY-AND-HARDENING.md` §10a below.
 
 **Phases 9–10 — Merchant Analytics and Admin Completion complete (TASK-010).**
 
@@ -326,9 +347,129 @@ implemented.
 
 ## Active task
 
-None. TASK-010 is closed.
+None. TASK-011 is closed and the planned task queue (TASK-001 – TASK-011) is complete.
 
-Next: `tasks/TASK-011-HARDENING-AND-DEMO.md` (do not start until explicitly requested).
+Independent final review (Codex) is the next step, followed by the manual delivery items in
+`DEPLOYMENT.md` §3.
+
+## TASK-011 — Hardening, Demo Data and Delivery
+
+### Behaviour implemented
+
+- `Data/Seed/DemoDataSeeder.cs` (+ `DemoDataOptions`) — a deterministic development/demo
+  data set (`docs/12-SEED-DATA.md`). It runs only when the environment is `Development`,
+  `Faed:DemoSeed:Enabled` is `true`, and `Faed:DemoSeed:Password` is supplied out-of-band
+  (user secrets / environment) — otherwise it logs one line and returns. It is idempotent
+  (the first demo merchant account is a sentinel) and builds **every** record —
+  merchants, listings, orders, negotiations, a deal, a dispute, a review — by calling the
+  same application services a real request calls, so moderation, authorization, price
+  integrity, MOQ and SQL Server stock concurrency all apply unchanged. Embedded fixtures
+  are a genuine 1×1 PNG and a minimal valid PDF that pass the production upload inspector;
+  no secret, credential or machine-specific path is introduced.
+  `Program.cs` invokes it inside the existing `if (app.Environment.IsDevelopment())` block,
+  after the role / catalog / dev-admin seeds.
+- Data set: `demo-admin@faed.local` (Admin), `merchant-a@faed.local` / `merchant-b@faed.local`
+  (approved merchants *Amman Threads* / *Petra Footwear*, each with a pickup location and a
+  delivery zone), `pending-merchant@faed.local` (*Rainbow Kids Wear*, submitted, still
+  `PendingReview`), `buyer-a@faed.local` / `buyer-b@faed.local`; four listings — Court Low
+  Sneakers (Grade B, Past Season + Packaging Damage, Size 41/42/43 × Black, B2C+B2B MOQ 10),
+  Everyday Cotton Crew Tee (Grade A, Overstock, options, B2C+B2B), Structured Leather Tote
+  (Grade D, Display Item, visible defect photo, B2C only), Merino Half-Zip (ends **SoldOut**
+  after a demo buyer clears the last units); scenarios — one `Confirmed` (active) B2C order,
+  one `Completed` B2C order (buyer confirmed receipt), one `Open` B2B negotiation, one
+  counter-offer chain (2 revisions, `Open`), one `Completed` B2B deal, one dispute
+  (`MissingItems` on the completed deal, admin `UnderReview`), one 5★ review on the completed
+  B2C order.
+- Documentation: `README.md` rewritten (prerequisites, clean-environment run, demo seed,
+  tests); new `DEPLOYMENT.md` (production configuration, secrets, manual delivery steps,
+  release checklist); new `docs/24-DELIVERY-AND-HARDENING.md` (the TASK-011 audit —
+  authorization, validation, upload security, concurrency, responsive, accessibility,
+  paging — plus the demo-data reference and known limitations). `docs/11-ACCEPTANCE-CRITERIA.md`
+  boxes checked with a TASK-011 verification header.
+- Configuration: `ConnectionStrings:DefaultConnection` moved from `appsettings.json` to
+  `appsettings.Development.json`; `Faed:DemoSeed` section (`Enabled: false`) added there; the
+  committed CI SQL password fallback removed from `.github/workflows/ci.yml`. No secret,
+  connection string or machine-specific path is present in any tracked file.
+
+### Final-review hardening (independent review — TASK-011)
+
+The independent final review raised eight findings; all are fixed within TASK-011 scope
+(hardening + delivery), with no product feature and no migration. Summary
+(`docs/24-DELIVERY-AND-HARDENING.md` §10a has the detail):
+
+1. **Demo seed** hardened — one linear pass, projected `AsNoTracking` lookups (no full-table
+   loads), change tracker cleared before the transactional scenarios, a 5-minute command
+   timeout so a query does not abort under the LocalDB starvation a full test run can cause;
+   completion keyed on the final artifact (the review); an interrupted previous run is
+   detected (demo accounts present, marker absent) and its partial data is **purged in
+   FK-safe order and rebuilt** — restarting the app recovers, no manual `ef database drop`
+   needed. Its test runs against a dedicated `Faed_DemoSeedTests` catalog.
+2. **Connection string** — moved to `appsettings.Development.json`;
+   `DependencyInjection.ResolveDatabaseConnectionString` throws at startup for a
+   non-Development, non-Testing environment with a missing or LocalDB connection string.
+3. **Local file storage** is registered only when `environment.IsDevelopment()`; every other
+   environment gets a throwing stub until a real private object store is registered.
+4. **Admin cannot be a merchant** — `MerchantVerificationService` rejects application
+   create / document / submit from an admin and refuses to approve or reinstate a profile
+   owned by an admin; the `ApprovedMerchant` MVC policy excludes administrators.
+5. **CI SQL password** — `${{ secrets.CI_SQL_PASSWORD }}` with no fallback, plus a preflight
+   step that fails early with a clear message when the secret is unset.
+6. **Pagination** — shared `PagedResult<T>` / `Paging` / `ToPagedResultAsync`
+   (`Services/Common`); buyer/merchant orders, negotiations, deals, disputes and the
+   merchant-verification / listing-moderation / dispute admin queues now return a bounded
+   page (SQL COUNT + `Skip`/`Take`) with a `?page=` param and a shared `_Pagination` partial;
+   the B2B "awaiting me/them" filter moved to a SQL `EXISTS`; the per-transaction dispute
+   lookup is a new bounded `GetDisputesForTransactionAsync`; the TASK-010 admin history
+   screens were unified onto the same `PagedResult<T>`.
+7. **Media IDOR** — `ListingMediaService` returns `NotFound` (not `Forbidden`) for an
+   unauthorized private image or evidence file, so a bad id and an unauthorized id are
+   indistinguishable.
+8. **Docs** — `README.md` / `DEPLOYMENT.md` corrected: connection-string location and
+   fail-fast, Development-only local storage, the CI secret, clean-start behaviour, and the
+   three destructively managed test catalogs (`Faed_IntegrationTests`, `Faed_WebTests`,
+   `Faed_DemoSeedTests`).
+
+Tests added: `Faed.UnitTests.PagedResultTests` (6), `Faed.UnitTests.DatabaseConnectionResolutionTests` (13),
+`Faed.UnitTests.PrivateFileStorageRegistrationTests` (4), `Faed.IntegrationTests.Task011HardeningTests` (4);
+`DemoDataSeederTests` rewritten against a dedicated `Faed_DemoSeedTests` catalog and extended to
+cover idempotency + recovery after an interrupted run. `PublicMarketplaceHttpTests`'
+suspended-listing image assertion was updated to prove bad-id / unauthorized-id equivalence. No
+existing test was weakened.
+
+### Audit results (`docs/24-DELIVERY-AND-HARDENING.md` §3–8)
+
+The authorization, validation, upload-security, concurrency, responsive-QA, accessibility
+and performance/paging audits were performed against the finished TASK-001–010 code. All
+three authorization layers (MVC policy, service re-check, database constraint) are present
+on every state-changing surface; IDOR is closed; uploads pass a shared fail-closed
+inspector; the SQL Server `rowversion` concurrency guarantees re-ran green.
+
+### Not implemented (correctly out of scope / deferred)
+
+- Production `IFileStorage` (cloud object store) and `IEmailSender` — interfaces are in
+  place; implementations depend on unresolved infrastructure decisions
+  (`docs/13-OPEN-QUESTIONS.md` §27–28) and are manual delivery steps (`DEPLOYMENT.md` §3).
+- Payments, escrow, platform shipping, warehousing, Arabic UI — explicitly deferred
+  (`docs/10-IMPLEMENTATION-PLAN.md`).
+- Any new feature, endpoint, entity, migration or schema change.
+
+### Validation (TASK-011, including the final-review fixes)
+
+- `dotnet build Faed.slnx` (Debug + Release) — succeeds, 0 warnings, 0 errors.
+- `dotnet test Faed.slnx` — **456 passed (270 unit, 186 SQL Server integration)**, 0 failed,
+  0 skipped. `DemoDataSeederTests` builds the whole demo data set through the real services
+  against its own `Faed_DemoSeedTests` catalog, and also checks idempotency and
+  recovery-after-interruption. No existing test was removed or weakened.
+- `dotnet ef migrations has-pending-model-changes --project src/Faed.Web` — no model drift.
+  **No migration was added by TASK-011 or its final-review fixes.**
+- Clean-database validation: `dotnet ef database update` applies every migration from an
+  empty catalog; the integration test hosts recreate their catalogs from empty each run.
+- Startup validation: the app starts in `Development` with the demo configuration
+  (`Faed__DemoSeed__Enabled=true` + a user-secret password), seeds the full data set on
+  first run ("Demo data set seeded."), and serves the seeded listings (Home / Shop 200). It
+  also starts with the seed disabled (one log line, no data). A non-Development environment
+  with a missing or LocalDB connection string, or with no private `IFileStorage`, fails
+  fast at startup as intended.
 
 ## TASK-010 — Merchant Analytics and Admin Completion
 

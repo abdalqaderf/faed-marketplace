@@ -1,13 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Trust;
 
 namespace Faed.Web.Areas.Merchant.ViewModels;
 
 public sealed class MerchantDisputeListPageModel
 {
-    public required IReadOnlyList<DisputeSummaryView> Disputes { get; init; }
+    public required PagedResult<DisputeSummaryView> Disputes { get; init; }
 }
 
 public sealed class MerchantDisputeDetailPageModel

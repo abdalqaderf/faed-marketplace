@@ -172,29 +172,45 @@ public sealed class B2BDealService(
 
     // ---- Reads ---------------------------------------------------------------
 
-    public async Task<IReadOnlyList<B2BDealSummaryView>> GetMyDealsAsync(
-        string merchantUserId, B2BDealFilter filter, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<B2BDealSummaryView>> GetMyDealsAsync(
+        string merchantUserId, B2BDealFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var merchantId = await ResolveEligibleMerchantIdAsync(merchantUserId, cancellationToken);
         if (merchantId is null)
         {
-            return [];
+            return PagedResult<B2BDealSummaryView>.Empty(page, Paging.DefaultPageSize);
         }
 
-        var deals = (await db.B2BDeals
-                .AsNoTracking()
-                .Include(d => d.Lines)
-                .Where(d => d.SellingMerchantProfileId == merchantId || d.BuyingMerchantProfileId == merchantId)
-                .OrderByDescending(d => d.UpdatedAtUtc)
-                .ToListAsync(cancellationToken))
-            .Where(d => MatchesFilter(d.Status, filter))
-            .ToList();
+        var query = db.B2BDeals
+            .AsNoTracking()
+            .Where(d => d.SellingMerchantProfileId == merchantId || d.BuyingMerchantProfileId == merchantId);
+
+        query = filter switch
+        {
+            B2BDealFilter.Active => query.Where(d =>
+                d.Status != B2BDealStatus.Completed && d.Status != B2BDealStatus.Cancelled),
+            B2BDealFilter.AwaitingFulfillment => query.Where(d => d.Status == B2BDealStatus.AwaitingFulfillment),
+            B2BDealFilter.InFulfillment => query.Where(d =>
+                d.Status == B2BDealStatus.ReadyForPickup || d.Status == B2BDealStatus.Shipped || d.Status == B2BDealStatus.Delivered),
+            B2BDealFilter.Completed => query.Where(d => d.Status == B2BDealStatus.Completed),
+            B2BDealFilter.Cancelled => query.Where(d => d.Status == B2BDealStatus.Cancelled),
+            _ => query,
+        };
+
+        page = Paging.NormalizePage(page);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var deals = await query
+            .Include(d => d.Lines)
+            .OrderByDescending(d => d.UpdatedAtUtc)
+            .Skip((page - 1) * Paging.DefaultPageSize)
+            .Take(Paging.DefaultPageSize)
+            .ToListAsync(cancellationToken);
 
         var listingInfo = await LoadListingHeadersAsync(deals.Select(d => d.B2BNegotiationId), cancellationToken);
         var merchantNames = await LoadMerchantNamesAsync(
             deals.SelectMany(d => new[] { d.SellingMerchantProfileId, d.BuyingMerchantProfileId }), cancellationToken);
 
-        return deals
+        var views = deals
             .Select(d => new B2BDealSummaryView(
                 d.Id,
                 RoleOf(d, merchantId.Value),
@@ -207,6 +223,8 @@ public sealed class B2BDealService(
                 d.ReservationExpiresAtUtc,
                 d.UpdatedAtUtc))
             .ToList();
+
+        return new PagedResult<B2BDealSummaryView>(views, totalCount, page, Paging.DefaultPageSize);
     }
 
     public async Task<int> GetActionableDealCountAsync(
@@ -218,20 +236,13 @@ public sealed class B2BDealService(
             return 0;
         }
 
-        var active = await db.B2BDeals
+        return await db.B2BDeals
             .AsNoTracking()
-            .Where(d => (d.SellingMerchantProfileId == merchantId || d.BuyingMerchantProfileId == merchantId)
-                && d.Status != B2BDealStatus.Completed && d.Status != B2BDealStatus.Cancelled)
-            .Select(d => new { d.SellingMerchantProfileId, d.Status })
-            .ToListAsync(cancellationToken);
-
-        return active.Count(d => d.Status switch
-        {
-            B2BDealStatus.AwaitingFulfillment => d.SellingMerchantProfileId == merchantId,
-            B2BDealStatus.ReadyForPickup or B2BDealStatus.Shipped => true,
-            B2BDealStatus.Delivered => true,
-            _ => false,
-        });
+            .CountAsync(d => (d.SellingMerchantProfileId == merchantId || d.BuyingMerchantProfileId == merchantId)
+                && ((d.Status == B2BDealStatus.AwaitingFulfillment && d.SellingMerchantProfileId == merchantId)
+                    || d.Status == B2BDealStatus.ReadyForPickup
+                    || d.Status == B2BDealStatus.Shipped
+                    || d.Status == B2BDealStatus.Delivered), cancellationToken);
     }
 
     public async Task<B2BDealDetailView?> GetDealAsync(
@@ -536,16 +547,6 @@ public sealed class B2BDealService(
         logger.LogInformation("B2B deal {DealId} moved to {Status}", deal.Id, deal.Status);
         return Result.Success();
     }
-
-    private static bool MatchesFilter(B2BDealStatus status, B2BDealFilter filter) => filter switch
-    {
-        B2BDealFilter.Active => status != B2BDealStatus.Completed && status != B2BDealStatus.Cancelled,
-        B2BDealFilter.AwaitingFulfillment => status == B2BDealStatus.AwaitingFulfillment,
-        B2BDealFilter.InFulfillment => status is B2BDealStatus.ReadyForPickup or B2BDealStatus.Shipped or B2BDealStatus.Delivered,
-        B2BDealFilter.Completed => status == B2BDealStatus.Completed,
-        B2BDealFilter.Cancelled => status == B2BDealStatus.Cancelled,
-        _ => true,
-    };
 
     private static B2BNegotiationParty RoleOf(B2BDeal d, Guid merchantId) =>
         merchantId == d.SellingMerchantProfileId ? B2BNegotiationParty.SellingMerchant : B2BNegotiationParty.BuyingMerchant;

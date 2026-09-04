@@ -16,12 +16,15 @@ namespace Faed.Web.Areas.Admin.Controllers;
 public sealed class MerchantVerificationController(IMerchantVerificationService verification) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(MerchantQueueFilter filter = MerchantQueueFilter.PendingReview, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index(
+        MerchantQueueFilter filter = MerchantQueueFilter.PendingReview,
+        int page = 1,
+        CancellationToken cancellationToken = default)
     {
-        var items = await verification.GetQueueAsync(filter, cancellationToken);
+        var items = await verification.GetQueueAsync(filter, page, cancellationToken);
         var pendingCount = filter == MerchantQueueFilter.PendingReview
-            ? items.Count
-            : (await verification.GetQueueAsync(MerchantQueueFilter.PendingReview, cancellationToken)).Count;
+            ? items.TotalCount
+            : (await verification.GetQueueAsync(MerchantQueueFilter.PendingReview, 1, cancellationToken)).TotalCount;
 
         return View(new MerchantQueuePageModel
         {

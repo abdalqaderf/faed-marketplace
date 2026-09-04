@@ -253,31 +253,47 @@ public sealed class B2BNegotiationService(
 
     // ---- Reads ---------------------------------------------------------------
 
-    public async Task<IReadOnlyList<B2BNegotiationSummaryView>> GetMyNegotiationsAsync(
-        string merchantUserId, B2BNegotiationFilter filter, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<B2BNegotiationSummaryView>> GetMyNegotiationsAsync(
+        string merchantUserId, B2BNegotiationFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var merchantId = await ResolveEligibleMerchantIdAsync(merchantUserId, cancellationToken);
         if (merchantId is null)
         {
-            return [];
+            return PagedResult<B2BNegotiationSummaryView>.Empty(page, Paging.DefaultPageSize);
         }
 
-        var negotiations = await db.B2BNegotiations
-            .AsNoTracking()
+        // The filter is applied in SQL: "awaiting me" is an open negotiation whose current
+        // revision was proposed by the other merchant (docs/06-ARCHITECTURE.md §13 — no
+        // unbounded in-memory filter over a merchant's whole history).
+        var id = merchantId.Value;
+        var mine = ForMerchant(id);
+        var filtered = filter switch
+        {
+            B2BNegotiationFilter.AwaitingMe => mine.Where(n => n.Status == B2BNegotiationStatus.Open
+                && n.Revisions.Any(r => r.RevisionNumber == n.CurrentRevisionNumber
+                    && r.ProposedByMerchantProfileId != id)),
+            B2BNegotiationFilter.AwaitingThem => mine.Where(n => n.Status == B2BNegotiationStatus.Open
+                && n.Revisions.Any(r => r.RevisionNumber == n.CurrentRevisionNumber
+                    && r.ProposedByMerchantProfileId == id)),
+            B2BNegotiationFilter.Open => mine.Where(n => n.Status == B2BNegotiationStatus.Open),
+            B2BNegotiationFilter.Closed => mine.Where(n => n.Status != B2BNegotiationStatus.Open),
+            _ => mine,
+        };
+
+        page = Paging.NormalizePage(page);
+        var totalCount = await filtered.CountAsync(cancellationToken);
+        var negotiations = await filtered
             .Include(n => n.Revisions).ThenInclude(r => r.Lines)
-            .Where(n => n.SellingMerchantProfileId == merchantId || n.BuyingMerchantProfileId == merchantId)
+            .OrderByDescending(n => n.UpdatedAtUtc)
+            .Skip((page - 1) * Paging.DefaultPageSize)
+            .Take(Paging.DefaultPageSize)
             .ToListAsync(cancellationToken);
 
-        var filtered = negotiations
-            .Where(n => MatchesFilter(n, merchantId.Value, filter))
-            .OrderByDescending(n => n.UpdatedAtUtc)
-            .ToList();
-
-        var listingInfo = await LoadListingHeadersAsync(filtered.Select(n => n.ListingId), cancellationToken);
+        var listingInfo = await LoadListingHeadersAsync(negotiations.Select(n => n.ListingId), cancellationToken);
         var merchantNames = await LoadMerchantNamesAsync(
-            filtered.SelectMany(n => new[] { n.SellingMerchantProfileId, n.BuyingMerchantProfileId }), cancellationToken);
+            negotiations.SelectMany(n => new[] { n.SellingMerchantProfileId, n.BuyingMerchantProfileId }), cancellationToken);
 
-        return filtered
+        var views = negotiations
             .Select(n =>
             {
                 var current = n.CurrentRevision;
@@ -298,6 +314,8 @@ public sealed class B2BNegotiationService(
                     n.UpdatedAtUtc);
             })
             .ToList();
+
+        return new PagedResult<B2BNegotiationSummaryView>(views, totalCount, page, Paging.DefaultPageSize);
     }
 
     public async Task<int> GetAwaitingResponseCountAsync(
@@ -309,15 +327,18 @@ public sealed class B2BNegotiationService(
             return 0;
         }
 
-        var open = await db.B2BNegotiations
-            .AsNoTracking()
-            .Include(n => n.Revisions)
+        var id = merchantId.Value;
+        return await ForMerchant(id)
             .Where(n => n.Status == B2BNegotiationStatus.Open
-                && (n.SellingMerchantProfileId == merchantId || n.BuyingMerchantProfileId == merchantId))
-            .ToListAsync(cancellationToken);
-
-        return open.Count(n => n.AwaitingResponseFrom == merchantId);
+                && n.Revisions.Any(r => r.RevisionNumber == n.CurrentRevisionNumber
+                    && r.ProposedByMerchantProfileId != id))
+            .CountAsync(cancellationToken);
     }
+
+    private IQueryable<B2BNegotiation> ForMerchant(Guid merchantId) =>
+        db.B2BNegotiations
+            .AsNoTracking()
+            .Where(n => n.SellingMerchantProfileId == merchantId || n.BuyingMerchantProfileId == merchantId);
 
     public async Task<B2BNegotiationDetailView?> GetNegotiationAsync(
         string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default)
@@ -439,15 +460,6 @@ public sealed class B2BNegotiationService(
     }
 
     // ---- Internals ---------------------------------------------------------
-
-    private static bool MatchesFilter(B2BNegotiation n, Guid merchantId, B2BNegotiationFilter filter) => filter switch
-    {
-        B2BNegotiationFilter.AwaitingMe => n.Status == B2BNegotiationStatus.Open && n.AwaitingResponseFrom == merchantId,
-        B2BNegotiationFilter.AwaitingThem => n.Status == B2BNegotiationStatus.Open && n.AwaitingResponseFrom != merchantId,
-        B2BNegotiationFilter.Open => n.Status == B2BNegotiationStatus.Open,
-        B2BNegotiationFilter.Closed => n.Status != B2BNegotiationStatus.Open,
-        _ => true,
-    };
 
     private static B2BNegotiationParty RoleOf(B2BNegotiation n, Guid merchantId) =>
         merchantId == n.SellingMerchantProfileId ? B2BNegotiationParty.SellingMerchant : B2BNegotiationParty.BuyingMerchant;

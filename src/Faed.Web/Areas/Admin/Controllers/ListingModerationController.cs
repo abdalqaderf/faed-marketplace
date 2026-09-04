@@ -19,11 +19,12 @@ public sealed class ListingModerationController(IListingModerationService modera
     [HttpGet]
     public async Task<IActionResult> Index(
         ModerationQueueFilter filter = ModerationQueueFilter.PendingReview,
+        int page = 1,
         CancellationToken cancellationToken = default)
     {
-        var items = await moderation.GetQueueAsync(filter, cancellationToken);
+        var items = await moderation.GetQueueAsync(filter, page, cancellationToken);
         var pendingCount = filter == ModerationQueueFilter.PendingReview
-            ? items.Count
+            ? items.TotalCount
             : await moderation.GetPendingCountAsync(cancellationToken);
 
         return View(new ListingModerationQueuePageModel

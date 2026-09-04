@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Faed.Web.Services.B2B;
+using Faed.Web.Services.Common;
 
 namespace Faed.Web.Areas.Merchant.ViewModels;
 
@@ -53,7 +54,7 @@ public sealed class B2BNegotiationListPageModel
 {
     public required B2BNegotiationFilter Filter { get; init; }
 
-    public required IReadOnlyList<B2BNegotiationSummaryView> Negotiations { get; init; }
+    public required PagedResult<B2BNegotiationSummaryView> Negotiations { get; init; }
 
     public int AwaitingMeCount { get; init; }
 }

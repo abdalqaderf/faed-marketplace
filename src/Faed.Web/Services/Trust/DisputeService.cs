@@ -239,8 +239,36 @@ public sealed class DisputeService(
 
     // ---- Participant reads -----------------------------------------------------
 
-    public async Task<IReadOnlyList<DisputeSummaryView>> GetMyDisputesAsync(
-        string userId, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<DisputeSummaryView>> GetMyDisputesAsync(
+        string userId, int page = 1, CancellationToken cancellationToken = default)
+    {
+        var mine = await MyDisputesQueryAsync(userId, cancellationToken);
+        page = Paging.NormalizePage(page);
+
+        var totalCount = await mine.CountAsync(cancellationToken);
+        var disputes = await mine
+            .OrderByDescending(d => d.UpdatedAtUtc)
+            .Skip((page - 1) * Paging.DefaultPageSize)
+            .Take(Paging.DefaultPageSize)
+            .ToListAsync(cancellationToken);
+
+        var summaries = await ToParticipantSummariesAsync(disputes, userId, cancellationToken);
+        return new PagedResult<DisputeSummaryView>(summaries, totalCount, page, Paging.DefaultPageSize);
+    }
+
+    public async Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForTransactionAsync(
+        string userId, TrustTransactionType transactionType, Guid transactionId, CancellationToken cancellationToken = default)
+    {
+        var mine = await MyDisputesQueryAsync(userId, cancellationToken);
+        mine = transactionType == TrustTransactionType.B2COrder
+            ? mine.Where(d => d.OrderId == transactionId)
+            : mine.Where(d => d.B2BDealId == transactionId);
+
+        var disputes = await mine.OrderByDescending(d => d.UpdatedAtUtc).ToListAsync(cancellationToken);
+        return await ToParticipantSummariesAsync(disputes, userId, cancellationToken);
+    }
+
+    private async Task<IQueryable<Dispute>> MyDisputesQueryAsync(string userId, CancellationToken cancellationToken)
     {
         var myMerchantId = await ResolveMerchantIdAsync(userId, cancellationToken);
 
@@ -258,14 +286,16 @@ public sealed class DisputeService(
                 .Select(d => d.Id)
                 .ToListAsync(cancellationToken);
 
-        var disputes = await db.Disputes
+        return db.Disputes
             .AsNoTracking()
             .Where(d => d.RaisedByUserId == userId
                 || (d.OrderId != null && orderIds.Contains(d.OrderId.Value))
-                || (d.B2BDealId != null && dealIds.Contains(d.B2BDealId.Value)))
-            .OrderByDescending(d => d.UpdatedAtUtc)
-            .ToListAsync(cancellationToken);
+                || (d.B2BDealId != null && dealIds.Contains(d.B2BDealId.Value)));
+    }
 
+    private async Task<List<DisputeSummaryView>> ToParticipantSummariesAsync(
+        IReadOnlyList<Dispute> disputes, string userId, CancellationToken cancellationToken)
+    {
         var summaries = new List<DisputeSummaryView>(disputes.Count);
         foreach (var dispute in disputes)
         {
@@ -394,8 +424,8 @@ public sealed class DisputeService(
 
     // ---- Admin reads / actions ------------------------------------------------
 
-    public async Task<IReadOnlyList<DisputeSummaryView>> GetQueueAsync(
-        DisputeQueueFilter filter, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<DisputeSummaryView>> GetQueueAsync(
+        DisputeQueueFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query = db.Disputes.AsNoTracking();
         query = filter switch
@@ -408,9 +438,13 @@ public sealed class DisputeService(
             _ => query,
         };
 
+        page = Paging.NormalizePage(page);
+        var totalCount = await query.CountAsync(cancellationToken);
         var disputes = await query
             .OrderBy(d => d.Status == DisputeStatus.Open ? 0 : d.Status == DisputeStatus.UnderReview ? 1 : 2)
             .ThenBy(d => d.CreatedAtUtc)
+            .Skip((page - 1) * Paging.AdminPageSize)
+            .Take(Paging.AdminPageSize)
             .ToListAsync(cancellationToken);
 
         var summaries = new List<DisputeSummaryView>(disputes.Count);
@@ -434,7 +468,7 @@ public sealed class DisputeService(
                 dispute.UpdatedAtUtc));
         }
 
-        return summaries;
+        return new PagedResult<DisputeSummaryView>(summaries, totalCount, page, Paging.AdminPageSize);
     }
 
     public Task<int> GetOpenDisputeCountAsync(CancellationToken cancellationToken = default) =>

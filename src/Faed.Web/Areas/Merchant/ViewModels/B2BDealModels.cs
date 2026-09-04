@@ -1,4 +1,5 @@
 using Faed.Web.Services.B2B;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Trust;
 
 namespace Faed.Web.Areas.Merchant.ViewModels;
@@ -7,7 +8,7 @@ public sealed class B2BDealListPageModel
 {
     public required B2BDealFilter Filter { get; init; }
 
-    public required IReadOnlyList<B2BDealSummaryView> Deals { get; init; }
+    public required PagedResult<B2BDealSummaryView> Deals { get; init; }
 
     public int ActionableCount { get; init; }
 }

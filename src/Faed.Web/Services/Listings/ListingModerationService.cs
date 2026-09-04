@@ -18,8 +18,8 @@ public sealed class ListingModerationService(
 {
     private const string ListingTargetType = nameof(Listing);
 
-    public async Task<IReadOnlyList<ModerationQueueItem>> GetQueueAsync(
-        ModerationQueueFilter filter, CancellationToken cancellationToken = default)
+    public Task<PagedResult<ModerationQueueItem>> GetQueueAsync(
+        ModerationQueueFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var query = db.Listings.AsNoTracking();
 
@@ -32,7 +32,7 @@ public sealed class ListingModerationService(
             _ => query.Where(l => l.Status != ListingStatus.Draft && l.Status != ListingStatus.Archived),
         };
 
-        return await query
+        return query
             // Oldest submission first: the queue is a work list, not a news feed.
             .OrderBy(l => l.Status == ListingStatus.PendingReview ? 0 : 1)
             .ThenBy(l => l.SubmittedAtUtc ?? l.CreatedAtUtc)
@@ -52,7 +52,7 @@ public sealed class ListingModerationService(
                 l.RetailPrice,
                 l.ReferencePrice,
                 l.ReferencePriceEvidence.Any()))
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(page, Paging.AdminPageSize, cancellationToken);
     }
 
     public Task<int> GetPendingCountAsync(CancellationToken cancellationToken = default) =>

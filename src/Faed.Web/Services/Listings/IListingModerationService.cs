@@ -14,8 +14,8 @@ namespace Faed.Web.Services.Listings;
 /// </summary>
 public interface IListingModerationService
 {
-    Task<IReadOnlyList<ModerationQueueItem>> GetQueueAsync(
-        ModerationQueueFilter filter, CancellationToken cancellationToken = default);
+    Task<PagedResult<ModerationQueueItem>> GetQueueAsync(
+        ModerationQueueFilter filter, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>The number of listings currently awaiting review — a cheap count, not the full queue.</summary>
     Task<int> GetPendingCountAsync(CancellationToken cancellationToken = default);

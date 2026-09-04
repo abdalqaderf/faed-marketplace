@@ -349,10 +349,10 @@ public sealed class OrderService(
 
     // ---- Buyer reads / actions --------------------------------------------------
 
-    public async Task<IReadOnlyList<OrderSummaryView>> GetMyOrdersAsync(
-        string buyerUserId, CancellationToken cancellationToken = default)
+    public Task<PagedResult<OrderSummaryView>> GetMyOrdersAsync(
+        string buyerUserId, int page = 1, CancellationToken cancellationToken = default)
     {
-        return await db.Orders
+        return db.Orders
             .AsNoTracking()
             .Where(o => o.BuyerUserId == buyerUserId)
             .OrderByDescending(o => o.CreatedAtUtc)
@@ -366,7 +366,7 @@ public sealed class OrderService(
                 o.Total,
                 o.CreatedAtUtc,
                 o.ReservationExpiresAtUtc))
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
     }
 
     public async Task<OrderDetailView?> GetMyOrderAsync(
@@ -424,13 +424,13 @@ public sealed class OrderService(
 
     // ---- Merchant reads / actions ---------------------------------------------
 
-    public async Task<IReadOnlyList<OrderSummaryView>> GetMerchantOrdersAsync(
-        string merchantUserId, MerchantOrderFilter filter, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<OrderSummaryView>> GetMerchantOrdersAsync(
+        string merchantUserId, MerchantOrderFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
         var merchantId = await ResolveMerchantIdAsync(merchantUserId, cancellationToken);
         if (merchantId is null)
         {
-            return [];
+            return PagedResult<OrderSummaryView>.Empty(page, Paging.DefaultPageSize);
         }
 
         var query = db.Orders.AsNoTracking().Where(o => o.MerchantProfileId == merchantId);
@@ -461,7 +461,7 @@ public sealed class OrderService(
                 o.Total,
                 o.CreatedAtUtc,
                 o.ReservationExpiresAtUtc))
-            .ToListAsync(cancellationToken);
+            .ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
     }
 
     public async Task<int> GetMerchantOpenOrderCountAsync(

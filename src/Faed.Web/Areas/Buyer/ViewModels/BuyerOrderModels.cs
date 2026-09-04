@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Enums;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Trust;
 
@@ -55,7 +56,7 @@ public sealed class CheckoutPageModel
 
 public sealed class BuyerOrderListPageModel
 {
-    public required IReadOnlyList<OrderSummaryView> Orders { get; init; }
+    public required PagedResult<OrderSummaryView> Orders { get; init; }
 }
 
 public sealed class BuyerOrderDetailPageModel

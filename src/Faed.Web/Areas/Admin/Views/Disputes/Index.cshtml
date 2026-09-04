@@ -31,7 +31,7 @@
         }
     </nav>
 
-    @if (Model.Items.Count == 0)
+    @if (Model.Items.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">Nothing here</div>
@@ -52,7 +52,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var d in Model.Items)
+                    @foreach (var d in Model.Items.Items)
                     {
                         <tr>
                             <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
@@ -65,5 +65,7 @@
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Items, "Index", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "dispute")' />
     }
 </div>

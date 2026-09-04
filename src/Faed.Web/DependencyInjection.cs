@@ -11,6 +11,7 @@ using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Storage;
 using Faed.Web.Services.Trust;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -29,7 +30,7 @@ public static class DependencyInjection
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        services.AddPersistence();
+        services.AddPersistence(environment);
         services.AddPrivateFileStorage(configuration, environment);
 
         services.AddScoped<IUserRoleService, UserRoleService>();
@@ -119,7 +120,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddPersistence(this IServiceCollection services)
+    private static void AddPersistence(this IServiceCollection services, IHostEnvironment environment)
     {
         // One application DbContext; Identity shares it. Migrations live in this project
         // under Data/Migrations (docs/06-ARCHITECTURE.md §5).
@@ -130,15 +131,67 @@ public static class DependencyInjection
         // is exactly how a test host overrides it — and pointed the integration test host at
         // the application database instead of its disposable one (docs/09-TEST-STRATEGY.md §2).
         services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
-            options.UseSqlServer(ResolveConnectionString(
-                serviceProvider.GetRequiredService<IConfiguration>())));
+            options.UseSqlServer(ResolveDatabaseConnectionString(
+                serviceProvider.GetRequiredService<IConfiguration>(), environment)));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
     }
 
-    private static string ResolveConnectionString(IConfiguration configuration) =>
-        configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    /// <summary>
+    /// Resolves the SQL Server connection string and fails fast when a non-Development
+    /// environment has none configured, or is still pointed at the committed local
+    /// development database. The development connection string lives only in
+    /// <c>appsettings.Development.json</c>; every other environment must supply its own via
+    /// <c>ConnectionStrings__DefaultConnection</c> (docs/06-ARCHITECTURE.md §11,
+    /// docs/08-SECURITY-AND-PRIVACY.md §11, DEPLOYMENT.md §2). Exposed for a focused test.
+    /// </summary>
+    public static string ResolveDatabaseConnectionString(IConfiguration configuration, IHostEnvironment environment)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        // The "Testing" environment is the integration-test host, which injects its own
+        // disposable LocalDB catalog and asserts the target separately
+        // (docs/09-TEST-STRATEGY.md §2, TestHostDatabaseTargetTests).
+        var enforceProductionSafety = !environment.IsDevelopment() && !environment.IsEnvironment("Testing");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(enforceProductionSafety
+                ? $"Connection string 'DefaultConnection' is not configured for the " +
+                  $"'{environment.EnvironmentName}' environment. Set the " +
+                  "ConnectionStrings__DefaultConnection environment variable to a SQL Server " +
+                  "the application login can reach (DEPLOYMENT.md §2)."
+                : "Connection string 'DefaultConnection' not found. In Development it is set in " +
+                  "appsettings.Development.json; override it with user secrets or " +
+                  "ConnectionStrings__DefaultConnection.");
+        }
+
+        if (enforceProductionSafety && TargetsLocalDevelopmentDatabase(connectionString))
+        {
+            throw new InvalidOperationException(
+                $"The '{environment.EnvironmentName}' environment is configured with a local " +
+                "development database connection string (SQL Server LocalDB). Configure " +
+                "ConnectionStrings__DefaultConnection with the real database for this " +
+                "environment (DEPLOYMENT.md §2).");
+        }
+
+        return connectionString;
+    }
+
+    private static bool TargetsLocalDevelopmentDatabase(string connectionString)
+    {
+        try
+        {
+            var dataSource = new SqlConnectionStringBuilder(connectionString).DataSource ?? string.Empty;
+            return dataSource.Contains("localdb", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException)
+        {
+            // A malformed connection string is not our concern here — UseSqlServer will
+            // surface it. Do not mask that with a "looks like LocalDB" message.
+            return false;
+        }
+    }
 
     private static void AddPrivateFileStorage(
         this IServiceCollection services,
@@ -166,15 +219,18 @@ public static class DependencyInjection
                 options.LocalRootPath = resolvedRoot;
             });
 
-        if (environment.IsProduction())
+        if (!environment.IsDevelopment())
         {
-            // LocalFileStorage is a development-only convenience. Production must bind a
-            // real private object store to IFileStorage (docs/06-ARCHITECTURE.md §8);
-            // fail loudly the first time a verification document is stored or read rather
-            // than silently writing to ephemeral local disk.
+            // LocalFileStorage is a development-only convenience. Every non-Development
+            // environment — Production, Staging, or any custom name — must bind a real
+            // private object store to IFileStorage (docs/06-ARCHITECTURE.md §8,
+            // docs/08-SECURITY-AND-PRIVACY.md §3). Fail loudly the first time a verification
+            // document, listing image or dispute-evidence file is stored or read, rather
+            // than silently writing sensitive documents to ephemeral local disk.
             services.AddSingleton<IFileStorage>(_ => throw new InvalidOperationException(
-                "No production IFileStorage is configured. LocalFileStorage is development-only; " +
-                "register a cloud object storage implementation for this environment."));
+                $"No private IFileStorage is configured for the '{environment.EnvironmentName}' " +
+                "environment. LocalFileStorage is Development-only; register a cloud object " +
+                "storage implementation (docs/06-ARCHITECTURE.md §8, DEPLOYMENT.md §3)."));
             return;
         }
 

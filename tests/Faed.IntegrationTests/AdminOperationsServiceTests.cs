@@ -132,7 +132,7 @@ public sealed class AdminOperationsServiceTests(FaedWebApplicationFactory factor
         var expectedReviewIds = new HashSet<Guid>();
         var firstCreatedAtUtc = new DateTime(9997, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        for (var index = 0; index <= AdminPaging.PageSize; index++)
+        for (var index = 0; index <= Paging.AdminPageSize; index++)
         {
             var createdAtUtc = firstCreatedAtUtc.AddHours(index);
             var order = new Order(

@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    @if (Model.Disputes.Count == 0)
+    @if (Model.Disputes.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No disputes</div>
@@ -35,7 +35,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var d in Model.Disputes)
+                    @foreach (var d in Model.Disputes.Items)
                     {
                         <tr>
                             <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
@@ -48,5 +48,7 @@
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Disputes, "Index", itemNoun: "dispute")' />
     }
 </div>

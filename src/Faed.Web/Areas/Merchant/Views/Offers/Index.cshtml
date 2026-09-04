@@ -39,7 +39,7 @@
         }
     </nav>
 
-    @if (Model.Negotiations.Count == 0)
+    @if (Model.Negotiations.TotalCount == 0)
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No negotiations here</div>
@@ -64,7 +64,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var n in Model.Negotiations)
+                    @foreach (var n in Model.Negotiations.Items)
                     {
                         <tr class="@(n.AwaitingMyResponse ? "faed-row--attention" : "")">
                             <td><a asp-action="Details" asp-route-id="@n.Id">@AmmanTime.FormatDateTime(n.UpdatedAtUtc)</a></td>
@@ -81,5 +81,7 @@
                 </tbody>
             </table>
         </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Negotiations, "Index", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "negotiation")' />
     }
 </div>

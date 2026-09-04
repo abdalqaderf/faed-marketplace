@@ -20,9 +20,9 @@ namespace Faed.Web.Areas.Buyer.Controllers;
 public sealed class DisputesController(IDisputeService disputes, IOrderService orders) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(int page = 1, CancellationToken cancellationToken = default)
     {
-        var mine = await disputes.GetMyDisputesAsync(User.RequireUserId(), cancellationToken);
+        var mine = await disputes.GetMyDisputesAsync(User.RequireUserId(), page, cancellationToken);
         return View(new BuyerDisputeListPageModel { Disputes = mine });
     }
 

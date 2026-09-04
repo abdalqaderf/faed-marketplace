@@ -17,11 +17,13 @@ namespace Faed.IntegrationTests.Support;
 /// scheme. The database is migrated in the constructor, before the host (and its role
 /// seeding) starts.
 /// </summary>
-public sealed class FaedWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class FaedWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private const string DatabaseName = TestSqlServer.WebDatabaseName;
+    /// <summary>The disposable test catalog this factory owns. Overridable so a test that
+    /// drives a large end-to-end scenario can run against its own database.</summary>
+    protected virtual string DatabaseName => TestSqlServer.WebDatabaseName;
 
-    public string ConnectionString { get; } = TestSqlServer.ConnectionStringFor(DatabaseName);
+    public string ConnectionString => TestSqlServer.ConnectionStringFor(DatabaseName);
 
     public bool DatabaseReady { get; private set; }
 
