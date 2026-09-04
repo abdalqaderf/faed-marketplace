@@ -1,12 +1,9 @@
 # IMPORTANT:
-# Project agent guidance IS intentionally version-controlled.
+# Project engineering documentation IS intentionally version-controlled.
 # Do NOT ignore:
 #   AGENTS.md
-#   CLAUDE.md
-#   .claude/skills/
-#   .github/copilot-instructions.md
 #   docs/
-#   tasks/
+#   tasks/ (removed once the finalization sequence closes)
 
 ## .NET build output
 bin/
@@ -25,9 +22,6 @@ artifacts/
 # If shared project settings/extensions are added later, explicitly unignore
 # only the files that should be version-controlled.
 .vscode/
-
-## Claude local/user-specific state
-.claude/settings.local.json
 
 ## Logs
 logs/

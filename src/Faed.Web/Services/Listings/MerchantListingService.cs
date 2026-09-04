@@ -83,7 +83,7 @@ public sealed class MerchantListingService(
                 l.Status == ListingStatus.Live || l.Status == ListingStatus.SoldOut),
             MerchantListingFilter.Rejected => query.Where(l => l.Status == ListingStatus.Rejected),
             // "Needs attention" is the merchant's work queue: everything that is not published
-            // and not archived is waiting on them (.claude/skills/faed-dashboard-ux).
+            // and not archived is waiting on them.
             MerchantListingFilter.NeedsAttention => query.Where(l =>
                 l.Status == ListingStatus.Draft
                 || l.Status == ListingStatus.Rejected

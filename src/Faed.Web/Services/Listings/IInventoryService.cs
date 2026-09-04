@@ -15,9 +15,9 @@ namespace Faed.Web.Services.Listings;
 public interface IInventoryService
 {
     /// <summary>
-    /// A bounded page of the caller's own variant stock, worst-stocked first
-    /// (docs/24-FINAL-UI-UX-COMPLETION-PLAN.md §8 "every growable collection is
-    /// database-bounded" — the row count grows with every listing/variant a merchant adds).
+    /// A bounded page of the caller's own variant stock, worst-stocked first — the row count
+    /// grows with every listing/variant a merchant adds, so this is always a real page rather
+    /// than the full set.
     /// </summary>
     Task<PagedResult<InventoryRow>> GetMyInventoryAsync(
         string userId, int page = 1, CancellationToken cancellationToken = default);

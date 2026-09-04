@@ -2,8 +2,4 @@
   <Folder Name="/src/">
     <Project Path="src/Faed.Web/Faed.Web.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Faed.UnitTests/Faed.UnitTests.csproj" />
-    <Project Path="tests/Faed.IntegrationTests/Faed.IntegrationTests.csproj" />
-  </Folder>
 </Solution>

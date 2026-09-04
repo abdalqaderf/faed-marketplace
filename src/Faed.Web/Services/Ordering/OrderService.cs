@@ -460,7 +460,7 @@ public sealed class OrderService(
         };
 
         return await query
-            // Oldest waiting order first: the queue is a work list (.claude/skills/faed-dashboard-ux).
+            // Oldest waiting order first: the queue is a work list.
             .OrderBy(o => o.Status == OrderStatus.Pending ? 0 : 1)
             .ThenBy(o => o.CreatedAtUtc)
             .Select(o => new OrderSummaryView(

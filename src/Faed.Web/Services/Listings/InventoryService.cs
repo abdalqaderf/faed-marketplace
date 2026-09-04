@@ -26,7 +26,7 @@ public sealed class InventoryService(
 
         // Step 1: page the flattened variant list at the database — a plain, fully
         // SQL-translatable projection, ordered so whatever is closest to running out sorts
-        // first (.claude/skills/faed-dashboard-ux "what needs my attention now?").
+        // first (dashboard work queues surface what needs attention now).
         var flatQuery = db.Listings
             .AsNoTracking()
             .Where(l => l.MerchantProfileId == merchantId && l.Status != ListingStatus.Archived)
