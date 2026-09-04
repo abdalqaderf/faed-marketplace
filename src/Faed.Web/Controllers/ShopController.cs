@@ -1,13 +1,12 @@
-using Faed.Web.Services.Marketplace;
+﻿using Faed.Web.Services.Marketplace;
 using Faed.Web.ViewModels.Marketplace;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Faed.Web.Controllers;
 
 /// <summary>
-/// The public browse/filter experience (tasks/TASK-005-PUBLIC-MARKETPLACE.md). Anonymous by
+/// The public browse/filter experience. Anonymous by
 /// design — individuals can buy but Faed has no seller-only content here
-/// (AGENTS.md §3 "Individuals can buy but cannot sell").
 /// </summary>
 [Route("shop")]
 public sealed class ShopController(IPublicMarketplaceService marketplace) : Controller

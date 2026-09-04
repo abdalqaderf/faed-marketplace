@@ -3,13 +3,13 @@ using Faed.Web.Models.Enums;
 namespace Faed.Web.Services.Admin;
 
 // Admin operational surfaces are paged with the shared Faed.Web.Services.Common.PagedResult<T>
-// and Paging.AdminPageSize (tasks/TASK-011-HARDENING-AND-DEMO.md "performance/paging review").
+// and Paging.AdminPageSize.
 
 // ---- Dashboard -------------------------------------------------------------------
 
 /// <summary>
-/// Counts for the admin overview: what is waiting for a decision across every MVP queue
-/// (docs/07-UI-UX-SPEC.md §7). Every number is a live query, never a stored aggregate.
+/// Counts for the admin overview: what is waiting for a decision across every MVP queue.
+/// Every number is a live query, never a stored aggregate.
 /// </summary>
 public sealed record AdminDashboardView(
     int MerchantsAwaitingReview,
@@ -59,7 +59,7 @@ public sealed record AdminOrderLineView(
     decimal UnitPrice,
     decimal LineTotal);
 
-/// <summary>Read-only order detail for admin monitoring / support (docs/16-PERMISSIONS-MATRIX.md).</summary>
+/// <summary>Read-only order detail for admin monitoring / support.</summary>
 public sealed record AdminOrderDetailView(
     Guid Id,
     OrderStatus Status,
@@ -130,7 +130,7 @@ public sealed record AdminLinkedDisputeView(
 
 // ---- Review monitoring --------------------------------------------------------
 
-/// <summary>A row in the admin review monitor (docs/07-UI-UX-SPEC.md §7 "Reviews").</summary>
+/// <summary>A row in the admin review monitor.</summary>
 public sealed record AdminReviewRow(
     Guid Id,
     DateTime CreatedAtUtc,
@@ -152,7 +152,7 @@ public enum AdminAuditLogFilter
     Catalog = 4,
 }
 
-/// <summary>A row in the admin audit-log viewer (docs/04-DOMAIN-MODEL.md §10, docs/08-SECURITY-AND-PRIVACY.md §13).</summary>
+/// <summary>A row in the admin audit-log viewer.</summary>
 public sealed record AdminAuditLogRow(
     Guid Id,
     DateTime CreatedAtUtc,

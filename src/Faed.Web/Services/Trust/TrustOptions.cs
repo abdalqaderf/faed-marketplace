@@ -1,9 +1,8 @@
-namespace Faed.Web.Services.Trust;
+﻿namespace Faed.Web.Services.Trust;
 
 /// <summary>
-/// Configurable limits for the post-transaction trust features (disputes and reviews,
-/// docs/10-IMPLEMENTATION-PLAN.md Phase 8). Upload ceilings live in configuration, not as
-/// domain constants (docs/06-ARCHITECTURE.md §11).
+/// Configurable limits for the post-transaction trust features. Upload ceilings live in configuration, not as
+/// domain constants.
 /// </summary>
 public sealed class TrustOptions
 {

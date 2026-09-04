@@ -1,9 +1,7 @@
-namespace Faed.Web.Services.Ordering;
+﻿namespace Faed.Web.Services.Ordering;
 
 /// <summary>
-/// Configurable B2C ordering policy (docs/06-ARCHITECTURE.md §11, docs/13-OPEN-QUESTIONS.md §8
-/// "Default B2C reservation duration" — a reversible default in configuration, never a domain
-/// constant, docs/03-BUSINESS-RULES.md §7).
+/// Configurable B2C ordering policy.
 /// </summary>
 public sealed class OrderingOptions
 {

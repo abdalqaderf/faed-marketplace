@@ -1,4 +1,4 @@
-@model PublicListingDetailView
+﻿@model PublicListingDetailView
 @{
     ViewData["Title"] = Model.Title;
 
@@ -169,7 +169,7 @@
 
             @* Short "fulfillment summary" that closes the purchase block (faed-commerce-ux
                "Listing detail order"). The exact pickup locations and delivery zones are shown
-               on the checkout page for this merchant (docs/03-BUSINESS-RULES.md §12). *@
+               on the checkout page for this merchant . *@
             <dl class="faed-details faed-listing-policies">
                 @if (Model.AllowB2C)
                 {
@@ -185,7 +185,7 @@
         </div>
     </div>
 
-    @* Trust-first order (faed-commerce-ux, TASK-005 "Critical presentation"): disclosed-issue
+    @* Trust-first order : disclosed-issue
        evidence comes immediately after the purchase block, before the description, the
        policies and the wholesale block — never after them, where a mobile reader would have
        to scroll past everything else to see what they are buying. *@

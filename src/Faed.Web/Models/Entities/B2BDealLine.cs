@@ -1,13 +1,12 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One variant line of an accepted <see cref="B2BDeal"/> (docs/04-DOMAIN-MODEL.md §8). Every
-/// line corresponds to the accepted revision (docs/17-DATA-INVARIANTS.md "Every deal line
-/// corresponds to the accepted revision") and stores immutable snapshots of the agreed unit
+/// One variant line of an accepted <see cref="B2BDeal"/>. Every
+/// line corresponds to the accepted revision and stores immutable snapshots of the agreed unit
 /// price and the variant combination — the deal never reads these back from the mutable
-/// listing (docs/08-SECURITY-AND-PRIVACY.md §7).
+/// listing.
 /// </summary>
 public class B2BDealLine
 {

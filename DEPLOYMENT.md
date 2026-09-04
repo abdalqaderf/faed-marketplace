@@ -4,10 +4,6 @@ Faed is a single deployable ASP.NET Core application (`src/Faed.Web`) with a SQL
 database. This document covers production configuration, the manual steps that must be
 completed before a public deployment, and a release checklist.
 
-See also `docs/06-ARCHITECTURE.md` §11 (configuration), `docs/08-SECURITY-AND-PRIVACY.md`
-(secrets, private storage), `docs/13-OPEN-QUESTIONS.md` §26–30 (unresolved infrastructure
-decisions) and `docs/24-DELIVERY-AND-HARDENING.md` (TASK-011 audit).
-
 ---
 
 ## 1. Environments
@@ -26,10 +22,9 @@ environment (the integration-test host only) is exempt from the connection-strin
 
 ## 2. Configuration and secrets
 
-Non-secret settings live in `appsettings.json` (committed). **Secrets are never committed**
-(`docs/08-SECURITY-AND-PRIVACY.md` §11) — supply them through environment variables or the
-host's secret store. ASP.NET Core maps `__` in an environment variable name to a config
-section separator.
+Non-secret settings live in `appsettings.json` (committed). **Secrets are never committed** —
+supply them through environment variables or the host's secret store. ASP.NET Core maps `__`
+in an environment variable name to a config section separator.
 
 **No production database connection string is committed.** The repository does commit a
 passwordless LocalDB connection string in `appsettings.Development.json` for local work;
@@ -67,15 +62,15 @@ All of these have safe defaults in `appsettings.json` and are documented there:
 | Setting | Why |
 |---|---|
 | `Faed:DemoSeed:Enabled` / `Faed:DemoSeed:Password` | The demo seeder is inert outside `Development`, but do not ship the values |
-| `Faed:AdminSeed:Email` / `Faed:AdminSeed:Password` | Development-only bootstrap admin (`docs/08-SECURITY-AND-PRIVACY.md` §12) |
+| `Faed:AdminSeed:Email` / `Faed:AdminSeed:Password` | Development-only bootstrap admin |
 
 ---
 
 ## 3. Manual delivery steps (not bundled with the MVP)
 
 These are deliberately out of scope for the application code because they depend on
-unresolved infrastructure decisions (`docs/13-OPEN-QUESTIONS.md`). Each has an interface in
-place; production must supply an implementation.
+unresolved infrastructure decisions. Each has an interface in place; production must supply
+an implementation.
 
 1. **Cloud object storage for private files.** `IFileStorage` (`Services/Abstractions`) is
    used for verification documents, listing photos, reference-price evidence and dispute
@@ -83,24 +78,22 @@ place; production must supply an implementation.
    environment**; in every other environment `DependencyInjection.AddPrivateFileStorage`
    registers a stub that **throws on first use** until a real private object-store
    implementation is registered. Requirements: private bucket/container, randomized object
-   keys (already generated server-side), no public URL, allowed content types only
-   (`docs/08-SECURITY-AND-PRIVACY.md` §3).
+   keys (already generated server-side), no public URL, allowed content types only.
 2. **Email provider.** No `IEmailSender` is registered, so ASP.NET Core Identity uses its
    no-op sender. Identity is configured with `RequireConfirmedAccount = true`; in
    `Development` the Identity UI shows the confirmation link on screen, but **in Production
    account-confirmation and password-reset emails will not be delivered** until an
-   `IEmailSender` is registered (`docs/13-OPEN-QUESTIONS.md` §2, §28).
+   `IEmailSender` is registered.
 3. **Background expiry sweeps run in-process.** `ReservationExpiryService`,
    `B2BOfferExpiryService` and `B2BDealExpiryService` are hosted `BackgroundService`s. They
    are idempotent and safe, but on a multi-node deployment you must ensure a single runner
    (run the sweeps on one instance, or use a leader-election / scheduled-job mechanism) so
-   the same lapsed reservation is not processed by two nodes at once
-   (`docs/06-ARCHITECTURE.md` §7).
+   the same lapsed reservation is not processed by two nodes at once.
 4. **Legal/policy content** (Terms of Use, Privacy Policy, seller agreement, dispute policy,
-   tax/invoice responsibilities) is unresolved (`docs/13-OPEN-QUESTIONS.md` §19–25).
-5. **Payments, escrow, platform shipping/logistics, warehousing** are explicitly deferred
-   (`docs/10-IMPLEMENTATION-PLAN.md` "Explicitly deferred"). The MVP models pickup and
-   merchant-arranged delivery only; Faed neither books nor prices shipping.
+   tax/invoice responsibilities) is unresolved.
+5. **Payments, escrow, platform shipping/logistics, warehousing** are explicitly deferred.
+   The MVP models pickup and merchant-arranged delivery only; Faed neither books nor prices
+   shipping.
 
 ---
 
@@ -121,12 +114,10 @@ place; production must supply an implementation.
 ## 5. Release checklist
 
 - [ ] `dotnet build Faed.slnx -c Release` — 0 warnings, 0 errors
-- [ ] `dotnet test Faed.slnx` — green, with SQL Server integration tests **executed** (not skipped)
 - [ ] `dotnet ef migrations has-pending-model-changes` — no drift
 - [ ] Migrations applied to the target database (explicit step, verified on a clean catalog)
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (or `Staging` etc. — anything but `Development`)
 - [ ] `ConnectionStrings__DefaultConnection` set to a least-privilege SQL login, **not** a LocalDB string (startup rejects a missing or LocalDB connection outside Development)
-- [ ] `CI_SQL_PASSWORD` GitHub Actions secret set (there is no committed CI database password; the pipeline fails early without it)
 - [ ] A production `IFileStorage` implementation registered and smoke-tested (upload + private download) — `LocalFileStorage` is Development-only and the non-Development stub throws on use
 - [ ] An `IEmailSender` registered, or a conscious decision recorded to launch without confirmation email
 - [ ] Data Protection key ring persisted (survives restart / scale-out)
@@ -135,5 +126,5 @@ place; production must supply an implementation.
 - [ ] No secret present in any tracked file (`git grep` for connection strings / keys)
 - [ ] Background sweeps confined to a single runner if deploying more than one instance
 - [ ] A real administrator account provisioned (assign the `Admin` role to a confirmed user)
-- [ ] Structured logs shipped to a log sink; verify no private document content or secret is logged (`docs/06-ARCHITECTURE.md` §10)
+- [ ] Structured logs shipped to a log sink; verify no private document content or secret is logged
 - [ ] Backup/restore verified for the SQL Server database and the private object store

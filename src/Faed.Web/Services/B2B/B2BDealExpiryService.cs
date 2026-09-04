@@ -4,11 +4,10 @@ namespace Faed.Web.Services.B2B;
 
 /// <summary>
 /// Periodically releases the reserved stock of accepted B2B deals whose reservation window
-/// elapsed before the selling merchant started fulfilling them
-/// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §7, docs/03-BUSINESS-RULES.md §10). Each sweep
+/// elapsed before the selling merchant started fulfilling them.
+/// Each sweep
 /// runs in its own DI scope; the release is idempotent, so a sweep that overlaps a merchant
 /// action, or that runs twice, cannot double-release stock
-/// (docs/17-DATA-INVARIANTS.md "Reservation release is idempotent").
 /// </summary>
 public sealed class B2BDealExpiryService(
     IServiceScopeFactory scopeFactory,

@@ -1,18 +1,15 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Catalog;
 
 /// <summary>
 /// Admin management of the catalog reference data — the taxonomy, condition grades, discount
-/// reasons and controlled brands (docs/04-DOMAIN-MODEL.md §2, docs/16-PERMISSIONS-MATRIX.md
-/// "Manage catalog reference data — Admin", docs/10-IMPLEMENTATION-PLAN.md Phase 10).
-///
+/// reasons and controlled brands.
 /// Reference rows are never deleted — an unused sector, grade or reason is deactivated so
-/// existing listings that reference it keep working (docs/04-DOMAIN-MODEL.md §12). The
+/// existing listings that reference it keep working. The
 /// stable natural keys (<c>Code</c>, <c>Slug</c>) the seeder and existing listings depend on
 /// are immutable; only display fields and availability change. Every change re-checks the
 /// admin role and is written with an <c>AdminActionLog</c> entry in one transaction
-/// (docs/08-SECURITY-AND-PRIVACY.md §2, §13).
 /// </summary>
 public interface IAdminCatalogService
 {

@@ -1,8 +1,8 @@
-# 04 — Domain Model
+# Domain Model
 
-This is the conceptual model the agent should translate into EF Core incrementally.
-
-Do not create every table in the first migration. Add entities in the implementation phase that needs them.
+This is the conceptual entity/relationship model behind the EF Core schema in
+`src/Faed.Web/Models/Entities` and `src/Faed.Web/Data/Configurations`. There is no separate
+ERD diagram file in this repository; this document is the authoritative entity reference.
 
 ---
 
@@ -468,9 +468,9 @@ Prefer preservation over cascading deletion for transactional history.
 
 ---
 
-# 13. What not to model now
+# 13. Explicitly out of scope
 
-Do not add:
+The current schema deliberately does not model:
 - payment transactions;
 - escrow wallets;
 - shipping-provider entities;
@@ -480,4 +480,4 @@ Do not add:
 - commission invoices;
 - ERP sync tables.
 
-Add them only when a real phase requires them.
+These are out of scope for the MVP (see the README's "Known scope limitations").

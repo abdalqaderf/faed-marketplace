@@ -10,10 +10,10 @@ namespace Faed.Web.Services.Marketplace;
 /// <inheritdoc />
 public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublicMarketplaceService
 {
-    // Generic listing options are merchant-authored per listing (docs/04-DOMAIN-MODEL.md §4);
+    // Generic listing options are merchant-authored per listing;
     // there is no shared "Size"/"Colour" reference table to filter against. These are the
     // names the seeded launch categories' merchants are expected to use
-    // (docs/07-UI-UX-SPEC.md §4 "Shop" filters: size, color) — matched case-insensitively via
+    // — matched case-insensitively via
     // the database's default collation, same as every other catalog lookup in this service.
     private static readonly string[] SizeOptionNames = ["Size"];
     private static readonly string[] ColorOptionNames = ["Colour", "Color"];
@@ -33,7 +33,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
         // Only the launch sector's own categories are ever shown — a category added under a
         // future sector must not appear in the MVP UI just because it is active
-        // (AGENTS.md §3 "Do not expose unrelated sectors in the MVP UI").
         var categories = await db.Categories
             .AsNoTracking()
             .Where(c => c.IsActive && c.ParentCategoryId != null && launchCategoryIds.Contains(c.Id))
@@ -66,7 +65,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
     {
         // Every slug/code filter must resolve to zero results when it does not match anything
         // real, rather than being silently dropped — otherwise "?merchant=does-not-exist" would
-        // return the whole marketplace instead of nothing (docs/06-ARCHITECTURE.md §12).
+        // return the whole marketplace instead of nothing.
         var unresolved = false;
         var launchCategoryIds = await GetLaunchSectorCategoryIdsAsync(cancellationToken);
 
@@ -184,7 +183,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
         // A B2B-only listing has no RetailPrice at all; fall back to the wholesale indicative
         // price so it is neither invisible to a price filter nor mis-sorted as free/priceless
-        // (docs/04-DOMAIN-MODEL.md §3).
         if (query.MinPrice is { } min)
         {
             baseQuery = baseQuery.Where(l => (l.RetailPrice ?? l.WholesaleIndicativeUnitPrice) >= min);
@@ -259,7 +257,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
         // Live listing filed under a category outside Fashion Overstock must 404 on its own
         // slug exactly as it is absent from Home and Shop, or direct URL access would be a
         // hole straight through the "Do not expose unrelated sectors in the MVP UI" rule
-        // (AGENTS.md §3, docs/14-FUTURE-EXPANSION.md).
         var launchCategoryIds = await GetLaunchSectorCategoryIdsAsync(cancellationToken);
 
         var listing = await PublicLiveListings()
@@ -391,8 +388,8 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
     /// <summary>
     /// The public-visibility gate every browse/detail query shares: <c>Live</c>
-    /// (docs/03-BUSINESS-RULES.md §2) and the owning merchant still <c>Approved</c>
-    /// (docs/17-DATA-INVARIANTS.md "A Live Listing's merchant must be approved") — a merchant
+    /// and the owning merchant still <c>Approved</c>
+    /// — a merchant
     /// suspended after publishing must disappear from the public marketplace even though
     /// their listings keep their own Live status untouched.
     /// </summary>
@@ -407,10 +404,8 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
     /// Every active category id inside the <c>Fashion Overstock</c> launch sector, walked from
     /// its root (<see cref="CatalogDataSeeder.RootCategorySlug"/>) — the boundary that keeps a
     /// category added under a future sector from appearing in the MVP UI just because it is
-    /// active (AGENTS.md §3 "Do not expose unrelated sectors in the MVP UI",
-    /// docs/14-FUTURE-EXPANSION.md). The table is small and admin-managed, so one full read
+    /// active. The table is small and admin-managed, so one full read
     /// per request is simple and sufficient — no caching before a real bottleneck is measured
-    /// (docs/06-ARCHITECTURE.md §13).
     /// </summary>
     private async Task<IReadOnlySet<Guid>> GetLaunchSectorCategoryIdsAsync(CancellationToken cancellationToken)
     {
@@ -451,10 +446,9 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
 
     /// <summary>
     /// The DB-driven filter choices. Categories/conditions/reasons are the full admin-managed
-    /// reference lists, restricted to the launch sector for categories
-    /// (tasks/TASK-003-CATALOG.md); brands, sizes and colours are the uncontrolled exceptions,
+    /// reference lists, restricted to the launch sector for categories;
+    /// Brands, sizes and colours are the uncontrolled exceptions,
     /// so only values actually used by a matching Live listing are offered
-    /// (docs/04-DOMAIN-MODEL.md §2 "Brand is optional", §4 generic options).
     /// </summary>
     private async Task<ShopFacets> GetFacetsAsync(
         Guid? merchantId, IReadOnlySet<Guid> launchCategoryIds, CancellationToken cancellationToken)
@@ -544,7 +538,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
     /// Loads full card data for a bounded, already-paged set of listing ids and returns them in
     /// the same order. Splitting browse into "find the page of ids" then "hydrate those rows"
     /// keeps the filter/sort query simple to translate while still touching each reference
-    /// table only once per call, not once per row (docs/06-ARCHITECTURE.md §13). The hydration
+    /// table only once per call, not once per row. The hydration
     /// load re-applies <see cref="PublicLiveListings"/> rather than trusting the id list: a
     /// listing hidden by moderation, or whose merchant is suspended, in the gap between "find
     /// the page of ids" and "hydrate those rows" is dropped here instead of rendered as a

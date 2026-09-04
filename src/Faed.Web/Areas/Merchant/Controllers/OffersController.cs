@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Merchant.ViewModels;
+﻿using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.B2B;
@@ -10,9 +10,8 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// A merchant's B2B negotiation queue: making wholesale offers on other merchants' listings
-/// and responding to offers on its own (tasks/TASK-007-B2B-NEGOTIATION.md,
-/// docs/07-UI-UX-SPEC.md §6). Gated by the <c>CanNegotiateB2B</c> policy; the service
-/// re-checks role eligibility and participation on every call (docs/16-PERMISSIONS-MATRIX.md).
+/// and responding to offers on its own. Gated by the <c>CanNegotiateB2B</c> policy; the service
+/// re-checks role eligibility and participation on every call.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.CanNegotiateB2B)]
@@ -104,7 +103,7 @@ public sealed class OffersController(IB2BNegotiationService negotiations, IB2BDe
     public async Task<IActionResult> Accept(Guid id, B2BFulfillmentType fulfillmentType, CancellationToken cancellationToken)
     {
         // Accepting the offer atomically reserves every requested variant and creates the
-        // wholesale deal on the agreed terms alone (TASK-008, docs/03-BUSINESS-RULES.md §10).
+        // wholesale deal on the agreed terms alone.
         // Shipping information is recorded later by the selling merchant.
         var result = await deals.AcceptOfferAsync(
             User.RequireUserId(), id, new AcceptOfferInput(fulfillmentType), cancellationToken);

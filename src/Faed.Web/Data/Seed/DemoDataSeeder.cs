@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
@@ -20,8 +20,6 @@ namespace Faed.Web.Data.Seed;
 
 /// <summary>
 /// Deterministic development/demo data set for field validation and portfolio demonstration
-/// (docs/12-SEED-DATA.md, tasks/TASK-011-HARDENING-AND-DEMO.md, tasks/TASK-016-CLAUDE-REALISTIC-DEMO-DATA.md).
-///
 /// <para>
 /// Every merchant, listing, order, negotiation, deal, dispute and review it creates goes
 /// through the <em>same</em> application services and the <em>same</em> production rules a
@@ -30,7 +28,6 @@ namespace Faed.Web.Data.Seed;
 /// The only thing that is "demo-only" is <em>when</em> it runs — Development environment,
 /// explicitly enabled, password supplied out-of-band (see <see cref="DemoDataOptions"/>).
 /// </para>
-///
 /// <para>
 /// <b>Reliability &amp; query pressure.</b> The scenario is built as one linear pass over a
 /// single scope; every lookup is a projected <c>AsNoTracking</c> query (no full table is
@@ -38,7 +35,6 @@ namespace Faed.Web.Data.Seed;
 /// context's command timeout is raised to five minutes so a query does not abort under the
 /// brief SQL Server LocalDB starvation a full test run can cause.
 /// </para>
-///
 /// <para>
 /// <b>Idempotency &amp; recovery.</b> "Fully seeded" is defined by the final artifact (the
 /// buyer's review). If it is present, <see cref="SeedCoreAsync"/> is a no-op. If a previous
@@ -52,7 +48,7 @@ namespace Faed.Web.Data.Seed;
 /// </summary>
 public static class DemoDataSeeder
 {
-    // Fixed, obviously-non-production identities (docs/12-SEED-DATA.md "Demo users").
+    // Fixed, obviously-non-production identities.
     public const string AdminEmail = "demo-admin@faed.local";
     public const string MerchantAEmail = "merchant-a@faed.local";
     public const string MerchantBEmail = "merchant-b@faed.local";
@@ -293,7 +289,7 @@ public static class DemoDataSeeder
             await ConfigureFulfillmentAsync(merchantA, "Amman Threads — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
             await ConfigureFulfillmentAsync(merchantB, "Petra Footwear — Sweifieh", "8 Wakalat St", "Sweifieh");
 
-            // Admin-controlled brands (docs/13-OPEN-QUESTIONS.md items 5–6): looked up by name
+            // Admin-controlled brands: looked up by name
             // before creation, so a purge-and-rebuild cycle never duplicates them.
             var novaBasicsId = await GetOrCreateBrandAsync(adminId, "Nova Basics");
             var trailHeadId = await GetOrCreateBrandAsync(adminId, "TrailHead");
@@ -428,8 +424,7 @@ public static class DemoDataSeeder
             string email, string businessName, string contactEmail, string contactPhone, string adminId)
         {
             // No starter role: approving the verification grants the Merchant role, exactly as
-            // it would for a real applicant (an administrator cannot hold a merchant identity,
-            // so these accounts get no other role — docs/16-PERMISSIONS-MATRIX.md).
+            // it would for a real applicant.
             var userId = await CreateUserAsync(email);
             var profileId = OkValue(
                 await _verification.SaveDraftAsync(userId, new MerchantApplicationInput(businessName, contactEmail, contactPhone), _ct),
@@ -490,7 +485,7 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateTshirtListingAsync(DemoMerchant merchant, string adminId)
         {
-            // docs/12-SEED-DATA.md Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL ×
+            // Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL ×
             // Colour Black/White, B2C + B2B.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("clothing"), null, await GradeIdAsync("A"),
@@ -517,7 +512,7 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateHandbagListingAsync(DemoMerchant merchant, string adminId)
         {
-            // docs/12-SEED-DATA.md Listing 3 — Handbag, Condition D, Display Item, visible
+            // Listing 3 — Handbag, Condition D, Display Item, visible
             // cosmetic-defect photo, B2C only (B2B disabled).
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("D"),
@@ -641,7 +636,7 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateSneakersListingAsync(DemoMerchant merchant, string adminId)
         {
-            // docs/12-SEED-DATA.md Listing 1 — Sneakers, Condition B, Past Season + Packaging
+            // Listing 1 — Sneakers, Condition B, Past Season + Packaging
             // Damage, Size 41/42/43 × Colour Black, B2C + B2B, MOQ 10.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("shoes"), null, await GradeIdAsync("B"),
@@ -670,7 +665,7 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateClearanceListingAsync(DemoMerchant merchant, string adminId)
         {
-            // docs/12-SEED-DATA.md Listing 4 — a listing that ends up sold out, for public
+            // Listing 4 — a listing that ends up sold out, for public
             // sold-out behaviour. Opens with a small stock a demo buyer then clears.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("clothing"), null, await GradeIdAsync("C"),
@@ -918,7 +913,6 @@ public static class DemoDataSeeder
     /// whether the app is run with <c>dotnet run</c> or from a built <c>bin</c> output.
     /// The verification-document PDF stays a tiny generated fixture: it is never shown to
     /// buyers, so it does not need to look realistic
-    /// (docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md).
     /// </summary>
     private static class DemoAssets
     {

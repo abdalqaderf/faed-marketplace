@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,7 +21,7 @@ public sealed class BrandConfiguration : IEntityTypeConfiguration<Brand>
             .IsRequired()
             .HasMaxLength(Brand.MaxSlugLength);
 
-        // Slugs are globally unique public identifiers (docs/04-DOMAIN-MODEL.md §11).
+        // Slugs are globally unique public identifiers.
         builder.HasIndex(b => b.Slug).IsUnique();
     }
 }

@@ -1,4 +1,4 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
@@ -9,7 +9,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// Merchant self-service for the verification application. Any authenticated user may
-/// start an application (docs/16-PERMISSIONS-MATRIX.md); selling capability is gated
+/// start an application; selling capability is gated
 /// separately by the <c>ApprovedMerchant</c> policy.
 /// </summary>
 [Area("Merchant")]
@@ -98,8 +98,7 @@ public sealed class VerificationController(IMerchantVerificationService verifica
             }
 
             // Surface the server-side upload failure against the field it concerns so the
-            // merchant sees it inline (docs/07-UI-UX-SPEC.md, faed-responsive-accessibility
-            // "field-level errors") rather than as one detached banner after a redirect.
+            // merchant sees it inline rather than as one detached banner after a redirect.
             var field = result.ErrorKind == ResultErrorKind.Validation
                         && (result.Error?.Contains("document type", StringComparison.OrdinalIgnoreCase) ?? false)
                 ? nameof(upload.DocumentType)

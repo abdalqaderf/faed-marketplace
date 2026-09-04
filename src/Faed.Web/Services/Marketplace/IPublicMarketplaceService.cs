@@ -1,10 +1,9 @@
-namespace Faed.Web.Services.Marketplace;
+﻿namespace Faed.Web.Services.Marketplace;
 
 /// <summary>
-/// Anonymous-safe read use cases for the public marketplace (tasks/TASK-005-PUBLIC-MARKETPLACE.md).
+/// Anonymous-safe read use cases for the public marketplace.
 /// Every method here only ever returns <c>Live</c> listings and <c>Approved</c> merchants —
 /// non-public content has no code path through this service
-/// (docs/03-BUSINESS-RULES.md §2, docs/11-ACCEPTANCE-CRITERIA.md "Public sees only Live listings").
 /// </summary>
 public interface IPublicMarketplaceService
 {

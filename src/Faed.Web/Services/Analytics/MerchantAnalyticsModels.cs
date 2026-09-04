@@ -1,10 +1,10 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace Faed.Web.Services.Analytics;
 
 /// <summary>
 /// One stale-inventory row: a published listing that has sat past the configured threshold
-/// without selling a single unit (docs/01-PRD.md §14 "stale listings").
+/// without selling a single unit.
 /// </summary>
 public sealed record StaleListingView(
     Guid ListingId,
@@ -16,8 +16,7 @@ public sealed record StaleListingView(
 
 /// <summary>
 /// A merchant's recovery analytics, every figure derived from server-side transaction and
-/// listing data — never from a merchant-editable total (docs/03-BUSINESS-RULES.md §15,
-/// docs/08-SECURITY-AND-PRIVACY.md §6). All money is <c>JOD</c> with three decimals.
+/// listing data — never from a merchant-editable total. All money is <c>JOD</c> with three decimals.
 /// </summary>
 public sealed record MerchantAnalyticsView(
     decimal RecoveredValueB2C,

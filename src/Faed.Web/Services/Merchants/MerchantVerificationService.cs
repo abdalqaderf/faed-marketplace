@@ -41,13 +41,13 @@ public sealed class MerchantVerificationService(
 
     /// <summary>
     /// An administrator account cannot hold a selling merchant identity: it cannot create or
-    /// edit a merchant application, and it cannot be approved into one
-    /// (docs/16-PERMISSIONS-MATRIX.md "Create merchant application — Admin ❌"). This keeps
+    /// edit a merchant application, and it cannot be approved into one.
+    /// This keeps
     /// moderation independent of the merchants being moderated — an administrator must not be
     /// able to create, then approve, their own storefront.
     /// </summary>
     private const string AdministratorCannotSellMessage =
-        "Administrator accounts cannot hold a selling merchant identity (docs/16-PERMISSIONS-MATRIX.md). " +
+        "Administrator accounts cannot hold a selling merchant identity . " +
         "Use a separate, non-administrator account to sell on Faed.";
 
     public async Task<Result<Guid>> SaveDraftAsync(string userId, MerchantApplicationInput input, CancellationToken cancellationToken = default)
@@ -438,7 +438,6 @@ public sealed class MerchantVerificationService(
         if (!await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
         {
             // Private verification documents are admin-only; never trust the caller alone
-            // (docs/08-SECURITY-AND-PRIVACY.md §2-3).
             return Result<StoredFileContent>.Forbidden();
         }
 
@@ -483,7 +482,7 @@ public sealed class MerchantVerificationService(
         if (!await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
         {
             // Defence in depth: the MVC route is already behind the AdminOnly policy, but the
-            // service contract must not trust its caller (docs/08-SECURITY-AND-PRIVACY.md §2).
+            // service contract must not trust its caller.
             return Result.Forbidden();
         }
 
@@ -496,9 +495,7 @@ public sealed class MerchantVerificationService(
         }
 
         // An administrator account must never gain selling authorization: refuse to approve
-        // or reinstate a profile whose owner now holds the Admin role. (Draft creation is
-        // already blocked for administrators; this covers a profile whose owner was made an
-        // administrator afterwards — docs/16-PERMISSIONS-MATRIX.md.)
+        // or reinstate a profile whose owner now holds the Admin role. 
         if (grantMerchantRole
             && await userRoles.IsInRoleAsync(profile.UserId, FaedRoles.Admin, cancellationToken))
         {
@@ -524,7 +521,7 @@ public sealed class MerchantVerificationService(
 
         // The status change, its audit entry and the Merchant role grant either all commit
         // or none do: a permanent role-sync failure must not leave an approved profile that
-        // can never be re-approved (AGENTS.md §7).
+        // can never be re-approved.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {

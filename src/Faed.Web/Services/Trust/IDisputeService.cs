@@ -1,11 +1,10 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 using Faed.Web.Services.Merchants;
 
 namespace Faed.Web.Services.Trust;
 
 /// <summary>
-/// Post-transaction disputes (docs/03-BUSINESS-RULES.md §14,
-/// docs/10-IMPLEMENTATION-PLAN.md Phase 8). Only a participant in the referenced order or
+/// Post-transaction disputes. Only a participant in the referenced order or
 /// deal can open one; only an administrator can move it past <c>Open</c>, and every such
 /// move is audited. Evidence files are private — streamed only to participants and admins.
 /// </summary>

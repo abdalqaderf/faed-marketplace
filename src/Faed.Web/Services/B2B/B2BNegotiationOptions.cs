@@ -1,9 +1,8 @@
-namespace Faed.Web.Services.B2B;
+﻿namespace Faed.Web.Services.B2B;
 
 /// <summary>
 /// Configurable B2B negotiation policy. Durations live in configuration, never as domain
-/// constants (docs/13-OPEN-QUESTIONS.md "Important"; §14 "Default B2B offer validity" is an
-/// unresolved product decision, so this is a reversible default).
+/// constants.
 /// </summary>
 public sealed class B2BNegotiationOptions
 {
@@ -11,7 +10,7 @@ public sealed class B2BNegotiationOptions
 
     /// <summary>
     /// How long an offer stays valid when the proposing merchant does not choose a shorter
-    /// window. Default three days (docs/13-OPEN-QUESTIONS.md §14).
+    /// window. Default three days.
     /// </summary>
     public TimeSpan DefaultOfferValidity { get; set; } = TimeSpan.FromDays(3);
 

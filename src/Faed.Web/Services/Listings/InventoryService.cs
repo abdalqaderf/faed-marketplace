@@ -192,7 +192,7 @@ public sealed class InventoryService(
 
         // The listing is loaded with the variant so publication can follow stock in the same
         // transaction: a published listing that runs out becomes SoldOut, and comes back when
-        // it is restocked (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2).
+        // it is restocked.
         var listing = await db.Listings
             .Include(l => l.Variants)
             .SingleOrDefaultAsync(
@@ -238,7 +238,7 @@ public sealed class InventoryService(
         // navigation collection loaded at the start of this request: a concurrent request
         // depleting a *different* variant on the same listing would otherwise still look
         // in-stock here, and neither request would ever flip a jointly-depleted listing to
-        // SoldOut (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §2).
+        // SoldOut.
         var siblingTotal = await db.ListingVariants
             .AsNoTracking()
             .Where(v => v.ListingId == listing.Id && v.IsActive && v.Id != variant.Id)
@@ -247,7 +247,7 @@ public sealed class InventoryService(
         listing.RefreshAvailability(currentAvailableUnits, clock.UtcNow);
 
         // The quantity, its audit row and any resulting publication change commit together or
-        // not at all: stock must never move without the record of why (AGENTS.md §7).
+        // not at all: stock must never move without the record of why.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -257,7 +257,7 @@ public sealed class InventoryService(
         catch (DbUpdateConcurrencyException)
         {
             // The variant rowversion moved under us. Nothing is persisted; the merchant retries
-            // against current stock (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §9).
+            // against current stock.
             logger.LogInformation("Stock adjustment on variant {VariantId} hit a concurrency conflict", variant.Id);
             return Result<int>.Conflict("This stock changed a moment ago. Reload the page and try again.");
         }
@@ -265,8 +265,8 @@ public sealed class InventoryService(
         {
             // The domain guard already refuses a negative result before this point, so the
             // CK_ListingVariants_Quantities_NonNegative backstop should not fire from here in
-            // practice — but a raw DB exception must never reach the caller
-            // (docs/06-ARCHITECTURE.md §9), so this is a safety net rather than a silent 500.
+            // practice — but a raw DB exception must never reach the caller,
+            // So this is a safety net rather than a silent 500.
             logger.LogError(ex, "Stock adjustment on variant {VariantId} failed to save", variant.Id);
             return Result<int>.Conflict("The adjustment could not be saved. Reload the page and try again.");
         }

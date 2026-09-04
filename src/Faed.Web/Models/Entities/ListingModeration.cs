@@ -1,13 +1,13 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One admin review of one submitted listing version (docs/04-DOMAIN-MODEL.md §5). A row is
+/// One admin review of one submitted listing version. A row is
 /// opened every time a listing enters review — on first submission and again on every
 /// material edit — and is resolved in place by the reviewing admin. Rows are never deleted
-/// or rewritten, so a merchant's rejection history stays intact (AGENTS.md §8).
+/// or rewritten, so a merchant's rejection history stays intact.
 /// </summary>
 public class ListingModeration
 {

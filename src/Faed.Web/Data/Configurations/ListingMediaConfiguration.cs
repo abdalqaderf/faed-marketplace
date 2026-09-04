@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,7 +33,6 @@ public sealed class ListingMediaConfiguration : IEntityTypeConfiguration<Listing
             .IsRequired();
 
         // Defect photography is queried on its own so disclosure can be surfaced first
-        // (docs/01-PRD.md §8, docs/07-UI-UX-SPEC.md §4).
         builder.HasIndex(m => new { m.ListingId, m.MediaType, m.SortOrder });
 
         builder.HasOne(m => m.Listing)

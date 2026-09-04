@@ -3,11 +3,10 @@ using Faed.Web.Services.Common;
 namespace Faed.Web.Services.Admin;
 
 /// <summary>
-/// Read-only projections that back the consolidated admin operational screens
-/// (docs/07-UI-UX-SPEC.md §7, docs/10-IMPLEMENTATION-PLAN.md Phase 10,
-/// tasks/TASK-010-ANALYTICS-AND-ADMIN.md). Nothing here mutates an order, a deal or a
+/// Read-only projections that back the consolidated admin operational screens.
+/// Nothing here mutates an order, a deal or a
 /// review — an administrator monitors these for support, but B2C / B2B state transitions
-/// stay with their participants (docs/16-PERMISSIONS-MATRIX.md). Every method is used only
+/// stay with their participants. Every method is used only
 /// behind the <c>AdminOnly</c> policy.
 /// </summary>
 public interface IAdminOperationsService

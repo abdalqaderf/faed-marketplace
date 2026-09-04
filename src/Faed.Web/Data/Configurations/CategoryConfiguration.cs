@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,12 +23,12 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .IsRequired()
             .HasMaxLength(Category.MaxSlugLength);
 
-        // Slugs are globally unique public identifiers (docs/04-DOMAIN-MODEL.md §11).
+        // Slugs are globally unique public identifiers.
         builder.HasIndex(c => c.Slug).IsUnique();
         builder.HasIndex(c => new { c.ParentCategoryId, c.SortOrder });
 
         // Self-referencing hierarchy. Delete is restricted so a populated branch is never
-        // silently removed (docs/04-DOMAIN-MODEL.md §12).
+        // silently removed.
         builder.HasMany(c => c.Children)
             .WithOne(c => c.Parent)
             .HasForeignKey(c => c.ParentCategoryId)

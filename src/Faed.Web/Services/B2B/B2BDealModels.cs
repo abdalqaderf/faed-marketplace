@@ -7,10 +7,10 @@ namespace Faed.Web.Services.B2B;
 /// <summary>
 /// How the accepting merchant wants an accepted offer fulfilled. The only thing chosen at
 /// acceptance is direct pickup vs seller-arranged shipping — the agreed unit price and
-/// quantities come from the accepted revision, and the deal total is derived from those alone
-/// (docs/08-SECURITY-AND-PRIVACY.md §7, docs/17-DATA-INVARIANTS.md). Shipping information —
+/// quantities come from the accepted revision, and the deal total is derived from those alone.
+/// Shipping information —
 /// the reference and any cost — is seller-owned and is recorded later, by the selling
-/// merchant, through the deal's fulfilment steps (docs/03-BUSINESS-RULES.md §12); acceptance
+/// merchant, through the deal's fulfilment steps; acceptance
 /// cannot add an unagreed shipping charge or attach a shipment reference.
 /// </summary>
 public sealed record AcceptOfferInput(B2BFulfillmentType FulfillmentType);

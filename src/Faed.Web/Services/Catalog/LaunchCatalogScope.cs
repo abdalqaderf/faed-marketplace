@@ -1,4 +1,4 @@
-using Faed.Web.Data.Seed;
+﻿using Faed.Web.Data.Seed;
 using Faed.Web.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,7 +7,7 @@ namespace Faed.Web.Services.Catalog;
 /// <summary>
 /// Resolves the category tree that belongs to the Fashion Overstock launch sector. The
 /// taxonomy remains multi-sector capable, but only descendants of the seeded launch root
-/// are eligible in the MVP UI (AGENTS.md section 3, docs/14-FUTURE-EXPANSION.md).
+/// are eligible in the MVP UI.
 /// </summary>
 public static class LaunchCatalogScope
 {

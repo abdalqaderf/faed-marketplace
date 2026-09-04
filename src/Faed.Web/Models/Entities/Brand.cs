@@ -3,13 +3,11 @@ using Faed.Web.Models;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// An optional controlled brand (docs/04-DOMAIN-MODEL.md §2). Admin-managed only in the
-/// MVP — merchants choose from the controlled list, they never create brands
-/// (tasks/TASK-003-CATALOG.md, docs/13-OPEN-QUESTIONS.md items 5–6). No brands are seeded;
+/// An optional controlled brand. Admin-managed only in the
+/// MVP — merchants choose from the controlled list, they never create brands.
+/// No brands are seeded;
 /// the table exists so listings can reference one when catalog rules later require it.
-///
 /// <see cref="Slug"/> is a display/routing identifier only, never an authorization key
-/// (docs/06-ARCHITECTURE.md §12).
 /// </summary>
 public class Brand
 {
@@ -36,8 +34,7 @@ public class Brand
 
     public bool IsActive { get; private set; }
 
-    /// <summary>Admin edit of the brand name (docs/13-OPEN-QUESTIONS.md items 5–6 — brands are
-    /// admin-controlled only). The slug is a stable routing identifier and is not changed.</summary>
+    /// <summary>Admin edit of the brand name. The slug is a stable routing identifier and is not changed.</summary>
     public void Rename(string name) => Name = Require(name, nameof(name), MaxNameLength);
 
     public void SetActive(bool isActive) => IsActive = isActive;

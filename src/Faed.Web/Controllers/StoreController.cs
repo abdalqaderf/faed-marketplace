@@ -1,4 +1,4 @@
-using Faed.Web.Services.Marketplace;
+﻿using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Trust;
 using Faed.Web.ViewModels.Marketplace;
 using Microsoft.AspNetCore.Mvc;
@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Controllers;
 
 /// <summary>
-/// The public merchant storefront (tasks/TASK-005-PUBLIC-MARKETPLACE.md). Only an Approved
+/// The public merchant storefront. Only an Approved
 /// merchant has a reachable storefront — a Draft/Pending/Rejected/Suspended merchant's slug
-/// 404s, the same way a non-Live listing does (docs/03-BUSINESS-RULES.md §1).
+/// 404s, the same way a non-Live listing does.
 /// </summary>
 [Route("store")]
 public sealed class StoreController(

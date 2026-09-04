@@ -1,4 +1,4 @@
-using Faed.Web.Authorization;
+﻿using Faed.Web.Authorization;
 using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
@@ -43,7 +43,6 @@ public sealed class DisputeService(
         }
 
         // Administrators resolve disputes; they do not file them
-        // (docs/16-PERMISSIONS-MATRIX.md "File eligible dispute — Admin ❌").
         if (await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken))
         {
             return Result<Guid>.Forbidden("Administrators cannot raise disputes.");
@@ -81,7 +80,7 @@ public sealed class DisputeService(
 
         if (!context.ParticipantUserIds.Contains(userId))
         {
-            // A non-participant learns nothing — same as "not found" (docs/08-SECURITY-AND-PRIVACY.md §9).
+            // A non-participant learns nothing — same as "not found".
             return Result<Guid>.NotFound("That transaction was not found.");
         }
 
@@ -93,7 +92,7 @@ public sealed class DisputeService(
 
         // Fast, friendly path. The authoritative guard against two filings racing is the
         // filtered unique index on Dispute.ActiveTransactionKey — a concurrent second insert
-        // is rejected by the database and translated below (docs/03-BUSINESS-RULES.md §14).
+        // is rejected by the database and translated below.
         var activeKey = Dispute.ActiveKeyFor(input.TransactionType, input.TransactionId);
         if (await db.Disputes.AnyAsync(d => d.ActiveTransactionKey == activeKey, cancellationToken))
         {
@@ -101,7 +100,7 @@ public sealed class DisputeService(
         }
 
         // Buffer and validate every file before anything is stored, so a bad file rejects the
-        // whole request rather than leaving partial evidence (docs/08-SECURITY-AND-PRIVACY.md §4).
+        // whole request rather than leaving partial evidence.
         var buffered = new List<(byte[] Bytes, string FileName, string ContentType)>();
         foreach (var file in files)
         {
@@ -393,7 +392,7 @@ public sealed class DisputeService(
             {
                 // Dispute evidence is private to the participants and admins. A non-participant
                 // gets exactly the response a non-existent id gets — "not found" — so guessing
-                // ids never reveals which evidence exists (docs/08-SECURITY-AND-PRIVACY.md §3, §9).
+                // ids never reveals which evidence exists.
                 return Result<StoredFileContent>.NotFound("The evidence file was not found.");
             }
         }
@@ -560,8 +559,7 @@ public sealed class DisputeService(
         CancellationToken cancellationToken)
     {
         // Defence in depth: the MVC route is behind AdminOnly, but the service contract must
-        // not trust its caller (docs/08-SECURITY-AND-PRIVACY.md §2,
-        // docs/17-DATA-INVARIANTS.md "Resolution actor must be Admin").
+        // not trust its caller.
         if (!await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
         {
             return Result.Forbidden();
@@ -585,7 +583,7 @@ public sealed class DisputeService(
         db.AdminActionLogs.Add(new AdminActionLog(
             adminUserId, actionType, DisputeTargetType, dispute.Id.ToString(), notes, clock.UtcNow));
 
-        // The status change and its audit entry commit together or not at all (AGENTS.md §7).
+        // The status change and its audit entry commit together or not at all.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {

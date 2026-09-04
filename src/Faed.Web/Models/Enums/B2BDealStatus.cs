@@ -1,17 +1,16 @@
 namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// The fulfillment lifecycle of an accepted merchant-to-merchant deal
-/// (docs/03-BUSINESS-RULES.md §10, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §7). A deal is a
+/// The fulfillment lifecycle of an accepted merchant-to-merchant deal.
+/// A deal is a
 /// fulfillment record and is distinct from the <see cref="B2BNegotiationStatus"/> that
-/// preceded it (AGENTS.md Rule C, docs/adr/0004-B2B-NEGOTIATION-SEPARATE-FROM-DEAL.md):
+/// preceded it:
 /// the deal carries its own <c>ReservationExpiresAtUtc</c>, separate from a revision's
 /// <c>OfferExpiresAtUtc</c>. Allowed transitions are enforced by the
 /// <see cref="Faed.Web.Models.Entities.B2BDeal"/> aggregate — a status is never assigned
 /// from controller input.
-///
-/// There is deliberately no <c>Disputed</c> status (docs/03-BUSINESS-RULES.md §10): the trust
-/// phase (TASK-009) models a dispute as a separate <see cref="Faed.Web.Models.Entities.Dispute"/>
+/// There is deliberately no <c>Disputed</c> status: the trust
+/// phase models a dispute as a separate <see cref="Faed.Web.Models.Entities.Dispute"/>
 /// aggregate with its own lifecycle, and never mutates the deal status or its stock.
 /// </summary>
 public enum B2BDealStatus

@@ -1,4 +1,4 @@
-using Faed.Web.Data;
+﻿using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Admin;
@@ -18,7 +18,7 @@ using Microsoft.Extensions.Options;
 namespace Faed.Web;
 
 /// <summary>
-/// Composition root helpers for the single-project MVC application (docs/06-ARCHITECTURE.md).
+/// Composition root helpers for the single-project MVC application.
 /// Business services, persistence and supporting infrastructure are all registered here;
 /// there are no separate Domain/Application/Infrastructure projects.
 /// </summary>
@@ -36,13 +36,12 @@ public static class DependencyInjection
         services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<IClock, SystemClock>();
 
-        // Merchant verification use cases (docs/10-IMPLEMENTATION-PLAN.md Phase 1).
+        // Merchant verification use cases.
         services.AddOptions<MerchantVerificationOptions>()
             .Bind(configuration.GetSection(MerchantVerificationOptions.SectionName));
         services.AddScoped<IMerchantVerificationService, MerchantVerificationService>();
 
-        // Listings, variants, inventory and moderation use cases (docs/10-IMPLEMENTATION-PLAN.md
-        // Phase 3, tasks/TASK-004-LISTINGS-AND-INVENTORY.md).
+        // Listings, variants, inventory and moderation use cases.
         services.AddOptions<ListingOptions>()
             .Bind(configuration.GetSection(ListingOptions.SectionName));
         services.AddScoped<IMerchantListingService, MerchantListingService>();
@@ -50,12 +49,10 @@ public static class DependencyInjection
         services.AddScoped<IListingModerationService, ListingModerationService>();
         services.AddScoped<IListingMediaService, ListingMediaService>();
 
-        // Anonymous-safe public marketplace browsing (docs/10-IMPLEMENTATION-PLAN.md Phase 4,
-        // tasks/TASK-005-PUBLIC-MARKETPLACE.md).
+        // Anonymous-safe public marketplace browsing.
         services.AddScoped<IPublicMarketplaceService, PublicMarketplaceService>();
 
         // B2C ordering: reservation, fulfilment and the reservation-expiry sweep
-        // (docs/10-IMPLEMENTATION-PLAN.md Phase 5, tasks/TASK-006-B2C-ORDERS.md).
         services.AddOptions<OrderingOptions>()
             .Bind(configuration.GetSection(OrderingOptions.SectionName));
         services.AddScoped<IOrderService, OrderService>();
@@ -64,14 +61,12 @@ public static class DependencyInjection
         // The background sweep is not hosted under the "Testing" environment: the web
         // integration tests drive expiry deterministically through IOrderService and a fake
         // clock, and a live timer racing them would make those assertions flaky
-        // (docs/09-TEST-STRATEGY.md §1).
         if (!environment.IsEnvironment("Testing"))
         {
             services.AddHostedService<ReservationExpiryService>();
         }
 
         // B2B negotiation: immutable offer/counter-offer history and the offer-expiry sweep
-        // (docs/10-IMPLEMENTATION-PLAN.md Phase 6, tasks/TASK-007-B2B-NEGOTIATION.md).
         services.AddOptions<B2BNegotiationOptions>()
             .Bind(configuration.GetSection(B2BNegotiationOptions.SectionName));
         services.AddScoped<IB2BNegotiationService, B2BNegotiationService>();
@@ -80,13 +75,12 @@ public static class DependencyInjection
         {
             // Like the B2C reservation sweep, the offer-expiry timer is not hosted under the
             // test environment: the integration tests drive expiry deterministically through
-            // the service and a fake clock (docs/09-TEST-STRATEGY.md §1).
+            // the service and a fake clock.
             services.AddHostedService<B2BOfferExpiryService>();
         }
 
         // B2B accepted deal: atomic reservation on acceptance, the fulfilment state machine
-        // and the deal-reservation-expiry sweep (docs/10-IMPLEMENTATION-PLAN.md Phase 7,
-        // tasks/TASK-008-B2B-DEALS.md).
+        // and the deal-reservation-expiry sweep.
         services.AddOptions<B2BDealOptions>()
             .Bind(configuration.GetSection(B2BDealOptions.SectionName));
         services.AddScoped<IB2BDealService, B2BDealService>();
@@ -94,19 +88,18 @@ public static class DependencyInjection
         if (!environment.IsEnvironment("Testing"))
         {
             // Same reasoning as the other two sweeps: the deal-expiry timer is not hosted
-            // under the test environment (docs/09-TEST-STRATEGY.md §1).
+            // under the test environment.
             services.AddHostedService<B2BDealExpiryService>();
         }
 
         // Post-transaction trust: disputes + evidence, the admin dispute workflow, and
-        // merchant reviews (docs/10-IMPLEMENTATION-PLAN.md Phase 8, tasks/TASK-009-TRUST.md).
+        // merchant reviews.
         services.AddOptions<TrustOptions>()
             .Bind(configuration.GetSection(TrustOptions.SectionName));
         services.AddScoped<IDisputeService, DisputeService>();
         services.AddScoped<IReviewService, ReviewService>();
 
         // Merchant recovery analytics and the consolidated admin operational screens
-        // (docs/10-IMPLEMENTATION-PLAN.md Phases 9–10, tasks/TASK-010-ANALYTICS-AND-ADMIN.md).
         // All read-only projections over authoritative data; catalog management is the only
         // write path and it is admin-gated and audited.
         services.AddOptions<AnalyticsOptions>()
@@ -123,13 +116,12 @@ public static class DependencyInjection
     private static void AddPersistence(this IServiceCollection services, IHostEnvironment environment)
     {
         // One application DbContext; Identity shares it. Migrations live in this project
-        // under Data/Migrations (docs/06-ARCHITECTURE.md §5).
-        //
+        // under Data/Migrations.
         // The connection string is resolved from the *built* IConfiguration when the context
         // options are created, never captured here at registration time. Reading it eagerly
         // silently ignored any configuration source added after AddFaedPlatform runs — which
         // is exactly how a test host overrides it — and pointed the integration test host at
-        // the application database instead of its disposable one (docs/09-TEST-STRATEGY.md §2).
+        // the application database instead of its disposable one.
         services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
             options.UseSqlServer(ResolveDatabaseConnectionString(
                 serviceProvider.GetRequiredService<IConfiguration>(), environment)));
@@ -142,8 +134,7 @@ public static class DependencyInjection
     /// environment has none configured, or is still pointed at the committed local
     /// development database. The development connection string lives only in
     /// <c>appsettings.Development.json</c>; every other environment must supply its own via
-    /// <c>ConnectionStrings__DefaultConnection</c> (docs/06-ARCHITECTURE.md §11,
-    /// docs/08-SECURITY-AND-PRIVACY.md §11, DEPLOYMENT.md §2). Exposed for a focused test.
+    /// <c>ConnectionStrings__DefaultConnection</c>. Exposed for a focused test.
     /// </summary>
     public static string ResolveDatabaseConnectionString(IConfiguration configuration, IHostEnvironment environment)
     {
@@ -151,7 +142,6 @@ public static class DependencyInjection
 
         // The "Testing" environment is the integration-test host, which injects its own
         // disposable LocalDB catalog and asserts the target separately
-        // (docs/09-TEST-STRATEGY.md §2, TestHostDatabaseTargetTests).
         var enforceProductionSafety = !environment.IsDevelopment() && !environment.IsEnvironment("Testing");
 
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -213,7 +203,7 @@ public static class DependencyInjection
                 {
                     throw new InvalidOperationException(
                         $"FileStorage:LocalRootPath ('{resolvedRoot}') must not be inside the web root. " +
-                        "Verification documents are private (docs/08-SECURITY-AND-PRIVACY.md §3).");
+                        "Verification documents are private .");
                 }
 
                 options.LocalRootPath = resolvedRoot;
@@ -223,14 +213,13 @@ public static class DependencyInjection
         {
             // LocalFileStorage is a development-only convenience. Every non-Development
             // environment — Production, Staging, or any custom name — must bind a real
-            // private object store to IFileStorage (docs/06-ARCHITECTURE.md §8,
-            // docs/08-SECURITY-AND-PRIVACY.md §3). Fail loudly the first time a verification
+            // private object store to IFileStorage. Fail loudly the first time a verification
             // document, listing image or dispute-evidence file is stored or read, rather
             // than silently writing sensitive documents to ephemeral local disk.
             services.AddSingleton<IFileStorage>(_ => throw new InvalidOperationException(
                 $"No private IFileStorage is configured for the '{environment.EnvironmentName}' " +
                 "environment. LocalFileStorage is Development-only; register a cloud object " +
-                "storage implementation (docs/06-ARCHITECTURE.md §8, DEPLOYMENT.md §3)."));
+                "storage implementation ."));
             return;
         }
 

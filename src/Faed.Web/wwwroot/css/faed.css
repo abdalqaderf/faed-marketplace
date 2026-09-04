@@ -1,4 +1,4 @@
-/* Faed design-token + component layer (docs/07-UI-UX-SPEC.md §13).
+﻿/* Faed design-token + component layer .
    Bootstrap 5 is the grid/reset foundation; the visual identity lives here. */
 
 :root {
@@ -736,7 +736,7 @@ a:hover {
 }
 
 /* =====================================================================================
-   Public marketplace (tasks/TASK-005-PUBLIC-MARKETPLACE.md)
+   Public marketplace 
    ===================================================================================== */
 
 /* ---- Section header (Home) ---- */
@@ -1559,9 +1559,9 @@ a:hover {
 
 /* =====================================================================================
    Identity.UI integration. Login, Register and Manage are provided by the compiled
-   Microsoft.AspNetCore.Identity.UI Razor Class Library. TASK-013 keeps its tested PageModel
-   behavior intact and transforms that package markup through the Faed shell and route-scoped
-   presentation classes instead of copying authentication code into this project.
+   Microsoft.AspNetCore.Identity.UI Razor Class Library. These overrides keep its tested
+   PageModel behavior intact and transform that package markup through the Faed shell and
+   route-scoped presentation classes instead of copying authentication code into this project.
 
    These Bootstrap-class overrides are presentation-only. No Identity PageModel, password
    handling, validation rule, provider or sign-in behavior is changed. */
@@ -1628,7 +1628,7 @@ a:hover {
 }
 
 /* =====================================================================================
-   TASK-013 final visual system
+   Final visual system
    ===================================================================================== */
 
 /* ---- Global shell ---- */

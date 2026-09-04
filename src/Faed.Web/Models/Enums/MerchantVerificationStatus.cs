@@ -1,8 +1,8 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// Merchant verification lifecycle (docs/03-BUSINESS-RULES.md §1, docs/05-USER-FLOWS-AND-STATE-MACHINES.md §1).
-/// This is a domain state, not an Identity role (docs/08-SECURITY-AND-PRIVACY.md §1).
+/// Merchant verification lifecycle.
+/// This is a domain state, not an Identity role.
 /// </summary>
 public enum MerchantVerificationStatus
 {

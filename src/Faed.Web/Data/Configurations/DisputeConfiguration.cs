@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Faed.Web.Models.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,7 +22,7 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.Ignore(d => d.AcceptsEvidence);
 
         // Persist the workflow enums as text so the dispute queue and ad-hoc DB reads stay
-        // legible (docs/19-CODING-CONVENTIONS.md "Enums vs tables").
+        // legible.
         builder.Property(d => d.Status)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -40,14 +40,13 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.Property(d => d.ActiveTransactionKey).HasMaxLength(Dispute.MaxActiveTransactionKeyLength);
 
         // At most one active (Open/UnderReview) dispute per transaction, enforced by the
-        // database so two concurrent filings cannot both win (docs/03-BUSINESS-RULES.md §14,
-        // AGENTS.md §7). The key is null for closed disputes, so the filter keeps those out.
+        // database so two concurrent filings cannot both win. The key is null for closed disputes, so the filter keeps those out.
         builder.HasIndex(d => d.ActiveTransactionKey)
             .IsUnique()
             .HasDatabaseName("IX_Disputes_ActiveTransactionKey_Unique")
             .HasFilter("[ActiveTransactionKey] IS NOT NULL");
 
-        // Guards two administrators acting on the same dispute at once (AGENTS.md §7).
+        // Guards two administrators acting on the same dispute at once.
         builder.Property(d => d.RowVersion).IsRowVersion();
 
         // Admin queue and "my disputes" reads.
@@ -57,7 +56,7 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.HasIndex(d => d.B2BDealId);
 
         // Transactional history is preserved, never cascade-deleted with a transaction or the
-        // Identity user (docs/04-DOMAIN-MODEL.md §12 "Do not cascade-delete ... Disputes").
+        // Identity user.
         builder.HasOne<Order>()
             .WithMany()
             .HasForeignKey(d => d.OrderId)

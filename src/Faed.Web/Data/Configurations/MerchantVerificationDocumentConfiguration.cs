@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +13,7 @@ public sealed class MerchantVerificationDocumentConfiguration : IEntityTypeConfi
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id).ValueGeneratedNever();
 
-        // Owned by exactly one merchant application; removed with it (docs/04-DOMAIN-MODEL.md §12).
+        // Owned by exactly one merchant application; removed with it.
         builder.HasOne<MerchantProfile>()
             .WithMany(p => p.Documents)
             .HasForeignKey(d => d.MerchantProfileId)
@@ -24,7 +24,7 @@ public sealed class MerchantVerificationDocumentConfiguration : IEntityTypeConfi
             .HasMaxLength(40)
             .IsRequired();
 
-        // Protected storage key only — never a public URL (docs/08-SECURITY-AND-PRIVACY.md §3).
+        // Protected storage key only — never a public URL.
         builder.Property(d => d.StorageObjectKey)
             .IsRequired()
             .HasMaxLength(400);

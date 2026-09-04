@@ -1,4 +1,4 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
@@ -166,10 +166,8 @@ public sealed class B2BNegotiationService(
     }
 
     // ---- Reject / cancel ----------------------------------------------------
-    //
     // Accepting the current revision lives in B2BDealService.AcceptOfferAsync: it must
-    // atomically reserve stock and create the B2BDeal in the same transaction (TASK-008,
-    // docs/adr/0004).
+    // atomically reserve stock and create the B2BDeal in the same transaction.
 
     public Task<Result> RejectAsync(string merchantUserId, Guid negotiationId, CancellationToken cancellationToken = default) =>
         TransitionAsync(merchantUserId, negotiationId, (n, m, now) => n.Reject(m, now), "rejected", cancellationToken);
@@ -263,8 +261,7 @@ public sealed class B2BNegotiationService(
         }
 
         // The filter is applied in SQL: "awaiting me" is an open negotiation whose current
-        // revision was proposed by the other merchant (docs/06-ARCHITECTURE.md §13 — no
-        // unbounded in-memory filter over a merchant's whole history).
+        // revision was proposed by the other merchant.
         var id = merchantId.Value;
         var mine = ForMerchant(id);
         var filtered = filter switch
@@ -357,7 +354,6 @@ public sealed class B2BNegotiationService(
         if (negotiation is null || !negotiation.IsParticipant(merchantId.Value))
         {
             // A merchant that is not a participant learns nothing — same as "not found"
-            // (docs/16-PERMISSIONS-MATRIX.md "View unrelated B2B negotiation — ❌").
             return null;
         }
 
@@ -394,8 +390,8 @@ public sealed class B2BNegotiationService(
                     .ToList()))
             .ToList();
 
-        // Once accepted, the negotiation is backed by exactly one B2BDeal (docs/17-DATA-INVARIANTS.md);
-        // surface its id so the UI can link straight to the fulfilment record (TASK-008).
+        // Once accepted, the negotiation is backed by exactly one B2BDeal;
+        // surface its id so the UI can link straight to the fulfilment record.
         var dealId = negotiation.Status == B2BNegotiationStatus.Accepted
             ? await db.B2BDeals.AsNoTracking()
                 .Where(d => d.B2BNegotiationId == negotiation.Id)
@@ -473,7 +469,7 @@ public sealed class B2BNegotiationService(
     {
         if (listing.MerchantProfileId == buyerMerchantId)
         {
-            // AGENTS.md Rule C / docs/17-DATA-INVARIANTS.md "Selling and buying merchants cannot be the same".
+            // Selling and buying merchants cannot be the same.
             return Result.Validation("You cannot make a wholesale offer on your own listing.");
         }
 

@@ -1,10 +1,10 @@
 namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// Why a participant raised a dispute (docs/03-BUSINESS-RULES.md §14). A stable workflow
-/// vocabulary, not admin-managed catalogue data, so it is an enum
-/// (docs/19-CODING-CONVENTIONS.md "Enums vs tables"). A disclosed cosmetic issue on its own is
-/// not an <see cref="UndisclosedDefect"/> claim (docs/03-BUSINESS-RULES.md §14) — the reviewing
+/// Why a participant raised a dispute. A stable workflow
+/// vocabulary, not admin-managed catalogue data, so it is an enum.
+/// A disclosed cosmetic issue on its own is
+/// not an <see cref="UndisclosedDefect"/> claim — the reviewing
 /// administrator judges that from the evidence.
 /// </summary>
 public enum DisputeReasonCode

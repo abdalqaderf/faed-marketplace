@@ -10,10 +10,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
-/// A selling merchant's B2C order queue and per-order fulfilment actions
-/// (tasks/TASK-006-B2C-ORDERS.md, docs/07-UI-UX-SPEC.md §6). Gated by the
+/// A selling merchant's B2C order queue and per-order fulfilment actions.
+/// Gated by the
 /// <c>ApprovedMerchant</c> policy; the service re-checks that each order belongs to the
-/// caller's own merchant (docs/03-BUSINESS-RULES.md §16).
+/// caller's own merchant.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.ApprovedMerchant)]
@@ -57,7 +57,7 @@ public sealed class OrdersController(IOrderService orders, IDisputeService dispu
             ActiveDispute = activeDispute,
             PastDisputes = forThisOrder.Where(d => !d.IsActive).ToList(),
             // A selling merchant can dispute an order once it is confirmed and not cancelled —
-            // the same window DisputeService enforces (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §4).
+            // the same window DisputeService enforces.
             CanRaiseDispute = activeDispute is null && order.Status is OrderStatus.Confirmed
                 or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed,
         });

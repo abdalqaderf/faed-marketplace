@@ -1,10 +1,10 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Merchants;
 
 /// <summary>
 /// Generates human-readable public storefront slugs. Slugs are display identifiers only,
-/// never authorization keys (docs/06-ARCHITECTURE.md §12).
+/// never authorization keys.
 /// </summary>
 public static class MerchantSlug
 {

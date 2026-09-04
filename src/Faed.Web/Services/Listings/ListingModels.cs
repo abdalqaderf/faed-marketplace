@@ -1,4 +1,4 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Services.Listings;
 
@@ -7,7 +7,7 @@ namespace Faed.Web.Services.Listings;
 /// <summary>
 /// The merchant-supplied business details of a listing. Everything authorization-sensitive
 /// — the owning merchant, the listing status, stock counters — is deliberately absent: it is
-/// resolved server-side and never bound from a request (docs/08-SECURITY-AND-PRIVACY.md §6).
+/// resolved server-side and never bound from a request.
 /// </summary>
 public sealed record ListingDetailsInput(
     Guid CategoryId,
@@ -45,7 +45,7 @@ public sealed record AddListingImageInput(
 
 /// <summary>
 /// Provenance for the listing's reference price: a link, a note, an uploaded document, or
-/// any combination (docs/03-BUSINESS-RULES.md §4).
+/// any combination.
 /// </summary>
 public sealed record AddReferencePriceEvidenceInput(
     ReferencePriceEvidenceType EvidenceType,
@@ -56,7 +56,7 @@ public sealed record AddReferencePriceEvidenceInput(
     string? ContentType,
     long LengthBytes);
 
-/// <summary>A manual stock correction, always accompanied by a reason (docs/03-BUSINESS-RULES.md §6).</summary>
+/// <summary>A manual stock correction, always accompanied by a reason.</summary>
 public sealed record StockAdjustmentInput(
     Guid VariantId,
     InventoryAdjustmentType AdjustmentType,
@@ -254,7 +254,7 @@ public sealed record InventoryAdjustmentView(
 
 public sealed record CatalogChoice(Guid Id, string Label);
 
-/// <summary>The DB-driven choices a listing form offers. Nothing here is hard-coded (TASK-003).</summary>
+/// <summary>The DB-driven choices a listing form offers. Nothing here is hard-coded.</summary>
 public sealed record ListingReferenceData(
     IReadOnlyList<CatalogChoice> Categories,
     IReadOnlyList<CatalogChoice> ConditionGrades,

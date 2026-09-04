@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Buyer.ViewModels;
+﻿using Faed.Web.Areas.Buyer.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
@@ -10,10 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Buyer.Controllers;
 
 /// <summary>
-/// A buyer's own B2C order history and detail (docs/07-UI-UX-SPEC.md §5). A buyer sees only
+/// A buyer's own B2C order history and detail. A buyer sees only
 /// their own orders — the service filters by the signed-in user id, so guessing another
-/// order id reveals nothing (docs/08-SECURITY-AND-PRIVACY.md §9,
-/// docs/16-PERMISSIONS-MATRIX.md).
+/// order id reveals nothing.
 /// </summary>
 [Area("Buyer")]
 [Authorize(Policy = FaedPolicies.CanPlaceB2COrder)]
@@ -43,7 +42,7 @@ public sealed class OrdersController(
         var forThisOrder = await disputes.GetDisputesForTransactionAsync(
             userId, TrustTransactionType.B2COrder, id, cancellationToken);
         // Only an Open/UnderReview dispute suppresses a new filing; a closed one is history
-        // and the authoritative rules may allow another dispute (docs/03-BUSINESS-RULES.md §14).
+        // and the authoritative rules may allow another dispute.
         var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
 
         return View(new BuyerOrderDetailPageModel
@@ -66,7 +65,7 @@ public sealed class OrdersController(
     }
 
     /// <summary>The buyer confirms they received the order, completing it
-    /// (docs/01-PRD.md §4 "confirm receipt"; docs/03-BUSINESS-RULES.md §7).</summary>
+    ///.</summary>
     [HttpPost]
     public async Task<IActionResult> ConfirmReceipt(Guid id, CancellationToken cancellationToken)
     {
@@ -75,7 +74,7 @@ public sealed class OrdersController(
     }
 
     /// <summary>The buyer leaves a review for the selling merchant once the order is completed
-    /// (docs/03-BUSINESS-RULES.md §13).</summary>
+    ///.</summary>
     [HttpPost]
     public async Task<IActionResult> Review(Guid id, LeaveReviewFormModel form, CancellationToken cancellationToken)
     {

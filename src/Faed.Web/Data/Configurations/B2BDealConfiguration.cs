@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,7 +23,6 @@ public sealed class B2BDealConfiguration : IEntityTypeConfiguration<B2BDeal>
         builder.Ignore(d => d.IsTerminal);
 
         // Persist the workflow enums as text so deal queues and ad-hoc DB reads stay legible
-        // (docs/19-CODING-CONVENTIONS.md "Enums vs tables").
         builder.Property(d => d.Status)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -37,25 +36,25 @@ public sealed class B2BDealConfiguration : IEntityTypeConfiguration<B2BDeal>
         builder.Property(d => d.ShipmentReference).HasMaxLength(B2BDeal.MaxShipmentReferenceLength);
         builder.Property(d => d.StatusReason).HasMaxLength(B2BDeal.MaxStatusReasonLength);
 
-        // JOD is stored with three decimal places everywhere (AGENTS.md §6).
+        // JOD is stored with three decimal places everywhere.
         builder.Property(d => d.AcceptedUnitPriceSnapshot).HasColumnType("decimal(18,3)");
         builder.Property(d => d.ShippingCostSnapshot).HasColumnType("decimal(18,3)");
         builder.Property(d => d.SubtotalSnapshot).HasColumnType("decimal(18,3)");
         builder.Property(d => d.TotalSnapshot).HasColumnType("decimal(18,3)");
 
-        // Guards the two merchants acting on the same deal at the same time (AGENTS.md §7).
+        // Guards the two merchants acting on the same deal at the same time.
         builder.Property(d => d.RowVersion).IsRowVersion();
 
-        // "Accepted negotiation creates at most one B2BDeal" (docs/17-DATA-INVARIANTS.md) —
+        // "Accepted negotiation creates at most one B2BDeal" —
         // enforced by the database, not only the accept use case.
         builder.HasIndex(d => d.B2BNegotiationId).IsUnique();
         builder.HasIndex(d => new { d.SellingMerchantProfileId, d.Status });
         builder.HasIndex(d => new { d.BuyingMerchantProfileId, d.Status });
-        // Drives the reservation-expiry sweep (docs/06-ARCHITECTURE.md §7).
+        // Drives the reservation-expiry sweep.
         builder.HasIndex(d => new { d.Status, d.ReservationExpiresAtUtc });
 
         // Transactional history is preserved, never cascade-deleted with a negotiation,
-        // revision or merchant (docs/04-DOMAIN-MODEL.md §12).
+        // revision or merchant.
         builder.HasOne<B2BNegotiation>()
             .WithMany()
             .HasForeignKey(d => d.B2BNegotiationId)
@@ -105,7 +104,7 @@ public sealed class B2BDealLineConfiguration : IEntityTypeConfiguration<B2BDealL
             .OnDelete(DeleteBehavior.Cascade);
 
         // The variant a deal line references must never be hard-deleted out from under the
-        // deal history (docs/04-DOMAIN-MODEL.md §12).
+        // deal history.
         builder.HasOne<ListingVariant>()
             .WithMany()
             .HasForeignKey(l => l.ListingVariantId)

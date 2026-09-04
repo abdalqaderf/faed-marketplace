@@ -1,10 +1,8 @@
-namespace Faed.Web.Services.Analytics;
+﻿namespace Faed.Web.Services.Analytics;
 
 /// <summary>
-/// Merchant recovery analytics (docs/01-PRD.md §14, docs/10-IMPLEMENTATION-PLAN.md Phase 9,
-/// tasks/TASK-010-ANALYTICS-AND-ADMIN.md). Every value is recomputed from authoritative
+/// Merchant recovery analytics. Every value is recomputed from authoritative
 /// order / deal / listing data on each request; nothing is stored or trusted from the client
-/// (docs/03-BUSINESS-RULES.md §15).
 /// </summary>
 public interface IMerchantAnalyticsService
 {

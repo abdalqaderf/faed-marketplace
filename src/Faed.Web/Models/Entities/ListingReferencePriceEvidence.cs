@@ -1,13 +1,11 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// Provenance for a listing's reference price (docs/03-BUSINESS-RULES.md §4,
-/// docs/04-DOMAIN-MODEL.md §3). A merchant cannot present a reference price as an
+/// Provenance for a listing's reference price. A merchant cannot present a reference price as an
 /// untrusted marketing number: a listing that claims one must carry at least one of these
 /// before it can be submitted for review, and the reviewing admin sees them all.
-///
 /// Faed deliberately does not encode a minimum discount percentage — the MVP relies on
 /// manual review of this evidence.
 /// </summary>

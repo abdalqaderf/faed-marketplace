@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Admin.ViewModels;
+﻿using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
@@ -9,9 +9,9 @@ namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// Admin catalog management: the taxonomy, condition grades, discount reasons and controlled
-/// brands (docs/16-PERMISSIONS-MATRIX.md "Manage catalog reference data — Admin", TASK-010).
+/// brands.
 /// Every write goes through <see cref="IAdminCatalogService"/>, which re-checks the admin
-/// role and records an audit entry (docs/08-SECURITY-AND-PRIVACY.md §2, §13).
+/// role and records an audit entry.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]

@@ -54,11 +54,10 @@ public sealed class ListingMediaService(
         }
 
         // Public visibility rule: only a Live listing whose merchant is still Approved is
-        // public (docs/03-BUSINESS-RULES.md §2, docs/11-ACCEPTANCE-CRITERIA.md "Public sees
-        // only Live listings"). A merchant suspended after publishing must stop being
-        // reachable by anonymous traffic even though their listings keep the Live status
-        // (docs/17-DATA-INVARIANTS.md "A Live Listing's merchant must be approved"). SoldOut
-        // is "addressable to authorized users" (docs/03 §2), not to anonymous public traffic —
+        // public. A merchant suspended after publishing must stop being
+        // reachable by anonymous traffic even though their listings keep the Live status.
+        // SoldOut
+        // is "addressable to authorized users", not to anonymous public traffic —
         // a sold-out listing's photography is reachable only by the owning merchant or an
         // admin, same as Draft/PendingReview/Rejected/Hidden/Archived.
         var isPublic = listing.Status == ListingStatus.Live && listing.MerchantIsApproved;
@@ -70,7 +69,6 @@ public sealed class ListingMediaService(
                 // A private image is indistinguishable from one that does not exist: an
                 // unauthorized caller and a bad id both get NotFound, so probing ids never
                 // confirms which non-Live listings have images
-                // (docs/08-SECURITY-AND-PRIVACY.md §9, mirrors the dispute-evidence endpoint).
                 return Result<StoredFileContent>.NotFound("The image was not found.");
             }
         }
@@ -119,10 +117,9 @@ public sealed class ListingMediaService(
         }
 
         // Reference-price evidence is never public — only the reviewing admin and the owning
-        // merchant have any reason to see a supplier invoice or catalogue scan (AGENTS.md §8
-        // "the reviewing admin sees them all", docs/03-BUSINESS-RULES.md §4). An unauthorized
+        // merchant have any reason to see a supplier invoice or catalogue scan. An unauthorized
         // caller gets the same NotFound a bad id gets, so probing never confirms an evidence
-        // file exists (docs/08-SECURITY-AND-PRIVACY.md §9).
+        // file exists.
         if (!await IsOwnerOrAdminAsync(userId, listing.MerchantProfileId, cancellationToken))
         {
             return Result<StoredFileContent>.NotFound("The evidence file was not found.");

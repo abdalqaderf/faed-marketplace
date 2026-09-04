@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,25 +7,23 @@ namespace Faed.Web.Data.Seed;
 
 /// <summary>
 /// Idempotent seeding of the fixed Faed catalog reference data: condition grades A–D, the
-/// eight PRD-approved discount reasons, and the launch taxonomy (<c>Fashion Overstock</c> →
-/// Clothing, Shoes, Bags &amp; Accessories). See tasks/TASK-003-CATALOG.md and
-/// docs/12-SEED-DATA.md.
-///
+/// eight approved discount reasons, and the launch taxonomy (<c>Fashion Overstock</c> →
+/// Clothing, Shoes, Bags &amp; Accessories).
 /// Runs in every environment at startup, after <see cref="IdentityDataSeeder"/>. The schema
 /// must already exist (apply migrations first — the app does not migrate on startup). Each
 /// row is matched on its natural key (grade / reason <c>Code</c>, category <c>Slug</c>) and
 /// only inserted when missing, so re-running never duplicates and never overwrites a later
-/// admin edit (full catalog management is TASK-010). Key comparison is
+/// admin edit. Key comparison is
 /// case-insensitive to match SQL Server's default case-insensitive collation, so a
 /// differently-cased existing row (for example from a later admin edit) is still treated as
 /// present rather than causing a duplicate-key insert on startup. Deeper taxonomy is
-/// deferred (docs/13-OPEN-QUESTIONS.md item 4); no brands are seeded (items 5–6).
+/// deferred; no brands are seeded (items 5–6).
 /// </summary>
 public static class CatalogDataSeeder
 {
     public const string RootCategorySlug = "fashion-overstock";
 
-    // docs/01-PRD.md §6. Grades A–D only — no used-goods Grade E in the Fashion MVP.
+    // Grades A–D only — no used-goods Grade E in the Fashion MVP.
     private static readonly (string Code, string Name, string Description, int SortOrder)[] Grades =
     [
         ("A", "New / Complete",
@@ -38,7 +36,7 @@ public static class CatalogDataSeeder
             "Display item or minor cosmetic imperfection that does not prevent normal use and is clearly disclosed.", 4),
     ];
 
-    // docs/01-PRD.md §7 — all eight approved reasons, including OtherApprovedReason.
+    // All eight approved reasons, including OtherApprovedReason.
     private static readonly (string Code, string Name)[] Reasons =
     [
         ("Overstock", "Overstock"),
@@ -51,7 +49,7 @@ public static class CatalogDataSeeder
         ("OtherApprovedReason", "Other Approved Reason"),
     ];
 
-    // AGENTS.md §3 launch categories. Lower-level taxonomy is deferred (TASK-003).
+    // Launch categories. Lower-level taxonomy is deferred.
     private static readonly (string Slug, string Name, int SortOrder)[] LaunchCategories =
     [
         ("clothing", "Clothing", 1),
@@ -122,7 +120,7 @@ public static class CatalogDataSeeder
         // Load the existing rows once and match every slug (root included) with the same
         // ordinal-ignore-case comparer, rather than delegating the root lookup to the
         // database where a case-sensitive server collation could miss it and let a second
-        // root be inserted (docs/09-TEST-STRATEGY.md, TASK-003 idempotency criterion).
+        // root be inserted.
         var existing = await db.Categories.ToListAsync(cancellationToken);
         var existingSlugs = existing.Select(c => c.Slug).ToHashSet(StringComparer.OrdinalIgnoreCase);
 

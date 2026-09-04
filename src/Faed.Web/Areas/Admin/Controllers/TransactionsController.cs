@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Admin.ViewModels;
+﻿using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
@@ -7,9 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Admin monitoring of B2C orders and B2B deals (docs/07-UI-UX-SPEC.md §7,
-/// docs/16-PERMISSIONS-MATRIX.md "Manage selling merchant's B2C order — Admin ✅
-/// monitoring/support", "View unrelated B2B negotiation — Admin ✅ monitoring/support").
+/// Admin monitoring of B2C orders and B2B deals.
 /// Read-only: an administrator sees the full transaction for support, but the B2C / B2B
 /// state machines stay with their participants.
 /// </summary>

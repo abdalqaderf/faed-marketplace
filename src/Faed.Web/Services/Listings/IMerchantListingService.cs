@@ -1,16 +1,14 @@
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Listings;
 
 
 /// <summary>
-/// Merchant-side listing use cases (tasks/TASK-004-LISTINGS-AND-INVENTORY.md,
-/// docs/10-IMPLEMENTATION-PLAN.md Phase 3).
-///
+/// Merchant-side listing use cases.
 /// Every method takes the acting Identity user id and re-resolves the owning merchant from
 /// the database. Ownership is never inferred from a route value, a form field or a hidden
-/// input (docs/08-SECURITY-AND-PRIVACY.md §6, §9), and only an Approved merchant can reach
-/// any of it (docs/03-BUSINESS-RULES.md §1).
+/// input, and only an Approved merchant can reach
+/// any of it.
 /// </summary>
 public interface IMerchantListingService
 {

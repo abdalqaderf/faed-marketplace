@@ -54,8 +54,7 @@ public sealed class B2BDealService(
         // Both merchants must still be eligible to trade wholesale when the deal is created:
         // creating and reserving a B2BDeal is a fresh trade commitment, so a seller or buyer
         // suspended (or made an administrator) since the negotiation opened cannot be a party
-        // to it (docs/03-BUSINESS-RULES.md §1, docs/16-PERMISSIONS-MATRIX.md; mirrors
-        // OrderService re-checking the selling merchant at PlaceOrderAsync).
+        // to it.
         var ineligible = await CounterpartyIneligibleAsync(negotiation, merchant.Value, cancellationToken);
         if (ineligible is not null)
         {
@@ -63,7 +62,6 @@ public sealed class B2BDealService(
         }
 
         // A lapsed active offer is expired and persisted before it can be accepted
-        // (docs/17-DATA-INVARIANTS.md "Only the active non-expired revision can be accepted").
         if (negotiation.ExpireIfLapsed(clock.UtcNow))
         {
             try
@@ -98,14 +96,11 @@ public sealed class B2BDealService(
         {
             // Move the negotiation to Accepted first; if any line then fails to reserve, the
             // whole transaction rolls back and the negotiation stays Open in the database
-            // (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §6 "If one variant fails, no variant is
-            // reserved and no deal is created").
             negotiation.Accept(merchant.Value, clock.UtcNow);
 
             // The subtotal is the accepted revision's server-derived total and nothing else.
             // No shipping charge is agreed during negotiation, so none is added here — the
-            // deal total equals the agreed subtotal (docs/03-BUSINESS-RULES.md §12,
-            // docs/17-DATA-INVARIANTS.md). A seller-owned shipping cost, if one is ever
+            // deal total equals the agreed subtotal. A seller-owned shipping cost, if one is ever
             // modelled, is recorded later by the seller, not injected at acceptance.
             deal = new B2BDeal(
                 negotiation.Id,
@@ -131,8 +126,6 @@ public sealed class B2BDealService(
 
                 // Atomic Available -> Reserved, protected by the variant's RowVersion. A stale
                 // token here — or insufficient stock — rolls the whole acceptance back
-                // (AGENTS.md §7, docs/17-DATA-INVARIANTS.md "No transaction may reserve more
-                // than current available stock").
                 variant.Reserve(line.Quantity, clock.UtcNow);
             }
         }
@@ -144,7 +137,7 @@ public sealed class B2BDealService(
         listing.RefreshAvailability(clock.UtcNow);
         // Force the listing row into the write set so a B2B acceptance and a competing B2C
         // order (or another acceptance) depleting different variants of the same listing
-        // serialize on the listing row (docs/17-DATA-INVARIANTS.md).
+        // serialize on the listing row.
         listing.RegisterStockReservation(clock.UtcNow);
 
         db.B2BDeals.Add(deal);
@@ -366,7 +359,7 @@ public sealed class B2BDealService(
                 .SingleOrDefaultAsync(d => d.Id == id && d.Status == B2BDealStatus.AwaitingFulfillment, cancellationToken);
 
             // Fulfilled or cancelled by a participant since the id list was taken — idempotent
-            // by construction (docs/17-DATA-INVARIANTS.md "Reservation release is idempotent").
+            // by construction.
             if (deal is null
                 || deal.ReservationExpiresAtUtc is not { } expiresAt
                 || expiresAt >= clock.UtcNow)
@@ -456,7 +449,7 @@ public sealed class B2BDealService(
 
     /// <summary>
     /// Runs one deal status transition and its matching stock movement inside a single
-    /// transaction: the two commit together or not at all (docs/06-ARCHITECTURE.md §6).
+    /// transaction: the two commit together or not at all.
     /// </summary>
     private async Task<Result> ApplyTransitionAsync(
         B2BDeal deal, Action<B2BDeal> transition, StockEffect effect, CancellationToken cancellationToken)
@@ -521,8 +514,8 @@ public sealed class B2BDealService(
                     // A stock release must serialize on the listing row with a competing B2C
                     // reservation (or another release) touching a *different* variant of the
                     // same listing: otherwise both commit against a stale availability view and
-                    // the listing can be left wrongly SoldOut or wrongly Live
-                    // (docs/17-DATA-INVARIANTS.md; mirrors OrderService.PlaceOrderAsync). The
+                    // the listing can be left wrongly SoldOut or wrongly Live.
+                    // The
                     // loser gets a concurrency conflict and re-reads.
                     listing.RegisterStockRelease(clock.UtcNow);
                 }
@@ -576,8 +569,7 @@ public sealed class B2BDealService(
     /// <summary>
     /// Confirms both merchants on the negotiation are still eligible to trade wholesale before
     /// a deal is created: both must be <see cref="MerchantVerificationStatus.Approved"/> and
-    /// neither may have become an administrator (docs/03-BUSINESS-RULES.md §1,
-    /// docs/16-PERMISSIONS-MATRIX.md). The caller's own eligibility was already checked by
+    /// neither may have become an administrator. The caller's own eligibility was already checked by
     /// <see cref="RequireEligibleMerchantAsync"/>; this re-checks the counterparty and, cheaply,
     /// the caller too. Returns a failed <see cref="Result{T}"/> to surface, or <c>null</c> when
     /// both may proceed.

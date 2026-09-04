@@ -1,4 +1,4 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
@@ -135,7 +135,7 @@ public sealed class ListingModerationService(
             || !await userRoles.IsInRoleAsync(adminUserId, FaedRoles.Admin, cancellationToken))
         {
             // The MVC route is already behind the AdminOnly policy; the service contract still
-            // does not trust its caller (docs/08-SECURITY-AND-PRIVACY.md §2).
+            // does not trust its caller.
             return Result.Forbidden();
         }
 
@@ -150,10 +150,9 @@ public sealed class ListingModerationService(
 
         if (actionType == AdminActionType.ListingApproved)
         {
-            // "A Live Listing's merchant must be approved" (docs/17-DATA-INVARIANTS.md) is the
+            // "A Live Listing's merchant must be approved" is the
             // natural enforcement point here: a merchant can be suspended or rejected between
             // submission and this decision, and publishing must not silently ignore that
-            // (AGENTS.md §3 — a suspended merchant cannot act as seller).
             var merchantIsApproved = await db.MerchantProfiles
                 .AsNoTracking()
                 .AnyAsync(
@@ -170,7 +169,6 @@ public sealed class ListingModerationService(
             // submitted. A blocker can reappear after submission — most importantly the merchant
             // removing the last defect/packaging photo a disclosed imperfection depends on — so
             // the submission checks run once more here rather than trusting that nothing changed
-            // (docs/03-BUSINESS-RULES.md §3, docs/17-DATA-INVARIANTS.md "Listing").
             var (conditionGradeCode, discountReasonCodes) =
                 await listing.LoadDisclosureCodesAsync(db, cancellationToken);
             var blockers = listing.DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
@@ -199,7 +197,7 @@ public sealed class ListingModerationService(
             clock.UtcNow));
 
         // A moderation outcome without its audit entry would be unauditable, so the decision
-        // and the log commit together (docs/08-SECURITY-AND-PRIVACY.md §13).
+        // and the log commit together.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {

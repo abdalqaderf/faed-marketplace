@@ -1,16 +1,12 @@
-using Faed.Web.Models;
+﻿using Faed.Web.Models;
 
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// A node in the marketplace taxonomy (docs/04-DOMAIN-MODEL.md §2). The tree is generic so
-/// future sectors are added as data, never as new schema (AGENTS.md §3,
-/// docs/14-FUTURE-EXPANSION.md). The MVP seeds only the <c>Fashion Overstock</c> root and
-/// the three launch categories; deeper taxonomy is deferred (tasks/TASK-003-CATALOG.md,
-/// docs/13-OPEN-QUESTIONS.md item 4).
-///
+/// A node in the marketplace taxonomy. The tree is generic so
+/// future sectors are added as data, never as new schema. The MVP seeds only the <c>Fashion Overstock</c> root and
+/// the three launch categories; deeper taxonomy is deferred.
 /// <see cref="Slug"/> is a display/routing identifier only, never an authorization key
-/// (docs/06-ARCHITECTURE.md §12).
 /// </summary>
 public class Category
 {
@@ -53,8 +49,7 @@ public class Category
     public bool IsRoot => ParentCategoryId is null;
 
     /// <summary>
-    /// Admin edit of the display fields (docs/16-PERMISSIONS-MATRIX.md "Manage catalog
-    /// reference data — Admin"). The slug and the parent are structural and are not changed
+    /// Admin edit of the display fields. The slug and the parent are structural and are not changed
     /// here — a category's place in the tree is fixed once created.
     /// </summary>
     public void UpdateDetails(string name, int sortOrder)
@@ -66,7 +61,7 @@ public class Category
     /// <summary>
     /// Takes a category out of use (or restores it). An inactive category is hidden from
     /// merchant listing forms and public browse but is never deleted, so existing listings
-    /// that reference it keep working (docs/04-DOMAIN-MODEL.md §12).
+    /// that reference it keep working.
     /// </summary>
     public void SetActive(bool isActive) => IsActive = isActive;
 

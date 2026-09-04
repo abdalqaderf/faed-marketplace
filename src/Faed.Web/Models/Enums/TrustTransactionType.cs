@@ -2,8 +2,8 @@ namespace Faed.Web.Models.Enums;
 
 /// <summary>
 /// Which kind of transaction a dispute or review points at. A dispute and a review each
-/// reference exactly one transaction context — a B2C order or a B2B deal
-/// (docs/03-BUSINESS-RULES.md §13-14, docs/17-DATA-INVARIANTS.md "Dispute" / "Review"). Used
+/// reference exactly one transaction context — a B2C order or a B2B deal.
+/// Used
 /// to discriminate request input; the stored entity keeps a nullable FK per kind and a
 /// database check constraint that exactly one is set.
 /// </summary>

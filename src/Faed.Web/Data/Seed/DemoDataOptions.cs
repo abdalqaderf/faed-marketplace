@@ -1,13 +1,11 @@
-namespace Faed.Web.Data.Seed;
+﻿namespace Faed.Web.Data.Seed;
 
 /// <summary>
-/// Configuration for the deterministic development/demo data set (docs/12-SEED-DATA.md,
-/// tasks/TASK-011-HARDENING-AND-DEMO.md).
-///
+/// Configuration for the deterministic development/demo data set.
 /// The demo seed is <b>never</b> production data: it is applied only when the app runs in the
 /// <c>Development</c> environment, <see cref="Enabled"/> is <c>true</c>, and a
 /// <see cref="Password"/> is supplied out-of-band (user secrets or an environment variable).
-/// No password is stored in source control (docs/08-SECURITY-AND-PRIVACY.md §11-12).
+/// No password is stored in source control.
 /// </summary>
 public sealed class DemoDataOptions
 {

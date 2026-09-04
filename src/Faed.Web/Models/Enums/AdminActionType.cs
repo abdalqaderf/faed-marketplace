@@ -1,7 +1,7 @@
-namespace Faed.Web.Models.Enums;
+﻿namespace Faed.Web.Models.Enums;
 
 /// <summary>
-/// Auditable admin actions (docs/04-DOMAIN-MODEL.md §10). Extended as later phases add
+/// Auditable admin actions. Extended as later phases add
 /// account moderation.
 /// </summary>
 public enum AdminActionType
@@ -16,7 +16,7 @@ public enum AdminActionType
     ListingHidden = 7,
     ListingRestored = 8,
 
-    /// <summary>An administrator started reviewing a dispute (docs/03-BUSINESS-RULES.md §14).</summary>
+    /// <summary>An administrator started reviewing a dispute.</summary>
     DisputeReviewStarted = 9,
 
     /// <summary>An administrator upheld a dispute and recorded an outcome.</summary>
@@ -25,7 +25,7 @@ public enum AdminActionType
     /// <summary>An administrator dismissed a dispute and recorded why.</summary>
     DisputeRejected = 11,
 
-    /// <summary>An administrator streamed a private dispute evidence file (docs/08-SECURITY-AND-PRIVACY.md §13).</summary>
+    /// <summary>An administrator streamed a private dispute evidence file.</summary>
     DisputeEvidenceAccessed = 12,
 
     /// <summary>An administrator created a catalog reference row (category / discount reason / condition grade / brand).</summary>

@@ -3,11 +3,9 @@ using Microsoft.Extensions.Options;
 namespace Faed.Web.Services.B2B;
 
 /// <summary>
-/// Periodically closes open negotiations whose current offer has lapsed
-/// (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §5 "Active revision expires -> Negotiation
-/// Expired"). Each sweep runs in its own DI scope; the transition is idempotent, so a sweep
+/// Periodically closes open negotiations whose current offer has lapsed.
+/// Each sweep runs in its own DI scope; the transition is idempotent, so a sweep
 /// that overlaps a merchant response, or that runs twice, cannot mis-close a negotiation
-/// (docs/09-TEST-STRATEGY.md "expired revision cannot be accepted").
 /// </summary>
 public sealed class B2BOfferExpiryService(
     IServiceScopeFactory scopeFactory,

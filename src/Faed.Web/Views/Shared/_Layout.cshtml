@@ -1,4 +1,4 @@
-@using Faed.Web.Models.Identity
+﻿@using Faed.Web.Models.Identity
 @{
     var area = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
@@ -54,7 +54,7 @@
                                asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
                         </li>
                         @* An administrator can never place a B2C order or hold a selling merchant
-                           identity (AGENTS.md §3, docs/16-PERMISSIONS-MATRIX.md) — these Buyer/
+                           identity  — these Buyer/
                            Merchant links would predictably challenge or 403 an Admin, so the two
                            navigations stay mutually exclusive (faed-ui-direction "Admin/merchant
                            identity separation preserved"). *@

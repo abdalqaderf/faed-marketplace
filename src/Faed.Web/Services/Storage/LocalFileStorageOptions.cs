@@ -1,8 +1,8 @@
-namespace Faed.Web.Services.Storage;
+﻿namespace Faed.Web.Services.Storage;
 
 /// <summary>
 /// Configuration for the development <see cref="LocalFileStorage"/>. In production this
-/// abstraction is backed by a cloud object store instead (docs/06-ARCHITECTURE.md §8).
+/// abstraction is backed by a cloud object store instead.
 /// </summary>
 public sealed class LocalFileStorageOptions
 {

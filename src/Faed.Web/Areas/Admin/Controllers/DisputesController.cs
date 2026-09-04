@@ -1,4 +1,4 @@
-using Faed.Web.Areas.Admin.ViewModels;
+﻿using Faed.Web.Areas.Admin.ViewModels;
 using Faed.Web.Authorization;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Trust;
@@ -8,11 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// The admin dispute queue and resolution workflow (docs/05-USER-FLOWS-AND-STATE-MACHINES.md §10,
-/// docs/07-UI-UX-SPEC.md §7). Every decision is recorded to the admin audit log by the
-/// service (docs/17-DATA-INVARIANTS.md "Dispute resolution is auditable"); the service also
+/// The admin dispute queue and resolution workflow. Every decision is recorded to the admin audit log by the
+/// service; the service also
 /// re-checks the admin role, so the route policy is not the only guard
-/// (docs/08-SECURITY-AND-PRIVACY.md §2).
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]

@@ -1,4 +1,4 @@
-using Faed.Web;
+﻿using Faed.Web;
 using Faed.Web.Authorization;
 using Faed.Web.Data;
 using Faed.Web.Data.Seed;
@@ -18,7 +18,7 @@ builder.Services.AddFaedPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Keep the multipart upload ceiling in step with the largest configured per-file limit
-// (docs/06-ARCHITECTURE.md §11) instead of hard-coding it at the controller. There are two
+// instead of hard-coding it at the controller. There are two
 // independent upload paths with two independent caps — merchant verification documents and
 // listing photos/evidence — so this must track whichever is larger, or raising just one of
 // them in configuration would make its uploads fail at the framework layer with an opaque
@@ -42,7 +42,7 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-// Server-side authorization policies (docs/08-SECURITY-AND-PRIVACY.md §2).
+// Server-side authorization policies.
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedMerchantHandler>();
 builder.Services.AddAuthorization(options =>
 {
@@ -51,7 +51,7 @@ builder.Services.AddAuthorization(options =>
 
     // Selling authorization: an approved merchant who is not an administrator. An
     // administrator account can never hold a selling merchant identity — moderation stays
-    // independent of the merchants being moderated (docs/16-PERMISSIONS-MATRIX.md). The
+    // independent of the merchants being moderated. The
     // service layer repeats this check.
     options.AddPolicy(FaedPolicies.ApprovedMerchant, policy =>
         policy.RequireAuthenticatedUser()
@@ -59,7 +59,7 @@ builder.Services.AddAuthorization(options =>
             .AddRequirements(new ApprovedMerchantRequirement()));
 
     // B2B participation is merchant-only even when an approved merchant profile belongs to
-    // an administrator (docs/16-PERMISSIONS-MATRIX.md). The service repeats this check.
+    // an administrator. The service repeats this check.
     options.AddPolicy(FaedPolicies.CanNegotiateB2B, policy =>
         policy.RequireAuthenticatedUser()
             .RequireAssertion(context => !context.User.IsInRole(FaedRoles.Admin))
@@ -67,7 +67,6 @@ builder.Services.AddAuthorization(options =>
 
     // B2C ordering belongs to Buyer accounts and merchants acting as buyers. Administrators
     // remain excluded even if a misconfigured account also carries another role
-    // (docs/04-DOMAIN-MODEL.md §1, docs/16-PERMISSIONS-MATRIX.md).
     options.AddPolicy(FaedPolicies.CanPlaceB2COrder, policy =>
         policy.RequireAuthenticatedUser()
             .RequireAssertion(context =>
@@ -78,7 +77,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddControllersWithViews(options =>
 {
-    // Every state-changing MVC POST is antiforgery-protected (docs/08-SECURITY-AND-PRIVACY.md §5).
+    // Every state-changing MVC POST is antiforgery-protected.
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
 
@@ -99,7 +98,7 @@ else
 app.UseHttpsRedirection();
 
 // A guessed/stale public URL (an unknown listing/store slug, a bad shop filter route) gets a
-// branded empty state instead of the framework's bare 404 (docs/07-UI-UX-SPEC.md §12).
+// branded empty state instead of the framework's bare 404.
 app.UseStatusCodePagesWithReExecute("/status/{0}");
 
 app.UseRouting();
@@ -124,7 +123,7 @@ app.MapRazorPages()
 
 // Seed the fixed Identity roles and the catalog reference data (both idempotent), plus an
 // optional development admin. Migrations must already be applied — the app does not migrate
-// on startup (docs/20-DEVELOPMENT-WORKFLOW.md "Database workflow").
+// on startup.
 await IdentityDataSeeder.SeedRolesAsync(app.Services);
 await CatalogDataSeeder.SeedAsync(app.Services);
 if (app.Environment.IsDevelopment())
@@ -132,7 +131,7 @@ if (app.Environment.IsDevelopment())
     await IdentityDataSeeder.SeedDevelopmentAdminAsync(app.Services);
 
     // Deterministic demo/field-validation data set. Opt-in and password-gated; never runs
-    // outside Development (docs/12-SEED-DATA.md, tasks/TASK-011-HARDENING-AND-DEMO.md).
+    // outside Development.
     await DemoDataSeeder.SeedAsync(app.Services, app.Environment);
 }
 

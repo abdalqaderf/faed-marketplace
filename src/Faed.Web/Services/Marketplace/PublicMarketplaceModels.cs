@@ -1,4 +1,4 @@
-using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.Listings;
 
 namespace Faed.Web.Services.Marketplace;
@@ -20,7 +20,7 @@ public enum ShopSort
 
 /// <summary>
 /// Everything a browse request can filter, sort and page by. Every catalog reference is a
-/// public slug/code, never a database id (docs/06-ARCHITECTURE.md §12) — an unresolvable
+/// public slug/code, never a database id — an unresolvable
 /// value must yield zero results rather than being silently ignored.
 /// </summary>
 public sealed record ShopQuery(
@@ -68,8 +68,7 @@ public sealed record ListingCardView(
 {
     /// <summary>
     /// A reference price is only shown as a discount claim once the listing is Live — that is
-    /// the point admin moderation vouched for it (docs/07-UI-UX-SPEC.md §9,
-    /// docs/03-BUSINESS-RULES.md §4). <see cref="Listing.DescribeSubmissionBlockers"/> already
+    /// the point admin moderation vouched for it. <see cref="Listing.DescribeSubmissionBlockers"/> already
     /// refuses to publish a reference price that is not higher than the retail price.
     /// </summary>
     public bool HasValidReferencePrice => ReferencePrice is { } reference && RetailPrice is { } retail && reference > retail;
@@ -81,7 +80,6 @@ public sealed record ListingCardView(
     /// <summary>
     /// The price to display/sort/filter on when the listing itself has no retail price — a
     /// B2B-only listing still has an honest number to show instead of "Price on request"
-    /// (docs/04-DOMAIN-MODEL.md §3 — <c>RetailPrice</c> is required only when B2C is enabled).
     /// </summary>
     public decimal? EffectivePrice => RetailPrice ?? WholesaleIndicativeUnitPrice;
 
@@ -122,9 +120,7 @@ public sealed record ShopResultView(
 }
 
 /// <summary>
-/// A variant as shown to a buyer: no reserved/sold counters (docs/03-BUSINESS-RULES.md §7
-/// tracks those for fulfillment, not for public disclosure; faed-commerce-ux "avoid exact
-/// unit-count obsession").
+/// A variant as shown to a buyer: no reserved/sold counters.
 /// </summary>
 public sealed record PublicListingVariantView(
     Guid Id,
@@ -143,7 +139,6 @@ public sealed record PublicListingVariantView(
 /// Everything an anonymous or signed-in buyer may see about a Live listing. Deliberately a
 /// separate shape from the merchant/admin <see cref="ListingDetailView"/>: moderation history,
 /// blockers and hidden-by-admin flags are internal review state, not public content
-/// (docs/08-SECURITY-AND-PRIVACY.md §3).
 /// </summary>
 public sealed record PublicListingDetailView(
     Guid Id,

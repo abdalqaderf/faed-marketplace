@@ -1,4 +1,4 @@
-using Faed.Web.Models.Entities;
+﻿using Faed.Web.Models.Entities;
 using Faed.Web.Models.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -42,7 +42,6 @@ public sealed class MerchantProfileConfiguration : IEntityTypeConfiguration<Merc
         builder.Property(p => p.RowVersion).IsRowVersion();
 
         // Persist the workflow enum as text so the audit trail and ad-hoc DB reads stay legible
-        // (docs/19-CODING-CONVENTIONS.md "Enums vs tables").
         builder.Property(p => p.VerificationStatus)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -54,7 +53,6 @@ public sealed class MerchantProfileConfiguration : IEntityTypeConfiguration<Merc
 
         // 1:1 with the Identity user. No navigation on the domain side; delete is restricted
         // so business history is never cascade-removed with an account
-        // (docs/04-DOMAIN-MODEL.md §12).
         builder.HasOne<ApplicationUser>()
             .WithOne()
             .HasForeignKey<MerchantProfile>(p => p.UserId)

@@ -1,4 +1,4 @@
-using Faed.Web.Services.Marketplace;
+﻿using Faed.Web.Services.Marketplace;
 using Faed.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
@@ -20,8 +20,7 @@ namespace Faed.Web.Controllers
 
         /// <summary>
         /// The shared empty/error page for non-2xx responses re-executed by
-        /// <c>UseStatusCodePagesWithReExecute</c> (docs/07-UI-UX-SPEC.md §12 "do not show
-        /// generic blank pages") — most importantly 404, which a guessed or stale listing/store
+        /// <c>UseStatusCodePagesWithReExecute</c> — most importantly 404, which a guessed or stale listing/store
         /// slug now reaches instead of the framework's bare status page.
         /// </summary>
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

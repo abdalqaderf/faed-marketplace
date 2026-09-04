@@ -5,15 +5,13 @@ namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A B2C order: exactly one buyer, exactly one selling merchant, one or more variant lines
-/// from that merchant (AGENTS.md Rule D, docs/17-DATA-INVARIANTS.md "B2C Order"). Faed does
+/// from that merchant. Faed does
 /// not run a multi-merchant cart.
-///
 /// The aggregate owns the stock-workflow rules but not the stock movements themselves: it
 /// records the status transition and its timestamp, and the order service moves the
 /// reserved/available/sold quantities on each <see cref="OrderItem"/>'s variant inside the
-/// same transaction (docs/06-ARCHITECTURE.md §6). Money is always server-calculated here
+/// same transaction. Money is always server-calculated here
 /// from the line snapshots plus the fulfilment fee snapshot — never trusted from input
-/// (docs/08-SECURITY-AND-PRIVACY.md §7).
 /// </summary>
 public class Order
 {
@@ -104,7 +102,7 @@ public class Order
 
     public Guid Id { get; private set; }
 
-    /// <summary>The Identity user id of the buyer. Their orders are private to them (docs/16-PERMISSIONS-MATRIX.md).</summary>
+    /// <summary>The Identity user id of the buyer. Their orders are private to them.</summary>
     public string BuyerUserId { get; private set; } = null!;
 
     public Guid MerchantProfileId { get; private set; }
@@ -135,10 +133,10 @@ public class Order
     public decimal Total { get; private set; }
 
     /// <summary>
-    /// When the stock reservation lapses while the order is still <see cref="OrderStatus.Pending"/>
-    /// (docs/03-BUSINESS-RULES.md §7). Cleared once the merchant confirms — a confirmed order
+    /// When the stock reservation lapses while the order is still <see cref="OrderStatus.Pending"/>.
+    /// Cleared once the merchant confirms — a confirmed order
     /// holds its stock until it is fulfilled or cancelled. The window itself is configuration,
-    /// not a domain constant (docs/13-OPEN-QUESTIONS.md §8).
+    /// not a domain constant.
     /// </summary>
     public DateTime? ReservationExpiresAtUtc { get; private set; }
 
@@ -223,7 +221,7 @@ public class Order
         {
             // The stock reservation already lapsed. Confirming would keep it held on the
             // strength of a window that has passed; the expiry sweep must cancel it and
-            // release the stock instead (docs/03-BUSINESS-RULES.md §7).
+            // release the stock instead.
             throw new DomainException(
                 "This order's stock reservation has expired. It will be released — ask the buyer to order again.");
         }

@@ -1,4 +1,4 @@
-using Faed.Web.Models.Identity;
+﻿using Faed.Web.Models.Identity;
 using Faed.Web.Services.Abstractions;
 using Microsoft.AspNetCore.Identity;
 
@@ -57,7 +57,6 @@ public sealed class UserRoleService(UserManager<ApplicationUser> userManager) : 
 
         // A deactivated account keeps its role rows, so the role check alone would still let a
         // disabled administrator decide applications and open private verification documents
-        // (docs/08-SECURITY-AND-PRIVACY.md §2).
         return user is { IsActive: true } && await userManager.IsInRoleAsync(user, role);
     }
 

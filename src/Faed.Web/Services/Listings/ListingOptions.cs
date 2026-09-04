@@ -1,9 +1,9 @@
 namespace Faed.Web.Services.Listings;
 
 /// <summary>
-/// Configurable listing and upload limits (docs/06-ARCHITECTURE.md §11). The launch B2B
-/// minimum of 10 units is a policy default, not a platform constant
-/// (docs/03-BUSINESS-RULES.md §11), so it lives here rather than in the domain.
+/// Configurable listing and upload limits. The launch B2B
+/// minimum of 10 units is a policy default, not a platform constant,
+/// So it lives here rather than in the domain.
 /// </summary>
 public sealed class ListingOptions
 {
