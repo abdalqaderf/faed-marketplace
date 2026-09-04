@@ -3,6 +3,7 @@ using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.B2B;
+using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
@@ -19,7 +20,7 @@ namespace Faed.Web.Data.Seed;
 
 /// <summary>
 /// Deterministic development/demo data set for field validation and portfolio demonstration
-/// (docs/12-SEED-DATA.md, tasks/TASK-011-HARDENING-AND-DEMO.md).
+/// (docs/12-SEED-DATA.md, tasks/TASK-011-HARDENING-AND-DEMO.md, tasks/TASK-016-CLAUDE-REALISTIC-DEMO-DATA.md).
 ///
 /// <para>
 /// Every merchant, listing, order, negotiation, deal, dispute and review it creates goes
@@ -44,7 +45,9 @@ namespace Faed.Web.Data.Seed;
 /// run was interrupted (some demo accounts exist but the review does not),
 /// <see cref="SeedCoreAsync"/> first <em>purges</em> the partial demo data — in
 /// foreign-key-safe order — and then rebuilds it from scratch. Restarting the app is enough
-/// to recover; a manual <c>ef database drop</c> is not required.
+/// to recover; a manual <c>ef database drop</c> is not required. Reference data the run
+/// creates but does not own outright (the two demo brands) is looked up by name before
+/// creation, so a purge-and-rebuild cycle never leaves duplicate brand rows behind.
 /// </para>
 /// </summary>
 public static class DemoDataSeeder
@@ -63,6 +66,7 @@ public static class DemoDataSeeder
     ];
 
     private const int ClearanceOpeningQuantity = 4;
+    private const int LowStockOpeningQuantity = 3;
 
     public static async Task SeedAsync(
         IServiceProvider services,
@@ -195,12 +199,16 @@ public static class DemoDataSeeder
         await DeleteAsync(db, db.B2BDeals.Where(d => dealIds.Contains(d.Id)), cancellationToken);
         await DeleteAsync(db, db.B2BNegotiations.Where(n => negotiationIds.Contains(n.Id)), cancellationToken);
         await DeleteAsync(db, db.Orders.Where(o => orderIds.Contains(o.Id)), cancellationToken);
+        await DeleteAsync(db, db.InventoryAdjustments.Where(a => variantIds.Contains(a.ListingVariantId)), cancellationToken);
         await DeleteAsync(db, db.MerchantLocations.Where(l => merchantIds.Contains(l.MerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.MerchantDeliveryZones.Where(z => merchantIds.Contains(z.MerchantProfileId)), cancellationToken);
-        await DeleteAsync(db, db.InventoryAdjustments.Where(a => variantIds.Contains(a.ListingVariantId)), cancellationToken);
         await DeleteAsync(db, db.Listings.Where(l => listingIds.Contains(l.Id)), cancellationToken);
         await DeleteAsync(db, db.MerchantProfiles.Where(p => merchantIds.Contains(p.Id)), cancellationToken);
         await DeleteAsync(db, db.AdminActionLogs.Where(a => userIds.Contains(a.AdminUserId)), cancellationToken);
+
+        // Demo brands are reference data, not merchant-owned rows, so they are intentionally
+        // not purged here: RunAsync looks an existing brand up by name before creating one
+        // (see GetOrCreateBrandAsync), so leaving them in place cannot produce a duplicate.
 
         foreach (var id in userIds)
         {
@@ -239,6 +247,8 @@ public static class DemoDataSeeder
         private readonly IB2BDealService _deals;
         private readonly IDisputeService _disputes;
         private readonly IReviewService _reviews;
+        private readonly IInventoryService _inventory;
+        private readonly IAdminCatalogService _catalog;
         private readonly string _password;
         private readonly CancellationToken _ct;
 
@@ -257,6 +267,8 @@ public static class DemoDataSeeder
             _deals = sp.GetRequiredService<IB2BDealService>();
             _disputes = sp.GetRequiredService<IDisputeService>();
             _reviews = sp.GetRequiredService<IReviewService>();
+            _inventory = sp.GetRequiredService<IInventoryService>();
+            _catalog = sp.GetRequiredService<IAdminCatalogService>();
 
             // A generous command timeout. The seed does not race anything in a real
             // Development database, but a CI box or a workstation running the whole test
@@ -281,10 +293,24 @@ public static class DemoDataSeeder
             await ConfigureFulfillmentAsync(merchantA, "Amman Threads — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
             await ConfigureFulfillmentAsync(merchantB, "Petra Footwear — Sweifieh", "8 Wakalat St", "Sweifieh");
 
+            // Admin-controlled brands (docs/13-OPEN-QUESTIONS.md items 5–6): looked up by name
+            // before creation, so a purge-and-rebuild cycle never duplicates them.
+            var novaBasicsId = await GetOrCreateBrandAsync(adminId, "Nova Basics");
+            var trailHeadId = await GetOrCreateBrandAsync(adminId, "TrailHead");
+
             var tshirt = await CreateTshirtListingAsync(merchantA, adminId);
             var handbag = await CreateHandbagListingAsync(merchantA, adminId);
+            await CreateDenimJacketListingAsync(merchantA, adminId, novaBasicsId);
+            await CreateWoolScarfListingAsync(merchantA, adminId);
+            await CreateLeatherBeltListingAsync(merchantA, adminId);
+            await CreateCanvasBackpackListingAsync(merchantA, adminId);
+
             var sneakers = await CreateSneakersListingAsync(merchantB, adminId);
             var clearance = await CreateClearanceListingAsync(merchantB, adminId);
+            var runningShoes = await CreateRunningShoesListingAsync(merchantB, adminId, trailHeadId);
+            await CreateLeatherSandalsListingAsync(merchantB, adminId);
+            await CreateSportsSocksListingAsync(merchantB, adminId);
+            await CreateShoeBagSetListingAsync(merchantB, adminId);
 
             // Drop everything the listing build tracked before the transactional scenarios so
             // the order/negotiation/deal services start against a clean change tracker.
@@ -308,6 +334,21 @@ public static class DemoDataSeeder
             Ok(await _orders.ConfirmAsync(merchantB.UserId, clearanceOrderId, _ct), "confirm clearance demo order");
             Ok(await _orders.MarkReadyForPickupAsync(merchantB.UserId, clearanceOrderId, _ct), "ready clearance demo order");
             Ok(await _orders.ConfirmReceiptAsync(buyerAId, clearanceOrderId, _ct), "buyer confirms clearance demo order");
+
+            // One dispatched delivery order: demonstrates merchant-delivery fulfilment and the
+            // OutForDelivery lifecycle state, left short of completion.
+            var deliveryOrderId = await PlaceDeliveryOrderAsync(
+                buyerBId, merchantB, [(runningShoes.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
+                "14 Al Yarmouk St, Sweifieh, Amman");
+            Ok(await _orders.ConfirmAsync(merchantB.UserId, deliveryOrderId, _ct), "confirm delivery demo order");
+            Ok(await _orders.MarkOutForDeliveryAsync(merchantB.UserId, deliveryOrderId, _ct), "dispatch delivery demo order");
+
+            // One manual inventory adjustment: an extra carton found during a stockroom count.
+            OkValue(
+                await _inventory.AdjustStockAsync(merchantA.UserId, new StockAdjustmentInput(
+                    tshirt.VariantIds[0], InventoryAdjustmentType.StockFound, 5,
+                    "Found an extra carton of black medium tees during the seasonal stockroom count."), _ct),
+                "adjust demo tee inventory");
 
             // One open B2B negotiation: Petra Footwear enquires about Amman Threads' wholesale tees.
             await StartNegotiationAsync(
@@ -433,7 +474,19 @@ public static class DemoDataSeeder
                 $"add delivery zone for {merchant.BusinessName}");
         }
 
-        // ---- Listings ---------------------------------------------------------------
+        private async Task<Guid> GetOrCreateBrandAsync(string adminId, string name)
+        {
+            var existing = await _db.Brands.AsNoTracking()
+                .Where(b => b.Name == name).Select(b => (Guid?)b.Id).FirstOrDefaultAsync(_ct);
+            if (existing is { } id)
+            {
+                return id;
+            }
+
+            return OkValue(await _catalog.CreateBrandAsync(adminId, name, _ct), $"create brand {name}");
+        }
+
+        // ---- Listings — Amman Threads (clothing / bags & accessories) ----------------
 
         private async Task<DemoListing> CreateTshirtListingAsync(DemoMerchant merchant, string adminId)
         {
@@ -486,6 +539,105 @@ public static class DemoDataSeeder
 
             return await DescribeListingAsync(listingId);
         }
+
+        private async Task<DemoListing> CreateDenimJacketListingAsync(DemoMerchant merchant, string adminId, Guid brandId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("clothing"), brandId, await GradeIdAsync("B"),
+                "Classic Indigo Denim Jacket (Past Season)",
+                "Last winter's colourway of our best-selling trucker jacket. Brand-new and unworn; the " +
+                "swing tags are present but the retail box was opened for a photo shoot, which is why it " +
+                "is being cleared at a discount.",
+                null, 28.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "14-day size-exchange on unworn items.", null, "One jacket, folded with tag.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create denim jacket listing");
+            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "S", "M", "L");
+            await AddVariantAsync(merchant.UserId, listingId, "DENIM-S", [size["S"]], 10);
+            await AddVariantAsync(merchant.UserId, listingId, "DENIM-M", [size["M"]], 18);
+            await AddVariantAsync(merchant.UserId, listingId, "DENIM-L", [size["L"]], 12);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-front.png", "Indigo denim jacket, front view");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-detail.png", "Button placket detail");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "denim-jacket-box.png", "Retail box opened for a photo shoot");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("PastSeason")] }, _ct),
+                "attach denim jacket discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateWoolScarfListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("A"),
+                "Charcoal Wool-Blend Scarf — Final Units",
+                "Soft brushed wool-blend scarf from our overstock run. New with tags; only a handful of " +
+                "units are left after our winter promotion.",
+                null, 9.500m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "7-day exchange while stock lasts.", null, "One scarf with tag.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create wool scarf listing");
+            await AddVariantAsync(merchant.UserId, listingId, "SCARF-CHARCOAL", [], LowStockOpeningQuantity);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "wool-scarf.png", "Charcoal wool-blend scarf, flat lay");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
+                "attach wool scarf discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateLeatherBeltListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("C"),
+                "Genuine Leather Belt — Customer Return",
+                "Full-grain leather belt returned unused within our exchange window. Inspected, re-boxed " +
+                "and in full working order; sold at a discount because it can no longer be sold as new.",
+                null, 14.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "Sold as-is; no further exchange on returned units.", null, "One belt, boxed.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather belt listing");
+            await AddVariantAsync(merchant.UserId, listingId, "BELT-BRN-M", [], 15);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-belt.png", "Brown leather belt with buckle");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("CustomerReturn")] }, _ct),
+                "attach leather belt discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateCanvasBackpackListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("B"),
+                "Heavyweight Canvas Backpack (Packaging Damage)",
+                "Durable waxed-canvas backpack with a padded laptop sleeve. Brand-new and unused; some " +
+                "retail boxes arrived crushed from the freight pallet, which is why these are discounted.",
+                null, 24.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "14-day exchange on unused items.", null, "One backpack; box condition varies.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create canvas backpack listing");
+            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Olive");
+            await AddVariantAsync(merchant.UserId, listingId, "BAG-BLK", [colour["Black"]], 20);
+            await AddVariantAsync(merchant.UserId, listingId, "BAG-OLV", [colour["Olive"]], 15);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "canvas-backpack.png", "Olive canvas backpack, front view");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "canvas-backpack-box.png", "Example of a crushed retail box");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("PackagingDamage")] }, _ct),
+                "attach canvas backpack discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        // ---- Listings — Petra Footwear (shoes / bags & accessories) -------------------
 
         private async Task<DemoListing> CreateSneakersListingAsync(DemoMerchant merchant, string adminId)
         {
@@ -540,6 +692,100 @@ public static class DemoDataSeeder
             return await DescribeListingAsync(listingId);
         }
 
+        private async Task<DemoListing> CreateRunningShoesListingAsync(DemoMerchant merchant, string adminId, Guid brandId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("shoes"), brandId, await GradeIdAsync("A"),
+                "TrailHead Runner — Overstock Colourway",
+                "A colourway we simply over-ordered for the season. New, unworn and boxed; nothing wrong " +
+                "with the pair, just more stock than we can sell at full price.",
+                null, 42.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "14-day exchange on unworn pairs.", null, "One pair, boxed.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create running shoes listing");
+            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "40", "41", "42");
+            await AddVariantAsync(merchant.UserId, listingId, "RUN-40", [size["40"]], 25);
+            await AddVariantAsync(merchant.UserId, listingId, "RUN-41", [size["41"]], 25);
+            await AddVariantAsync(merchant.UserId, listingId, "RUN-42", [size["42"]], 20);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "running-shoes-pair.png", "Pair of TrailHead running shoes");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
+                "attach running shoes discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateLeatherSandalsListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("shoes"), null, await GradeIdAsync("D"),
+                "Leather Sandals — Display Unit",
+                "Former window-display sandals in tan leather. Structurally sound; there is a light mark " +
+                "on the strap from the display stand, shown in the defect photo.",
+                null, 19.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "Sold as-is; no exchange on clearance display units.", null, "One pair, no box.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather sandals listing");
+            await AddVariantAsync(merchant.UserId, listingId, "SANDAL-TAN-42", [], 6);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-sandals-front.png", "Tan leather sandals, front view");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "leather-sandals-scuff.png", "Close-up of a light mark on the strap");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("DisplayItem")] }, _ct),
+                "attach leather sandals discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateSportsSocksListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("A"),
+                "Sports Socks 3-Pack — Final Units",
+                "Cushioned sports socks from our overstock run. New with tags; only a few packs are left.",
+                null, 6.500m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "7-day exchange while stock lasts.", null, "One 3-pack, tagged.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create sports socks listing");
+            await AddVariantAsync(merchant.UserId, listingId, "SOCK-3PK", [], LowStockOpeningQuantity + 2);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "sports-socks.png", "Sports socks 3-pack, flat lay");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
+                "attach sports socks discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        private async Task<DemoListing> CreateShoeBagSetListingAsync(DemoMerchant merchant, string adminId)
+        {
+            var details = new ListingDetailsInput(
+                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("C"),
+                "Travel Shoe Bag Set (3-Pack) — Cosmetic Defect",
+                "Drawstring travel bags for keeping shoes separate in a suitcase. New and unused; the " +
+                "printed logo is slightly off-centre on one bag in the set, which does not affect use.",
+                null, 11.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                "7-day exchange on unused sets.", null, "Set of three drawstring bags.", null, []);
+
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create shoe bag set listing");
+            await AddVariantAsync(merchant.UserId, listingId, "SHOEBAG-SET", [], 12);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "shoe-bag-set.png", "Travel shoe bag set, flat lay");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "shoe-bag-set-logo.png", "Close-up of the off-centre printed logo");
+            Ok(
+                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
+                    details with { DiscountReasonIds = [await ReasonIdAsync("CosmeticDefect")] }, _ct),
+                "attach shoe bag set discount reason");
+            await PublishAsync(merchant.UserId, adminId, listingId);
+
+            return await DescribeListingAsync(listingId);
+        }
+
+        // ---- Listing build helpers ----------------------------------------------------
+
         private async Task<Dictionary<string, Guid>> AddOptionAsync(
             string userId, Guid listingId, string name, params string[] values)
         {
@@ -565,11 +811,14 @@ public static class DemoDataSeeder
                 $"add variant {sku}");
 
         private async Task AddImageAsync(
-            string userId, Guid listingId, ListingMediaType type, string fileName, string altText) =>
+            string userId, Guid listingId, ListingMediaType type, string fileName, string altText)
+        {
+            var bytes = DemoAssets.LoadImage(fileName);
             Ok(
                 await _listings.AddImageAsync(userId, listingId, new AddListingImageInput(
-                    type, new MemoryStream(DemoAssets.Png), fileName, "image/png", DemoAssets.Png.Length, altText), _ct),
+                    type, new MemoryStream(bytes), fileName, "image/png", bytes.Length, altText), _ct),
                 $"add {type} image {fileName}");
+        }
 
         private async Task PublishAsync(string userId, string adminId, Guid listingId)
         {
@@ -599,6 +848,21 @@ public static class DemoDataSeeder
                     [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
                     OrderFulfillmentType.Pickup, locationId, null, null, contactName, contactPhone, null), _ct),
                 "place demo order");
+        }
+
+        private async Task<Guid> PlaceDeliveryOrderAsync(
+            string buyerId, DemoMerchant merchant,
+            IReadOnlyList<(Guid VariantId, int Quantity)> lines, string contactName, string contactPhone,
+            string deliveryAddress)
+        {
+            var settings = await _store.GetSettingsAsync(merchant.UserId, _ct);
+            var zoneId = settings.DeliveryZones.First(z => z.IsActive).Id;
+
+            return OkValue(
+                await _orders.PlaceOrderAsync(buyerId, new PlaceOrderInput(
+                    [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
+                    OrderFulfillmentType.MerchantDelivery, null, zoneId, deliveryAddress, contactName, contactPhone, null), _ct),
+                "place demo delivery order");
         }
 
         private async Task<Guid> StartNegotiationAsync(
@@ -645,15 +909,43 @@ public static class DemoDataSeeder
     private readonly record struct DemoListing(Guid Id, string Slug, IReadOnlyList<Guid> VariantIds);
 
     /// <summary>
-    /// Tiny, inert media fixtures embedded for the Development-only demo seed. The PNG is a
-    /// genuine 1×1 image and the PDF is a complete minimal document, so both pass the same
-    /// fail-closed upload inspector a real merchant upload would
-    /// (docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md). No secrets, no machine-specific paths.
+    /// Media fixtures for the Development-only demo seed. Product photography is a set of
+    /// small, original flat-illustration PNGs generated locally by
+    /// <c>tools/demo-images/generate-demo-images.ps1</c> (System.Drawing/GDI+) — nothing is
+    /// downloaded or hotlinked, so there is no licensing concern. Each file lives under
+    /// <c>Data/Seed/Assets/Images</c> and is copied next to the built application (see the
+    /// <c>Content</c> item in Faed.Web.csproj), so it is reachable from disk at seed time
+    /// whether the app is run with <c>dotnet run</c> or from a built <c>bin</c> output.
+    /// The verification-document PDF stays a tiny generated fixture: it is never shown to
+    /// buyers, so it does not need to look realistic
+    /// (docs/adr/0007-VERIFICATION-UPLOAD-INSPECTION.md).
     /// </summary>
     private static class DemoAssets
     {
-        public static byte[] Png { get; } = Convert.FromBase64String(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        private static readonly string ImagesDirectory =
+            Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "Assets", "Images");
+
+        private static readonly Dictionary<string, byte[]> ImageCache = new(StringComparer.OrdinalIgnoreCase);
+
+        public static byte[] LoadImage(string fileName)
+        {
+            if (ImageCache.TryGetValue(fileName, out var cached))
+            {
+                return cached;
+            }
+
+            var path = Path.Combine(ImagesDirectory, fileName);
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException(
+                    $"Demo seed image '{fileName}' was not found at '{path}'. Regenerate the demo image set " +
+                    "with tools/demo-images/generate-demo-images.ps1 before enabling the demo seed.");
+            }
+
+            var bytes = File.ReadAllBytes(path);
+            ImageCache[fileName] = bytes;
+            return bytes;
+        }
 
         public static byte[] Pdf { get; } = BuildMinimalPdf();
 

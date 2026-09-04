@@ -17,4 +17,15 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Development-only demo product photography (tools/demo-images/generate-demo-images.ps1,
+         Data/Seed/DemoDataSeeder.cs). Copied next to the built app so DemoAssets.LoadImage can
+         read it from disk under both "dotnet run" and a built bin output; excluded from
+         "dotnet publish" output since it is never needed outside local Development. -->
+    <Content Include="Data\Seed\Assets\Images\**\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

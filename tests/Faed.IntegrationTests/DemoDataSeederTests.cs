@@ -81,16 +81,25 @@ public sealed class DemoDataSeederTests(DemoSeedWebApplicationFactory factory)
         Assert.Equal(MerchantVerificationStatus.PendingReview, pending.VerificationStatus);
 
         var listings = await db.Listings.AsNoTracking().ToListAsync();
-        Assert.Equal(4, listings.Count);
-        Assert.Equal(3, listings.Count(l => l.Status == ListingStatus.Live));
+        Assert.Equal(12, listings.Count);
+        Assert.Equal(11, listings.Count(l => l.Status == ListingStatus.Live));
         Assert.Equal(1, listings.Count(l => l.Status == ListingStatus.SoldOut));
         Assert.Contains(listings, l => l.AllowB2B);
         Assert.Contains(listings, l => !l.AllowB2B);
         Assert.Contains(await db.ListingMedia.AsNoTracking().ToListAsync(), m => m.MediaType == ListingMediaType.Defect);
 
+        var brands = await db.Brands.AsNoTracking().Select(b => b.Name).ToListAsync();
+        Assert.Contains("Nova Basics", brands);
+        Assert.Contains("TrailHead", brands);
+
         var orders = await db.Orders.AsNoTracking().ToListAsync();
-        Assert.Contains(orders, o => o.Status == OrderStatus.Confirmed);   // one active B2C order
-        Assert.Contains(orders, o => o.Status == OrderStatus.Completed);   // one completed B2C order
+        Assert.Contains(orders, o => o.Status == OrderStatus.Confirmed);       // one active B2C order
+        Assert.Contains(orders, o => o.Status == OrderStatus.Completed);       // one completed B2C order
+        Assert.Contains(orders, o => o.Status == OrderStatus.OutForDelivery);  // one dispatched delivery order
+        Assert.Contains(orders, o => o.FulfillmentType == OrderFulfillmentType.MerchantDelivery);
+
+        Assert.Contains(await db.InventoryAdjustments.AsNoTracking().ToListAsync(),
+            a => a.AdjustmentType == InventoryAdjustmentType.StockFound);
 
         var negotiations = await db.B2BNegotiations.AsNoTracking().ToListAsync();
         Assert.Contains(negotiations, n => n.Status == B2BNegotiationStatus.Open);

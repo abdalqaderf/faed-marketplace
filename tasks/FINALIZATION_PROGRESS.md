@@ -10,9 +10,9 @@
 
 **Project Phase:** Finalization after Phase One submission  
 **Overall Status:** IN PROGRESS  
-**Current Task:** TASK-016  
-**Next Agent:** Claude Code  
-**Next Action:** Prepare realistic demo data and local product media using the current repository and `FINAL_RUNTIME_FIX_REPORT.md`; do not revisit TASK-015 unless a regression is found.
+**Current Task:** TASK-018  
+**Next Agent:** Codex  
+**Next Action:** Perform the repository cleanup audit using the current repository and `FINAL_DEMO_AUDIT.md`; TASK-017 found no blocking issues, so no revisit of TASK-016 is needed.
 
 ---
 
@@ -50,8 +50,8 @@ If a task is blocked, do **not** advance to the next task unless the blocker is 
 |---|---|---|---|---|
 | TASK-014 | Codex | Final runtime audit | COMPLETED WITH NOTES | `FINAL_RUNTIME_AUDIT.md` |
 | TASK-015 | Claude Code | Fix validated runtime issues | COMPLETED WITH NOTES | `FINAL_RUNTIME_FIX_REPORT.md` |
-| TASK-016 | Claude Code | Realistic demo data and media | NOT STARTED | `DEMO_DATA_REPORT.md` |
-| TASK-017 | Codex | Review populated runtime/demo | NOT STARTED | `FINAL_DEMO_AUDIT.md` |
+| TASK-016 | Claude Code | Realistic demo data and media | COMPLETED | `DEMO_DATA_REPORT.md` |
+| TASK-017 | Claude Code (deviation; assigned Codex) | Review populated runtime/demo | COMPLETED WITH NOTES | `FINAL_DEMO_AUDIT.md` |
 | TASK-018 | Codex | Repository cleanup audit | NOT STARTED | `REPOSITORY_CLEANUP_AUDIT.md` |
 | TASK-019 | Claude Code | Execute repository cleanup | NOT STARTED | `REPOSITORY_CLEANUP_REPORT.md` |
 | TASK-020 | Claude Code | Rewrite README/final docs | NOT STARTED | Updated `README.md` |
@@ -120,21 +120,21 @@ If completed successfully:
 
 **Agent:** Claude Code  
 **Task File:** `TASK-016-CLAUDE-REALISTIC-DEMO-DATA.md`  
-**Status:** NOT STARTED  
+**Status:** COMPLETED  
 **Prerequisites:** TASK-015 completed  
 **Expected Output:** `DEMO_DATA_REPORT.md`
 
 ### Completion Record
 
-- Date:
-- Result:
-- Summary:
-- Demo users/roles prepared:
-- Listings/media prepared:
-- Transactions/scenarios prepared:
-- Verification:
-- Files created/changed:
-- Blockers/notes:
+- Date: 2026-09-04
+- Result: COMPLETED — the Development/demo database was rebuilt from a clean state and repopulated through the real application services; no blockers.
+- Summary: Expanded `DemoDataSeeder` from 4 to 12 listings (11 Live, 1 SoldOut) across the two approved merchants, added two admin-controlled brands, a fourth B2C order scenario (merchant-delivery/OutForDelivery), and one manual inventory adjustment, all still driven through the existing services/business rules and still idempotent (looked-up-by-name brand reuse; existing purge-and-rebuild recovery). Replaced the single hardcoded 1×1 PNG fixture with 19 real, locally generated flat-illustration product images (`tools/demo-images/generate-demo-images.ps1`, System.Drawing — no downloads or hotlinking), wired into the build via a `Content` item in `Faed.Web.csproj` and loaded from disk by `DemoDataSeeder.DemoAssets`. Dropped and recreated the local `Faed` LocalDB database (it held only synthetic Development data — the old demo set plus stray rows from earlier ad hoc runs) and reapplied all 10 migrations cleanly.
+- Demo users/roles prepared: Admin (`demo-admin@faed.local`); 2 approved merchants (`merchant-a@faed.local` "Amman Threads", `merchant-b@faed.local` "Petra Footwear"); 1 pending merchant (`pending-merchant@faed.local` "Rainbow Kids Wear"); 2 buyers (`buyer-a@faed.local`, `buyer-b@faed.local`). Shared Development-only password via `Faed:DemoSeed:Password` (user secrets) or `Faed__DemoSeed__Password` (env var); seed gated by `Faed:DemoSeed:Enabled=true` in Development only.
+- Listings/media prepared: 12 listings (11 Live, 1 SoldOut) across Clothing/Shoes/Bags & Accessories, all 4 condition grades, 6 of 8 discount reasons, 2 brands (Nova Basics, TrailHead), a low-stock item, a sold-out item, and several multi-variant listings. 19 original locally generated PNG images (~1 MB total) under `src/Faed.Web/Data/Seed/Assets/Images/`, including the defect/packaging photos the app's own business rules require for Grade B/D or PackagingDamage/CosmeticDefect listings.
+- Transactions/scenarios prepared: 4 B2C orders (active/Confirmed, completed/reviewed, sold-out/cleared, dispatched/OutForDelivery-via-delivery-zone) plus 1 manual `StockFound` inventory adjustment; 3 B2B scenarios (open negotiation, counter-offer chain, completed deal); 1 dispute (`MissingItems`, `UnderReview`); 1 five-star review.
+- Verification: Release build PASS (0 warnings/0 errors); full test suite PASS 464/464 (270 unit + 194 integration, incl. updated `DemoDataSeederTests` covering the new counts, idempotency, and interrupted-run recovery); `Faed` LocalDB dropped and recreated with all 10 migrations applying cleanly; two full app startups in Development confirmed "Demo data set seeded." then "Demo data already present; skipping demo seed." with unchanged row counts; HTTP smoke on `/`, `/Shop`, `/Identity/Account/Register`, `/Merchant/Reviews`, listing detail pages, both merchant storefronts, category filters and search all returned expected results; a fetched listing image confirmed a genuine 900×900 `image/png` response.
+- Files created/changed: `src/Faed.Web/Data/Seed/DemoDataSeeder.cs`; `src/Faed.Web/Faed.Web.csproj`; `tests/Faed.IntegrationTests/DemoDataSeederTests.cs`; new `src/Faed.Web/Data/Seed/Assets/Images/*.png` (19 files); new `tools/demo-images/generate-demo-images.ps1`; `DEMO_DATA_REPORT.md`; this tracker.
+- Blockers/notes: None blocking. Demo product photography is original locally generated flat-illustration artwork rather than real photography, since no user-supplied images, image-generation tool, or web-fetch capability was available this session — documented in `DEMO_DATA_REPORT.md` §H. The optional "pending listing" moderation scenario from the task file (explicitly optional) was not added; existing pending-merchant and dispute scenarios already exercise the Admin review workflow.
 
 ### Handoff
 
@@ -148,23 +148,25 @@ If completed successfully:
 
 ## TASK-017 — Demo & Runtime Review
 
-**Agent:** Codex  
+**Agent:** Codex (assigned). **Actually performed by:** Claude Code, at the user's
+explicit direction after being asked and choosing to proceed despite the assignment
+mismatch. This is a recorded deviation, not a change to Decision #1/#2.  
 **Task File:** `TASK-017-CODEX-DEMO-RUNTIME-REVIEW.md`  
-**Status:** NOT STARTED  
+**Status:** COMPLETED WITH NOTES  
 **Prerequisites:** TASK-016 completed  
 **Required Input:** `DEMO_DATA_REPORT.md`  
 **Expected Output:** `FINAL_DEMO_AUDIT.md`
 
 ### Completion Record
 
-- Date:
-- Result:
-- Summary:
-- Routes/roles checked:
-- Demo/media result:
-- Verification:
-- Files created/changed:
-- Blockers/notes:
+- Date: 2026-09-05
+- Result: COMPLETED WITH NOTES — overall result `PASS WITH NOTES`; no P0/P1 code issues found.
+- Summary: Verified Release build (0 warnings/0 errors) and the full test suite (464/464 — 270 unit + 194 integration). Verified all 10 migrations apply cleanly to a freshly dropped/recreated Development database with no model drift. Found that the demo accounts left by TASK-016 could not log in with the currently configured `Faed:DemoSeed:Password` secret; root-caused this (with user approval to drop/recreate the local DB) to stale local state — the accounts' stored password reflected whatever secret value was active on a prior run, not necessarily today's value, since `DemoDataSeeder` only sets a password once at account creation and never re-applies it on the idempotent-skip path. After a fresh reseed with the current secret, all 6 demo accounts authenticated successfully via real HTTP form logins, and a second app restart reproduced the idempotent skip with unchanged row counts and continued-working credentials — confirming the seeding/auth mechanism itself has no defect. Performed full black-box role/route verification via authenticated cookie sessions for Anonymous, Buyer, Pending Merchant, Approved Merchant, and Admin, including B2B negotiation/deal, dispute, and moderation-queue pages. No unhandled exceptions or broken assets were observed.
+- Routes/roles checked: Anonymous (Home/Shop/Register/Login, storefronts, category/search filters, Live and SoldOut listing detail, listing image), Buyer (Orders, Disputes, Checkout, blocked from Merchant/Admin), Pending Merchant (Verification allowed, Listings/Orders correctly blocked), Approved Merchant (Listings, Orders, Reviews, Deals, Analytics, Inventory, StoreSettings, Offers list/details, blocked from Admin), Admin (dashboard, MerchantVerification, ListingModeration, Disputes incl. detail, Catalog, Reviews, AuditLog, Transactions Orders/Deals, blocked from Merchant). Full detail in `FINAL_DEMO_AUDIT.md` §E.
+- Demo/media result: Final seeded counts matched `DEMO_DATA_REPORT.md` exactly (7 users, 3 merchant profiles, 12 listings, 4 orders, 3 B2B negotiations, 1 B2B deal, 1 review, 1 dispute, 2 brands); all core B2C/B2B/dispute/moderation/review workflow scenarios are reachable through the UI; one listing image fetch confirmed a genuine PNG.
+- Verification: Release build PASS; full test suite PASS 464/464; `dotnet ef migrations list` shows all 10 migrations; `dotnet ef migrations has-pending-model-changes` reports no drift; `dotnet ef database drop --force` + `dotnet ef database update` PASS on a fresh Development database; two consecutive app starts against that database show "Demo data set seeded." then "Demo data already present; skipping demo seed." with unchanged row counts; no unhandled exceptions/errors in server logs across the full session.
+- Files created/changed: `FINAL_DEMO_AUDIT.md`; `tasks/FINALIZATION_PROGRESS.md`. No application/source code was modified (REVIEW ONLY task). The local `Faed` LocalDB was dropped and recreated with a fresh demo seed (disposable Development data only, not source-controlled).
+- Blockers/notes: No blocker. One P2 finding (stale local demo login credentials after a database refresh) was fully diagnosed as an environmental/documentation issue, not a code defect — see `FINAL_DEMO_AUDIT.md` §D for root cause and recommendation (a one-sentence reseed note for TASK-020's README, not a fix task). In-app browser visual verification was unavailable this session; HTTP/authenticated-session and direct SQL checks were used instead, consistent with prior tasks.
 
 ### Handoff
 
@@ -347,6 +349,25 @@ Do not delete previous entries.
 - Environment note: a later rerun hit LocalDB saturation in test-database `MigrateAsync` before affected test bodies; unit tests remained 270/270 PASS
 - Output: FINAL_RUNTIME_FIX_REPORT.md
 - Next: TASK-016 / Claude Code
+
+[2026-09-04] TASK-016 — COMPLETED
+- Build: PASS (Release, 0 warnings, 0 errors)
+- Tests: PASS 464/464 (270 unit + 194 SQL Server integration), 0 failed, 0 skipped, incl. updated demo-seeder idempotency/recovery coverage
+- Database: `Faed` LocalDB dropped and recreated clean; all 10 migrations applied, no drift, no new migration
+- Demo data: 12 listings (11 Live/1 SoldOut), 2 brands, 4 B2C order scenarios, 3 B2B scenarios, 1 dispute, 1 review, 19 locally generated product images
+- Main findings: none blocking; demo images are original generated artwork, not real photography (no image tool/web access available)
+- Output: DEMO_DATA_REPORT.md
+- Next: TASK-017 / Codex
+
+[2026-09-05] TASK-017 — COMPLETED WITH NOTES (performed by Claude Code, assigned Codex; deviation approved by user)
+- Build: PASS (Release, 0 warnings, 0 errors)
+- Tests: PASS 464/464 (270 unit + 194 integration), 0 failed, 0 skipped
+- Migrations: all 10 present/applied; no model drift; clean drop+recreate PASS
+- Seeding: fresh seed PASS ("Demo data set seeded."); idempotent restart PASS ("Demo data already present; skipping demo seed."); row counts match DEMO_DATA_REPORT.md exactly
+- Main findings: 1 P2 (non-blocking, diagnosed, no code fix needed) — demo accounts left by TASK-016 could not log in against the DemoSeed password currently in secrets.json; root-caused to stale local state (password is only set once at account creation and not re-applied on the idempotent-skip path), confirmed by a fresh reseed where all 6 demo accounts then logged in successfully
+- Role/route checks: Anonymous, Buyer, Pending Merchant, Approved Merchant, Admin all verified via real authenticated HTTP sessions; authorization boundaries correct in both directions; no unhandled exceptions or broken assets
+- Output: FINAL_DEMO_AUDIT.md
+- Next: TASK-018 / Codex
 ```
 
 ---
