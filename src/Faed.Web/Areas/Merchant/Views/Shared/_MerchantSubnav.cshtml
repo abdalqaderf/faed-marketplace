@@ -10,7 +10,7 @@
             Label = "Account",
             Links = new[]
             {
-                (Section: "Verification", Controller: "Verification", Label: "Verification")
+                (Section: "Verification", Controller: "Verification", Label: "Verification", Icon: "shield-check")
             }
         },
         new
@@ -18,8 +18,8 @@
             Label = "Sell",
             Links = new[]
             {
-                (Section: "Listings", Controller: "Listings", Label: "Listings"),
-                (Section: "Inventory", Controller: "Inventory", Label: "Inventory")
+                (Section: "Listings", Controller: "Listings", Label: "Listings", Icon: "tag"),
+                (Section: "Inventory", Controller: "Inventory", Label: "Inventory", Icon: "package")
             }
         },
         new
@@ -27,9 +27,9 @@
             Label = "Orders & commerce",
             Links = new[]
             {
-                (Section: "Orders", Controller: "Orders", Label: "B2C Orders"),
-                (Section: "Offers", Controller: "Offers", Label: "B2B Offers"),
-                (Section: "Deals", Controller: "Deals", Label: "B2B Deals")
+                (Section: "Orders", Controller: "Orders", Label: "B2C Orders", Icon: "receipt"),
+                (Section: "Offers", Controller: "Offers", Label: "B2B Offers", Icon: "document"),
+                (Section: "Deals", Controller: "Deals", Label: "B2B Deals", Icon: "exchange")
             }
         },
         new
@@ -37,8 +37,8 @@
             Label = "Customers & resolution",
             Links = new[]
             {
-                (Section: "Reviews", Controller: "Reviews", Label: "Reviews"),
-                (Section: "Disputes", Controller: "Disputes", Label: "Disputes")
+                (Section: "Reviews", Controller: "Reviews", Label: "Reviews", Icon: "star"),
+                (Section: "Disputes", Controller: "Disputes", Label: "Disputes", Icon: "alert-circle")
             }
         },
         new
@@ -46,7 +46,7 @@
             Label = "Insights",
             Links = new[]
             {
-                (Section: "Analytics", Controller: "Analytics", Label: "Analytics")
+                (Section: "Analytics", Controller: "Analytics", Label: "Analytics", Icon: "chart")
             }
         },
         new
@@ -54,7 +54,7 @@
             Label = "Settings",
             Links = new[]
             {
-                (Section: "StoreSettings", Controller: "StoreSettings", Label: "Store Settings")
+                (Section: "StoreSettings", Controller: "StoreSettings", Label: "Store Settings", Icon: "gear")
             }
         }
     };
@@ -98,6 +98,7 @@
                         <a class="faed-merchant-sidebar__link @(active == link.Section ? "is-active" : "")"
                            aria-current="@(active == link.Section ? "page" : null)"
                            asp-area="Merchant" asp-controller="@link.Controller" asp-action="Index">
+                            @FaedIcon.Render(link.Icon, "faed-icon faed-workspace-nav__icon")
                             <span>@link.Label</span>
                         </a>
                     }
@@ -114,7 +115,7 @@
         <button class="faed-btn faed-btn--ghost faed-merchant-mobilebar__toggle" type="button"
                 data-bs-toggle="offcanvas" data-bs-target="#faed-merchant-navigation"
                 aria-controls="faed-merchant-navigation" aria-label="Open merchant navigation">
-            <span aria-hidden="true">☰</span>
+            @FaedIcon.Render("menu", "faed-icon")
             <span>Menu</span>
         </button>
     </div>
@@ -145,6 +146,7 @@
                                aria-current="@(active == link.Section ? "page" : null)"
                                asp-area="Merchant" asp-controller="@link.Controller" asp-action="Index"
                                data-bs-dismiss="offcanvas">
+                                @FaedIcon.Render(link.Icon, "faed-icon faed-workspace-nav__icon")
                                 <span>@link.Label</span>
                             </a>
                         }

@@ -9,7 +9,7 @@
             Label = "Workspace",
             Links = new[]
             {
-                (Section: "Overview", Controller: "Home", Action: "Index", Label: "Overview")
+                (Section: "Overview", Controller: "Home", Action: "Index", Label: "Overview", Icon: "dashboard")
             }
         },
         new
@@ -17,9 +17,9 @@
             Label = "Marketplace & moderation",
             Links = new[]
             {
-                (Section: "MerchantVerification", Controller: "MerchantVerification", Action: "Index", Label: "Merchant Verification"),
-                (Section: "ListingModeration", Controller: "ListingModeration", Action: "Index", Label: "Listing Moderation"),
-                (Section: "Catalog", Controller: "Catalog", Action: "Index", Label: "Catalog")
+                (Section: "MerchantVerification", Controller: "MerchantVerification", Action: "Index", Label: "Merchant Verification", Icon: "shield-check"),
+                (Section: "ListingModeration", Controller: "ListingModeration", Action: "Index", Label: "Listing Moderation", Icon: "tag"),
+                (Section: "Catalog", Controller: "Catalog", Action: "Index", Label: "Catalog", Icon: "package")
             }
         },
         new
@@ -27,9 +27,9 @@
             Label = "Transactions & operations",
             Links = new[]
             {
-                (Section: "Orders", Controller: "Transactions", Action: "Orders", Label: "B2C Orders"),
-                (Section: "Deals", Controller: "Transactions", Action: "Deals", Label: "B2B Deals"),
-                (Section: "Disputes", Controller: "Disputes", Action: "Index", Label: "Disputes")
+                (Section: "Orders", Controller: "Transactions", Action: "Orders", Label: "B2C Orders", Icon: "receipt"),
+                (Section: "Deals", Controller: "Transactions", Action: "Deals", Label: "B2B Deals", Icon: "exchange"),
+                (Section: "Disputes", Controller: "Disputes", Action: "Index", Label: "Disputes", Icon: "alert-circle")
             }
         },
         new
@@ -37,8 +37,8 @@
             Label = "Trust & governance",
             Links = new[]
             {
-                (Section: "Reviews", Controller: "Reviews", Action: "Index", Label: "Reviews"),
-                (Section: "AuditLog", Controller: "AuditLog", Action: "Index", Label: "Audit Log")
+                (Section: "Reviews", Controller: "Reviews", Action: "Index", Label: "Reviews", Icon: "star"),
+                (Section: "AuditLog", Controller: "AuditLog", Action: "Index", Label: "Audit Log", Icon: "document")
             }
         }
     };
@@ -76,6 +76,7 @@
                         <a class="faed-admin-sidebar__link @(active == link.Section ? "is-active" : "")"
                            aria-current="@(active == link.Section ? "page" : null)"
                            asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action">
+                            @FaedIcon.Render(link.Icon, "faed-icon faed-workspace-nav__icon")
                             <span>@link.Label</span>
                         </a>
                     }
@@ -92,7 +93,7 @@
         <button class="faed-btn faed-btn--ghost faed-admin-mobilebar__toggle" type="button"
                 data-bs-toggle="offcanvas" data-bs-target="#faed-admin-navigation"
                 aria-controls="faed-admin-navigation" aria-label="Open admin navigation">
-            <span aria-hidden="true">☰</span>
+            @FaedIcon.Render("menu", "faed-icon")
             <span>Menu</span>
         </button>
     </div>
@@ -119,6 +120,7 @@
                                aria-current="@(active == link.Section ? "page" : null)"
                                asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action"
                                data-bs-dismiss="offcanvas">
+                                @FaedIcon.Render(link.Icon, "faed-icon faed-workspace-nav__icon")
                                 <span>@link.Label</span>
                             </a>
                         }

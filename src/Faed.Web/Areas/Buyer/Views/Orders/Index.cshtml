@@ -62,7 +62,7 @@
                         }
                     </a>
                     <a class="faed-order-card__open" asp-action="Details" asp-route-id="@order.Id">
-                        View order <span aria-hidden="true">→</span>
+                        View order @FaedIcon.Render("arrow-right", "faed-icon")
                     </a>
                 </article>
             }

@@ -233,7 +233,7 @@
                     }
                 </dl>
                 <a class="faed-order-summary__merchant" asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@order.MerchantSlug">
-                    Visit @order.MerchantBusinessName <span aria-hidden="true">→</span>
+                    Visit @order.MerchantBusinessName @FaedIcon.Render("arrow-right", "faed-icon")
                 </a>
             </section>
 

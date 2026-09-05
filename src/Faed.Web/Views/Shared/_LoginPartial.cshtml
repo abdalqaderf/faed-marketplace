@@ -1,80 +1,136 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using Faed.Web.Models.Identity
 @inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
 
 @{
     var currentIdentityPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isLoginPage = currentIdentityPage.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase);
     var isRegisterPage = currentIdentityPage.Equals("/Account/Register", StringComparison.OrdinalIgnoreCase);
+
+    var isAdmin = User.IsInRole(FaedRoles.Admin);
+    var isMerchant = User.IsInRole(FaedRoles.Merchant);
+
+    // Mirrors FaedPolicies.CanPlaceB2COrder: Buyer or Merchant, never an administrator.
+    // Buyer/Orders and Buyer/Disputes are the only destinations gated by that policy, so
+    // this is the exact set of users for whom those top-level controls actually resolve.
+    var canBuy = !isAdmin && (User.IsInRole(FaedRoles.Buyer) || isMerchant);
+
+    // Faed has no cart and no name claim, so the trigger stays initial + "Account" and the
+    // sign-in identity is disclosed inside the menu. Reading FirstName/LastName here would
+    // add a database query to every page render.
+    var signedInAs = User.Identity?.Name ?? string.Empty;
+    var initial = (signedInAs.Length > 0 ? signedInAs[0] : 'A').ToString().ToUpperInvariant();
+
+    var workspaceArea = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
+    var inMerchantWorkspace = workspaceArea.Equals("Merchant", StringComparison.OrdinalIgnoreCase);
+    var inAdminWorkspace = workspaceArea.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+    var inBuyerArea = workspaceArea.Equals("Buyer", StringComparison.OrdinalIgnoreCase);
+    var buyerController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var onOrders = inBuyerArea && buyerController.Equals("Orders", StringComparison.OrdinalIgnoreCase);
 }
 
-<ul class="navbar-nav faed-account-nav">
-    @if (SignInManager.IsSignedIn(User))
+@if (SignInManager.IsSignedIn(User))
+{
+    @* Workspace entry is a top-level control, never buried in the personal menu. *@
+    @if (isAdmin)
     {
-        <li class="nav-item dropdown faed-account-menu">
-            <button class="nav-link dropdown-toggle faed-account-menu__trigger" type="button" data-bs-toggle="dropdown"
-                    aria-expanded="false" aria-label="Open account menu">
-                <span class="faed-account-nav__avatar" aria-hidden="true">@((User.Identity?.Name ??
-                           "A")[0].ToString().ToUpperInvariant())</span>
-                    <span class="faed-account-nav__label">Account</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end faed-account-menu__menu">
-                    @if (User.IsInRole(FaedRoles.Admin))
-                    {
-                        <li>
-                            <a class="dropdown-item" asp-area="Admin" asp-controller="Home" asp-action="Index">
-                                <span>Admin Workspace</span>
-                                <small>Marketplace operations</small>
-                            </a>
-                        </li>
-                    }
-                    else
-                    {
-                        @if (User.IsInRole(FaedRoles.Buyer) || User.IsInRole(FaedRoles.Merchant))
-                        {
-                            <li><a class="dropdown-item" asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a></li>
-                            <li><a class="dropdown-item" asp-area="Buyer" asp-controller="Disputes" asp-action="Index">My Disputes</a>
-                            </li>
-                        }
-                        <li>
-                            <a class="dropdown-item" asp-area="Merchant" asp-controller="Verification" asp-action="Index">
-                                <span>Merchant Center</span>
-                                <small>Sell and manage stock</small>
-                            </a>
-                        </li>
-                    }
+        <a class="faed-navbar-action faed-navbar-action--workspace @(inAdminWorkspace ? "is-active" : "")"
+           aria-current="@(inAdminWorkspace ? "true" : null)"
+           asp-area="Admin" asp-controller="Home" asp-action="Index">
+            @FaedIcon.Render("shield", "faed-icon faed-navbar-action__icon")
+            <span class="faed-navbar-action__label">Admin Workspace</span>
+        </a>
+    }
+    else if (isMerchant)
+    {
+        <a class="faed-navbar-action faed-navbar-action--workspace @(inMerchantWorkspace ? "is-active" : "")"
+           aria-current="@(inMerchantWorkspace ? "true" : null)"
+           asp-area="Merchant" asp-controller="Verification" asp-action="Index">
+            @FaedIcon.Render("storefront", "faed-icon faed-navbar-action__icon")
+            <span class="faed-navbar-action__label">Merchant Center</span>
+        </a>
+    }
 
-                    <li>
-                        <hr class="dropdown-divider" />
-                    </li>
-                    <li><a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Account settings</a></li>
-                    <li>
-                        <hr class="dropdown-divider" />
-                    </li>
-                    <li>
-                        <form class="faed-account-nav__form" asp-area="Identity" asp-page="/Account/Logout"
-                              asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                            <button type="submit" class="dropdown-item faed-account-nav__signout">Sign out</button>
-                        </form>
-                    </li>
-                </ul>
-            </li>
-        }
+    @if (canBuy)
+    {
+        @* Faed sells one listing at a time and has no cart, so Orders is the buyer's
+           standing marketplace destination and gets the direct navbar slot. *@
+        <a class="faed-navbar-action faed-navbar-action--icon @(onOrders ? "is-active" : "")"
+           aria-current="@(onOrders ? "true" : null)" aria-label="My orders"
+           asp-area="Buyer" asp-controller="Orders" asp-action="Index">
+            @FaedIcon.Render("receipt", "faed-icon faed-navbar-action__icon")
+            <span class="faed-navbar-action__label faed-navbar-action__label--compact">Orders</span>
+        </a>
+    }
+
+    <div class="dropdown faed-account-menu">
+        <button class="faed-account-menu__trigger" type="button" id="faed-account-menu-trigger"
+                data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+            <span class="faed-account-nav__avatar" aria-hidden="true">@initial</span>
+            <span class="faed-account-menu__trigger-text">Account</span>
+            @FaedIcon.Render("chevron-down", "faed-icon faed-account-menu__caret")
+            <span class="visually-hidden">Open account menu</span>
+        </button>
+
+        <div class="dropdown-menu dropdown-menu-end faed-account-menu__menu"
+             aria-labelledby="faed-account-menu-trigger">
+            <div class="faed-account-menu__identity">
+                <span class="faed-account-nav__avatar faed-account-nav__avatar--lg" aria-hidden="true">@initial</span>
+                <span class="faed-account-menu__identity-text">
+                    <strong>Signed in</strong>
+                    <small title="@signedInAs">@signedInAs</small>
+                </span>
+            </div>
+
+            <hr class="dropdown-divider" />
+
+            @if (canBuy)
+            {
+                <a class="dropdown-item" asp-area="Buyer" asp-controller="Disputes" asp-action="Index">
+                    @FaedIcon.Render("alert-circle", "faed-icon faed-account-menu__icon")
+                    <span>My disputes</span>
+                </a>
+            }
+
+            @if (!isAdmin && !isMerchant)
+            {
+                @* Buyers without the Merchant role still need the onboarding route; merchants
+                   already have Merchant Center as a top-level control and do not see it twice. *@
+                <a class="dropdown-item" asp-area="Merchant" asp-controller="Verification" asp-action="Index">
+                    @FaedIcon.Render("storefront", "faed-icon faed-account-menu__icon")
+                    <span>Sell on Faed</span>
+                </a>
+            }
+
+            <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                @FaedIcon.Render("gear", "faed-icon faed-account-menu__icon")
+                <span>Account settings</span>
+            </a>
+
+            <hr class="dropdown-divider" />
+
+            <form class="faed-account-nav__form" asp-area="Identity" asp-page="/Account/Logout"
+                  asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                <button type="submit" class="dropdown-item faed-account-nav__signout">
+                    @FaedIcon.Render("logout", "faed-icon faed-account-menu__icon")
+                    <span>Sign out</span>
+                </button>
+            </form>
+        </div>
+    </div>
+}
 else
-        {
-            @if (!isLoginPage)
-            {
-                <li class="nav-item">
-                    <a class="nav-link faed-account-nav__signin" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
-                </li>
-            }
-            @if (!isRegisterPage)
-            {
-                <li class="nav-item">
-                    <a class="faed-btn faed-btn--primary faed-btn--nav" asp-area="Identity" asp-page="/Account/Register">Create
-                        account</a>
-                    </li>
-                }
-            }
-        </ul>
+{
+    @if (!isLoginPage)
+    {
+        <a class="faed-navbar-action faed-navbar-action--signin" asp-area="Identity" asp-page="/Account/Login">
+            <span class="faed-navbar-action__label">Sign in</span>
+        </a>
+    }
+    @if (!isRegisterPage)
+    {
+        <a class="faed-btn faed-btn--primary faed-btn--nav" asp-area="Identity" asp-page="/Account/Register">
+            Create account
+        </a>
+    }
+}

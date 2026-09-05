@@ -14,7 +14,7 @@
                     <div class="faed-store-hero__trust-row">
                         @if (Model.Merchant.IsVerified)
                         {
-                            <span class="faed-store-hero__verified"><span aria-hidden="true">✓</span> Verified merchant</span>
+                            <span class="faed-store-hero__verified">@FaedIcon.Render("check", "faed-icon") Verified merchant</span>
                         }
                         <span>Member since @AmmanTime.FormatDate(Model.Merchant.MemberSinceUtc)</span>
                     </div>
@@ -37,7 +37,7 @@
                         </div>
                     }
                     <div class="faed-store-hero__assurance">
-                        <span aria-hidden="true">✓</span>
+                        @FaedIcon.Render("check", "faed-icon")
                         <p>Business identity reviewed by Faed before selling access was granted.</p>
                     </div>
                 </div>

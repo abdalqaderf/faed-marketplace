@@ -102,7 +102,7 @@
                 </ul>
             </section>
             <button type="submit" class="faed-btn faed-btn--primary faed-dispute-submit">File dispute</button>
-            <a class="faed-btn faed-btn--ghost faed-dispute-cancel" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">Back to order</a>
+            <a class="faed-btn faed-btn--ghost faed-dispute-cancel" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">@FaedIcon.Render("arrow-left", "faed-icon")<span>Back to order</span></a>
         </aside>
     </form>
 </div>

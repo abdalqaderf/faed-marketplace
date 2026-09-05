@@ -107,7 +107,7 @@
 
             <div class="faed-merchant-form-actions">
                 <button type="submit" class="faed-btn faed-btn--primary">Send offer</button>
-                <a class="faed-btn faed-btn--ghost" asp-controller="Listing" asp-action="Details" asp-area="" asp-route-slug="@listing.Slug">Back to listing</a>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Listing" asp-action="Details" asp-area="" asp-route-slug="@listing.Slug">@FaedIcon.Render("arrow-left", "faed-icon")<span>Back to listing</span></a>
             </div>
         </form>
     </div>

@@ -73,7 +73,7 @@
                placeholder="@(isStore ? "Search this store" : "Search products, brands or keywords")" maxlength="@ShopFilterModel.MaxSearchTextLength" />
         @if (!string.IsNullOrWhiteSpace(filters.Q))
         {
-            <a class="faed-shop-search__clear" href="@FilterHrefWithout("Q")" aria-label="Clear search">×</a>
+            <a class="faed-shop-search__clear" href="@FilterHrefWithout("Q")" aria-label="Clear search">@FaedIcon.Render("close", "faed-icon")</a>
         }
         <button class="faed-btn faed-btn--primary faed-shop-search__submit" type="submit">Search</button>
     </form>
@@ -97,7 +97,7 @@
                         <option value="@option.Value" selected="@(filters.Category == option.Value)">@option.Label</option>
                     }
                 </select>
-                <span class="faed-quick-filter__chevron" aria-hidden="true">⌄</span>
+                @FaedIcon.Render("chevron-down", "faed-icon faed-quick-filter__chevron")
             </label>
 
             <label class="faed-quick-filter faed-quick-filter--select">
@@ -109,7 +109,7 @@
                         <option value="@option.Value" selected="@(filters.Condition == option.Value)">@option.Label</option>
                     }
                 </select>
-                <span class="faed-quick-filter__chevron" aria-hidden="true">⌄</span>
+                @FaedIcon.Render("chevron-down", "faed-icon faed-quick-filter__chevron")
             </label>
 
             <div class="dropdown faed-price-filter">
@@ -141,7 +141,7 @@
         </form>
 
         <button type="button" class="faed-quick-filter faed-more-filters" data-bs-toggle="offcanvas" data-bs-target="#shop-filters" aria-controls="shop-filters">
-            <span class="faed-more-filters__icon" aria-hidden="true">☷</span>
+            @FaedIcon.Render("sliders", "faed-icon faed-more-filters__icon")
             <span>More filters</span>
             @if (filters.ActiveFilterCount > 0)
             {
@@ -180,39 +180,39 @@
             <div class="faed-active-filters" aria-label="Active filters">
                 @if (!string.IsNullOrWhiteSpace(filters.Q))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Q")" aria-label="Remove search filter @filters.Q"><span>Search: @filters.Q</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Q")" aria-label="Remove search filter @filters.Q"><span>Search: @filters.Q</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Category))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Category")" aria-label="Remove category filter @categoryLabel"><span>@categoryLabel</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Category")" aria-label="Remove category filter @categoryLabel"><span>@categoryLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Condition))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Condition")" aria-label="Remove condition filter @conditionLabel"><span>@conditionLabel</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Condition")" aria-label="Remove condition filter @conditionLabel"><span>@conditionLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Reason))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Reason")" aria-label="Remove discount reason filter"><span>@FacetLabel(facets.DiscountReasons, filters.Reason, filters.Reason!)</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Reason")" aria-label="Remove discount reason filter"><span>@FacetLabel(facets.DiscountReasons, filters.Reason, filters.Reason!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Brand))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Brand")" aria-label="Remove brand filter"><span>@FacetLabel(facets.Brands, filters.Brand, filters.Brand!)</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Brand")" aria-label="Remove brand filter"><span>@FacetLabel(facets.Brands, filters.Brand, filters.Brand!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Size))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Size")" aria-label="Remove size filter"><span>Size @FacetLabel(facets.Sizes, filters.Size, filters.Size!)</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Size")" aria-label="Remove size filter"><span>Size @FacetLabel(facets.Sizes, filters.Size, filters.Size!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(filters.Color))
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Color")" aria-label="Remove colour filter"><span>@FacetLabel(facets.Colors, filters.Color, filters.Color!)</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Color")" aria-label="Remove colour filter"><span>@FacetLabel(facets.Colors, filters.Color, filters.Color!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (filters.MinPrice is not null || filters.MaxPrice is not null)
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("MinPrice", "MaxPrice")" aria-label="Remove price filter @priceLabel"><span>@priceLabel</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("MinPrice", "MaxPrice")" aria-label="Remove price filter @priceLabel"><span>@priceLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 @if (filters.Channel != MarketplaceChannel.All)
                 {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Channel")" aria-label="Remove availability filter"><span>@(filters.Channel == MarketplaceChannel.RetailOnly ? "Retail available" : "Wholesale available")</span><span aria-hidden="true">×</span></a>
+                    <a class="faed-filter-chip" href="@FilterHrefWithout("Channel")" aria-label="Remove availability filter"><span>@(filters.Channel == MarketplaceChannel.RetailOnly ? "Retail available" : "Wholesale available")</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
                 <a class="faed-active-filters__clear" href="@path">Clear all</a>
             </div>
@@ -364,7 +364,7 @@
     @if (!result.HasResults)
     {
         <div class="faed-empty faed-shop-empty">
-            <div class="faed-shop-empty__mark" aria-hidden="true">⌕</div>
+            <div class="faed-shop-empty__mark" aria-hidden="true">@FaedIcon.Render("search", "faed-icon")</div>
             @if (filters.HasActiveFilters)
             {
                 <div class="faed-empty__title">No listings match these choices</div>
@@ -397,11 +397,11 @@
                 <nav class="faed-pagination" aria-label="Shop results pagination">
                     @if (result.Page > 1)
                     {
-                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page - 1)" rel="prev"><span aria-hidden="true">←</span><span>Previous</span></a>
+                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page - 1)" rel="prev">@FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")<span>Previous</span></a>
                     }
                     else
                     {
-                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true"><span aria-hidden="true">←</span><span>Previous</span></span>
+                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">@FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")<span>Previous</span></span>
                     }
 
                     <span class="faed-pagination__mobile-status" aria-current="page">Page @result.Page of @result.TotalPages</span>
@@ -440,11 +440,11 @@
 
                     @if (result.Page < result.TotalPages)
                     {
-                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page + 1)" rel="next"><span>Next</span><span aria-hidden="true">→</span></a>
+                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page + 1)" rel="next"><span>Next</span>@FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")</a>
                     }
                     else
                     {
-                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true"><span>Next</span><span aria-hidden="true">→</span></span>
+                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true"><span>Next</span>@FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")</span>
                     }
                 </nav>
             }
