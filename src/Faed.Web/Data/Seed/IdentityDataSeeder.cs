@@ -15,6 +15,102 @@ namespace Faed.Web.Data.Seed;
 /// </summary>
 public static class IdentityDataSeeder
 {
+    public static async Task SeedBootstrapAdminAsync(
+    IServiceProvider services,
+    CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var scope = services.CreateScope();
+
+        var configuration =
+            scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        var logger = Logger(scope);
+
+        var enabled =
+            configuration.GetValue<bool>("Faed:BootstrapAdmin:Enabled");
+
+        if (!enabled)
+        {
+            logger.LogInformation("Bootstrap Admin seed is disabled.");
+            return;
+        }
+
+        var email =
+            configuration["Faed:BootstrapAdmin:Email"];
+
+        var password =
+            configuration["Faed:BootstrapAdmin:Password"];
+
+        var firstName =
+            configuration["Faed:BootstrapAdmin:FirstName"];
+
+        var lastName =
+            configuration["Faed:BootstrapAdmin:LastName"];
+
+        if (string.IsNullOrWhiteSpace(email)
+            || string.IsNullOrWhiteSpace(password)
+            || string.IsNullOrWhiteSpace(firstName)
+            || string.IsNullOrWhiteSpace(lastName))
+        {
+            throw new InvalidOperationException(
+                "Bootstrap Admin is enabled but its required configuration is incomplete.");
+        }
+
+        var userManager =
+            scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        var existing =
+            await userManager.FindByEmailAsync(email);
+
+        if (existing is not null)
+        {
+            if (!await userManager.IsInRoleAsync(existing, FaedRoles.Admin))
+            {
+                await AddToRoleAsync(
+                    userManager,
+                    existing,
+                    FaedRoles.Admin);
+            }
+
+            logger.LogInformation(
+                "Bootstrap Admin account already exists.");
+
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email.Trim(),
+            Email = email.Trim(),
+            EmailConfirmed = true,
+            FirstName = firstName.Trim(),
+            LastName = lastName.Trim()
+        };
+
+        var result =
+            await userManager.CreateAsync(user, password);
+
+        if (!result.Succeeded)
+        {
+            var errors =
+                string.Join(
+                    ", ",
+                    result.Errors.Select(error => error.Description));
+
+            throw new InvalidOperationException(
+                $"Failed to create Bootstrap Admin: {errors}");
+        }
+
+        await AddToRoleAsync(
+            userManager,
+            user,
+            FaedRoles.Admin);
+
+        logger.LogInformation(
+            "Bootstrap Admin account created successfully.");
+    }
     public static async Task SeedRolesAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
@@ -99,6 +195,8 @@ public static class IdentityDataSeeder
             UserName = email,
             Email = email,
             EmailConfirmed = true,
+            FirstName = "Development",
+            LastName = role,
         };
 
         var created = await userManager.CreateAsync(user, password);
