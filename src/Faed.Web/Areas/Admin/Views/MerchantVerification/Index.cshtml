@@ -12,10 +12,10 @@
     };
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-queue-page">
     <partial name="_AdminSubnav" model="@("MerchantVerification")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Merchant verification</h1>
             <p class="faed-page__subtitle">Review merchant applications and decide whether a business may sell on Faed.</p>
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <nav class="faed-subnav" aria-label="Filter applications">
+    <nav class="faed-subnav faed-admin-filterbar" aria-label="Filter applications">
         @foreach (var tab in tabs)
         {
             <a asp-action="Index" asp-route-filter="@tab.value"
@@ -45,7 +45,7 @@
     else
     {
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr>
                         <th scope="col">Business</th>

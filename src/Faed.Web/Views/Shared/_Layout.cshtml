@@ -4,16 +4,33 @@
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isIdentity = area.Equals("Identity", StringComparison.OrdinalIgnoreCase);
-    var isAuthPage = isIdentity && (page.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase)
-        || page.Equals("/Account/Register", StringComparison.OrdinalIgnoreCase));
+    var isIdentityManagePage = isIdentity
+        && page.StartsWith("/Account/Manage", StringComparison.OrdinalIgnoreCase);
+    var isIdentityStatePage = isIdentity
+        && page.Equals("/Account/AccessDenied", StringComparison.OrdinalIgnoreCase);
+    var isAuthPage = isIdentity
+        && page.StartsWith("/Account/", StringComparison.OrdinalIgnoreCase)
+        && !isIdentityManagePage
+        && !isIdentityStatePage;
+    var isOperationalWorkspace = area.Equals("Merchant", StringComparison.OrdinalIgnoreCase)
+        || area.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+    var showMarketplaceSearch = !isOperationalWorkspace && !isIdentity;
+    var navbarSearchQuery = string.IsNullOrEmpty(area) && controller.Equals("Shop", StringComparison.OrdinalIgnoreCase)
+        ? Context.Request.Query["Q"].ToString()
+        : string.Empty;
     var bodyClass = isIdentity
-        ? (isAuthPage ? "faed-identity-page faed-auth-page" : "faed-identity-page")
+        ? isAuthPage
+            ? "faed-identity-page faed-auth-page"
+            : isIdentityManagePage
+                ? "faed-identity-page faed-account-settings-page"
+                : "faed-identity-page faed-identity-state-page"
         : !string.IsNullOrEmpty(area)
             ? $"faed-workspace-page faed-{area.ToLowerInvariant()}-page"
             : "faed-public-page";
 }
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,25 +39,24 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/faed.css" asp-append-version="true" />
 </head>
+
 <body class="@bodyClass">
     <a class="faed-skip-link" href="#main-content">Skip to main content</a>
+
     <header class="faed-site-header">
-        <div class="faed-site-header__context">
-            <div class="faed-shell">
-                <span>Amman's verified fashion-overstock marketplace</span>
-                <span class="faed-site-header__context-meta">Clear condition &middot; Honest discount reasons</span>
-            </div>
-        </div>
         <nav class="navbar navbar-expand-lg faed-navbar" aria-label="Main navigation">
             <div class="faed-shell faed-navbar__inner">
                 <a class="faed-wordmark" asp-area="" asp-controller="Home" asp-action="Index" aria-label="Faed home">
                     <span class="faed-wordmark__mark" aria-hidden="true"><span>F</span></span>
                     <span class="faed-wordmark__text">Faed</span>
                 </a>
-                <button class="navbar-toggler faed-navbar__toggler" type="button" data-bs-toggle="collapse" data-bs-target="#faed-main-nav"
-                        aria-controls="faed-main-nav" aria-expanded="false" aria-label="Open navigation">
+
+                <button class="navbar-toggler faed-navbar__toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#faed-main-nav" aria-controls="faed-main-nav" aria-expanded="false"
+                        aria-label="Open navigation">
                     <span class="faed-navbar__toggler-lines" aria-hidden="true"></span>
                 </button>
+
                 <div class="navbar-collapse collapse faed-navbar__collapse" id="faed-main-nav">
                     <ul class="navbar-nav faed-navbar__primary">
                         <li class="nav-item">
@@ -53,41 +69,27 @@
                                aria-current="@(string.IsNullOrEmpty(area) && controller == "Shop" ? "page" : null)"
                                asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
                         </li>
-                        @* An administrator can never place a B2C order or hold a selling merchant
-                           identity  — these Buyer/
-                           Merchant links would predictably challenge or 403 an Admin, so the two
-                           navigations stay mutually exclusive (faed-ui-direction "Admin/merchant
-                           identity separation preserved"). *@
-                        @if (User.Identity?.IsAuthenticated == true && !User.IsInRole(FaedRoles.Admin))
-                        {
-                            @if (User.IsInRole(FaedRoles.Buyer) || User.IsInRole(FaedRoles.Merchant))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link @(area == "Buyer" && controller == "Orders" ? "is-active" : "")"
-                                       aria-current="@(area == "Buyer" && controller == "Orders" ? "page" : null)"
-                                       asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link @(area == "Buyer" && controller == "Disputes" ? "is-active" : "")"
-                                       aria-current="@(area == "Buyer" && controller == "Disputes" ? "page" : null)"
-                                       asp-area="Buyer" asp-controller="Disputes" asp-action="Index">My Disputes</a>
-                                </li>
-                            }
-                            <li class="nav-item">
-                                <a class="nav-link faed-navbar__workspace-link @(area == "Merchant" ? "is-active" : "")"
-                                   aria-current="@(area == "Merchant" ? "page" : null)"
-                                   asp-area="Merchant" asp-controller="Verification" asp-action="Index">Merchant Center</a>
-                            </li>
-                        }
-                        @if (User.IsInRole(FaedRoles.Admin))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link faed-navbar__workspace-link @(area == "Admin" ? "is-active" : "")"
-                                   aria-current="@(area == "Admin" ? "page" : null)"
-                                   asp-area="Admin" asp-controller="Home" asp-action="Index">Admin Workspace</a>
-                            </li>
-                        }
                     </ul>
+
+                    @if (showMarketplaceSearch)
+                    {
+                        <form class="faed-navbar-search" method="get" asp-area="" asp-controller="Shop" asp-action="Index"
+                              role="search">
+                            <label class="visually-hidden" for="faed-navbar-search-input">Search the marketplace</label>
+                            <input id="faed-navbar-search-input" class="faed-navbar-search__input" type="search" name="Q"
+                                   value="@navbarSearchQuery" placeholder="Search products" autocomplete="off" />
+                            <button class="faed-navbar-search__button" type="submit" aria-label="Search the marketplace">
+                                <svg class="faed-navbar-search__icon" width="18" height="18" viewBox="0 0 24 24"
+                                     aria-hidden="true" focusable="false">
+                                    <path
+                                    d="M11 4a7 7 0 1 0 4.9 12l4.05 4.05 1.1-1.1L17 14.9A7 7 0 0 0 11 4Zm0 1.6a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8Z"
+                                    fill="currentColor" />
+                                </svg>
+                                <span class="visually-hidden">Search</span>
+                            </button>
+                        </form>
+                    }
+
                     <partial name="_LoginPartial" />
                 </div>
             </div>
@@ -112,62 +114,102 @@
                 }
             </div>
         }
-        @RenderBody()
-    </main>
-
-    <footer class="faed-site-footer">
-        <div class="faed-shell faed-site-footer__grid">
-            <div class="faed-site-footer__brand">
-                <a class="faed-wordmark faed-wordmark--footer" asp-area="" asp-controller="Home" asp-action="Index">
-                    <span class="faed-wordmark__mark" aria-hidden="true"><span>F</span></span>
-                    <span class="faed-wordmark__text">Faed</span>
-                </a>
-                <p>Verified merchant overstock, clearly graded and honestly discounted for buyers across Amman.</p>
-            </div>
-            <div>
-                <h2 class="faed-site-footer__heading">Marketplace</h2>
-                <ul class="faed-site-footer__links">
-                    <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-                    <li><a asp-area="" asp-controller="Shop" asp-action="Index">Shop fashion overstock</a></li>
-                </ul>
-            </div>
-            <div>
-                <h2 class="faed-site-footer__heading">For merchants</h2>
-                <ul class="faed-site-footer__links">
-                    @if (!User.IsInRole(FaedRoles.Admin))
-                    {
-                        <li><a asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Apply to sell</a></li>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li><a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Merchant Center</a></li>
+        @if (isAuthPage)
+        {
+            <div class="faed-auth-layout">
+                <section class="faed-auth-content" aria-label="Faed account">
+                    <p class="faed-auth-eyebrow">Secure Faed account</p>
+                    @RenderBody()
+                </section>
+                <aside class="faed-auth-context" aria-label="Why use Faed">
+                    <div class="faed-auth-context__inner">
+                        <span class="faed-auth-context__mark" aria-hidden="true">F</span>
+                        <p class="faed-auth-context__eyebrow">Marketplace clarity</p>
+                        <h2>Know more before you decide.</h2>
+                        <p class="faed-auth-context__copy">One Faed account gives you a clearer route through verified
+                            merchant stock and the buying options available to you.</p>
+                            <ul class="faed-auth-context__facts">
+                                <li>
+                                    <span aria-hidden="true">✓</span>
+                                    <div><strong>Verified merchants</strong><small>Business review comes before marketplace
+                                        access.</small></div>
+                                    </li>
+                                    <li>
+                                        <span aria-hidden="true">✓</span>
+                                        <div><strong>Clear listing context</strong><small>Condition and discount reason stay visible
+                                            before you buy.</small></div>
+                                        </li>
+                                        <li>
+                                            <span aria-hidden="true">✓</span>
+                                            <div><strong>Retail + wholesale routes</strong><small>Use the buying route that each listing
+                                                actually supports.</small></div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </aside>
+                            </div>
                         }
-                    }
-                    @if (User.IsInRole(FaedRoles.Admin))
-                    {
-                        <li><a asp-area="Admin" asp-controller="Home" asp-action="Index">Admin Workspace</a></li>
-                    }
-                </ul>
-            </div>
-            <div>
-                <h2 class="faed-site-footer__heading">Information</h2>
-                <ul class="faed-site-footer__links">
-                    <li><a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
-                    @if (User.Identity?.IsAuthenticated != true)
-                    {
-                        <li><a asp-area="Identity" asp-page="/Account/Login">Sign in</a></li>
-                        <li><a asp-area="Identity" asp-page="/Account/Register">Create an account</a></li>
-                    }
-                </ul>
-            </div>
-        </div>
-        <div class="faed-shell faed-site-footer__legal">
-            <span>&copy; 2026 Faed</span>
-            <span>Fashion Overstock &middot; Amman, Jordan</span>
-        </div>
-    </footer>
+        else
+                        {
+                            @RenderBody()
+                        }
+                    </main>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-</body>
-</html>
+                    <footer class="faed-site-footer">
+                        <div class="faed-shell faed-site-footer__grid">
+                            <div class="faed-site-footer__brand">
+                                <a class="faed-wordmark faed-wordmark--footer" asp-area="" asp-controller="Home" asp-action="Index">
+                                    <span class="faed-wordmark__mark" aria-hidden="true"><span>F</span></span>
+                                    <span class="faed-wordmark__text">Faed</span>
+                                </a>
+                                <p>Verified merchant stock with condition, discount context, and availability made clear before you buy.
+                                </p>
+                            </div>
+                            <div>
+                                <h2 class="faed-site-footer__heading">Marketplace</h2>
+                                <ul class="faed-site-footer__links">
+                                    <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                                    <li><a asp-area="" asp-controller="Shop" asp-action="Index">Browse marketplace</a></li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h2 class="faed-site-footer__heading">For merchants</h2>
+                                <ul class="faed-site-footer__links">
+                                    @if (!User.IsInRole(FaedRoles.Admin))
+                                    {
+                                        <li><a asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Apply to sell</a></li>
+                                        @if (User.Identity?.IsAuthenticated == true)
+                                        {
+                                            <li><a asp-area="Merchant" asp-controller="Verification" asp-action="Index">Merchant Center</a></li>
+                                        }
+                                    }
+                                    @if (User.IsInRole(FaedRoles.Admin))
+                                    {
+                                        <li><a asp-area="Admin" asp-controller="Home" asp-action="Index">Admin Workspace</a></li>
+                                    }
+                                </ul>
+                            </div>
+                            <div>
+                                <h2 class="faed-site-footer__heading">Information</h2>
+                                <ul class="faed-site-footer__links">
+                                    <li><a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
+                                    @if (User.Identity?.IsAuthenticated != true)
+                                    {
+                                        <li><a asp-area="Identity" asp-page="/Account/Login">Sign in</a></li>
+                                        <li><a asp-area="Identity" asp-page="/Account/Register">Create an account</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="faed-shell faed-site-footer__legal">
+                            <span>&copy; 2026 Faed</span>
+                            <span>Marketplace &middot; Amman, Jordan</span>
+                        </div>
+                    </footer>
+
+                    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+                    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+                    @await RenderSectionAsync("Scripts", required: false)
+                </body>
+
+            </html>

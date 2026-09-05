@@ -3,10 +3,10 @@
     ViewData["Title"] = "Review monitoring";
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-queue-page">
     <partial name="_AdminSubnav" model="@("Reviews")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Reviews</h1>
             <p class="faed-page__subtitle">
@@ -26,7 +26,7 @@
     else
     {
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr>
                         <th scope="col">Date</th>

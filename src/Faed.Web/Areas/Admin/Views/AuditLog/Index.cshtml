@@ -11,10 +11,10 @@
     };
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-queue-page">
     <partial name="_AdminSubnav" model="@("AuditLog")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Audit log</h1>
             <p class="faed-page__subtitle">
@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <nav class="faed-subnav" aria-label="Filter audit log">
+    <nav class="faed-subnav faed-admin-filterbar" aria-label="Filter audit log">
         @foreach (var (value, label) in tabs)
         {
             <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
@@ -40,7 +40,7 @@
     else
     {
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr>
                         <th scope="col">When</th>

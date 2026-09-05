@@ -4,7 +4,7 @@
     ViewData["Title"] = $"Dispute — {d.TransactionReference}";
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-detail-page">
     <partial name="_AdminSubnav" model="@("Disputes")" />
 
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
@@ -13,7 +13,7 @@
         <span>@d.TransactionReference</span>
     </nav>
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Dispute — @d.TransactionReference</h1>
             <p class="faed-page__subtitle">
@@ -80,7 +80,7 @@
 
     @if (d.CanStartReview || d.CanClose)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel">
             <h2 class="faed-panel__title">Decision</h2>
             @if (d.CanStartReview)
             {

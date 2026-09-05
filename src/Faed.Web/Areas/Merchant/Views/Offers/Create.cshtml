@@ -27,7 +27,7 @@
 
     <div asp-validation-summary="All" class="faed-alert faed-alert--error" role="alert"></div>
 
-    <div class="faed-panel">
+    <div class="faed-panel faed-merchant-form-panel">
         <p class="faed-panel__hint">
             @moqNote
             @if (listing.IndicativeUnitPrice is { } indicative)
@@ -38,6 +38,11 @@
 
         <form asp-action="Create" method="post">
             <input type="hidden" asp-for="Form.ListingSlug" />
+
+            <div class="faed-merchant-form-section__heading">
+                <strong>Requested stock</strong>
+                <span>Select the quantity you want from each available variant.</span>
+            </div>
 
             <fieldset class="faed-field faed-fieldset-reset">
                 <legend class="faed-field__label">Quantities by variant</legend>
@@ -75,26 +80,35 @@
                 </p>
             </fieldset>
 
-            <div class="faed-field">
-                <label class="faed-field__label" asp-for="Form.ProposedUnitPrice"></label>
-                <input class="faed-input" type="number" step="0.001" min="0.001" asp-for="Form.ProposedUnitPrice" />
-                <span asp-validation-for="Form.ProposedUnitPrice" class="faed-field__error"></span>
+            <div class="faed-merchant-form-section__heading">
+                <strong>Commercial terms</strong>
+                <span>Set the proposed unit price, validity period, and optional message.</span>
             </div>
 
-            <div class="faed-field">
-                <label class="faed-field__label" asp-for="Form.ValidityDays"></label>
-                <input class="faed-input" type="number" min="1" max="30" step="1" asp-for="Form.ValidityDays" />
-                <span asp-validation-for="Form.ValidityDays" class="faed-field__error"></span>
+            <div class="faed-merchant-form-grid">
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.ProposedUnitPrice"></label>
+                    <input class="faed-input" type="number" step="0.001" min="0.001" asp-for="Form.ProposedUnitPrice" />
+                    <span asp-validation-for="Form.ProposedUnitPrice" class="faed-field__error"></span>
+                </div>
+
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.ValidityDays"></label>
+                    <input class="faed-input" type="number" min="1" max="30" step="1" asp-for="Form.ValidityDays" />
+                    <span asp-validation-for="Form.ValidityDays" class="faed-field__error"></span>
+                </div>
+
+                <div class="faed-field faed-field--full">
+                    <label class="faed-field__label" asp-for="Form.Message"></label>
+                    <textarea class="faed-input" rows="3" asp-for="Form.Message" placeholder="Add context for the seller (optional)."></textarea>
+                    <span asp-validation-for="Form.Message" class="faed-field__error"></span>
+                </div>
             </div>
 
-            <div class="faed-field">
-                <label class="faed-field__label" asp-for="Form.Message"></label>
-                <textarea class="faed-input" rows="3" asp-for="Form.Message" placeholder="Add context for the seller (optional)."></textarea>
-                <span asp-validation-for="Form.Message" class="faed-field__error"></span>
+            <div class="faed-merchant-form-actions">
+                <button type="submit" class="faed-btn faed-btn--primary">Send offer</button>
+                <a class="faed-btn faed-btn--ghost" asp-controller="Listing" asp-action="Details" asp-area="" asp-route-slug="@listing.Slug">Back to listing</a>
             </div>
-
-            <button type="submit" class="faed-btn faed-btn--primary">Send offer</button>
-            <a class="faed-btn faed-btn--ghost" asp-controller="Listing" asp-action="Details" asp-area="" asp-route-slug="@listing.Slug">Back to listing</a>
         </form>
     </div>
 </div>

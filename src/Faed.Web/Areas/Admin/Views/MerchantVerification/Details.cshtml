@@ -8,10 +8,10 @@
     var reviewedText = Model.ReviewedAtUtc is { } reviewed ? AmmanTime.FormatDateTime(reviewed) : null;
 }
 
-<div class="faed-page">
+<div class="faed-page faed-admin-detail-page">
     <partial name="_AdminSubnav" model="@("MerchantVerification")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">@Model.BusinessName</h1>
             <p class="faed-page__subtitle">Storefront address: /store/@Model.PublicSlug</p>
@@ -76,7 +76,7 @@
 
     @if (isPending)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel">
             <h2 class="faed-panel__title">Decision</h2>
             <div class="faed-decision-row">
                 <form asp-action="Approve" method="post">
@@ -97,7 +97,7 @@
     }
     else if (isApproved)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel faed-admin-decision-panel--danger">
             <h2 class="faed-panel__title">Suspend merchant</h2>
             <p class="faed-panel__hint">A suspended merchant cannot list or sell until reinstated.</p>
             <form asp-action="Suspend" method="post">
@@ -112,7 +112,7 @@
     }
     else if (isSuspended)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel">
             <h2 class="faed-panel__title">Reinstate merchant</h2>
             <form asp-action="Reinstate" method="post">
                 <input type="hidden" name="id" value="@Model.Id" />

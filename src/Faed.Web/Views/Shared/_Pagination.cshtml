@@ -1,40 +1,107 @@
 @model Faed.Web.ViewModels.PaginationViewModel
 
 @{
-    var previousData = Model.RouteValuesForPage(Model.Page - 1);
-    var nextData = Model.RouteValuesForPage(Model.Page + 1);
-    if (Model.Controller is { Length: > 0 } controller)
-    {
-        previousData["controller"] = controller;
-        nextData["controller"] = controller;
-    }
-}
-@if (Model.TotalPages > 1)
-{
-    <nav class="faed-pagination" aria-label="Pagination">
-        @if (Model.HasPreviousPage)
-        {
-            <a class="faed-btn faed-btn--ghost faed-btn--sm"
-               asp-action="@Model.Action"
-               asp-all-route-data="previousData"
-               rel="prev">Previous</a>
-        }
-        <span class="faed-pagination__status">Page @Model.Page of @Model.TotalPages</span>
-        @if (Model.HasNextPage)
-        {
-            <a class="faed-btn faed-btn--ghost faed-btn--sm"
-               asp-action="@Model.Action"
-               asp-all-route-data="nextData"
-               rel="next">Next</a>
-        }
-    </nav>
-}
-
-@{
     var noun = Model.TotalCount == 1
         ? Model.ItemNoun
         : Model.ItemNoun.EndsWith("y") ? Model.ItemNoun[..^1] + "ies" : Model.ItemNoun + "s";
+
+    var firstPage = Math.Max(1, Model.Page - 2);
+    var lastPage = Math.Min(Model.TotalPages, firstPage + 4);
+    firstPage = Math.Max(1, lastPage - 4);
+
+    Dictionary<string, string?> RouteFor(int page)
+    {
+        var data = Model.RouteValuesForPage(page);
+        if (Model.Controller is { Length: > 0 } controller)
+        {
+            data["controller"] = controller;
+        }
+        return data;
+    }
 }
-<p class="faed-section__hint">
-    Showing @Model.FirstItemNumber&ndash;@Model.LastItemNumber of @Model.TotalCount @noun.
-</p>
+
+<div class="faed-pagination-shell">
+    <p class="faed-pagination__summary">
+        Showing @Model.FirstItemNumber&ndash;@Model.LastItemNumber of @Model.TotalCount @noun
+    </p>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="faed-pagination" aria-label="Results pagination">
+            @if (Model.HasPreviousPage)
+            {
+                var previousData = RouteFor(Model.Page - 1);
+                <a class="faed-pagination__link faed-pagination__link--edge" asp-action="@Model.Action"
+                   asp-all-route-data="previousData" rel="prev">
+                    <span aria-hidden="true">&larr;</span>
+                    <span>Previous</span>
+                </a>
+            }
+            else
+            {
+                <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">
+                    <span aria-hidden="true">&larr;</span>
+                    <span>Previous</span>
+                </span>
+            }
+
+            <span class="faed-pagination__mobile-status" aria-current="page">Page @Model.Page of @Model.TotalPages</span>
+
+            <span class="faed-pagination__pages" aria-label="Page numbers">
+                @if (firstPage > 1)
+                {
+                    var firstData = RouteFor(1);
+                    <a class="faed-pagination__link faed-pagination__link--page" asp-action="@Model.Action"
+                       asp-all-route-data="firstData" aria-label="Page 1">1</a>
+                    @if (firstPage > 2)
+                    {
+                        <span class="faed-pagination__ellipsis" aria-hidden="true">&hellip;</span>
+                    }
+                }
+
+                @for (var pageNumber = firstPage; pageNumber <= lastPage; pageNumber++)
+                {
+                    if (pageNumber == Model.Page)
+                    {
+                        <span class="faed-pagination__link faed-pagination__link--page is-current"
+                              aria-current="page">@pageNumber</span>
+                    }
+                    else
+                    {
+                        var pageData = RouteFor(pageNumber);
+                        <a class="faed-pagination__link faed-pagination__link--page" asp-action="@Model.Action"
+                           asp-all-route-data="pageData" aria-label="Page @pageNumber">@pageNumber</a>
+                    }
+                }
+
+                @if (lastPage < Model.TotalPages)
+                {
+                    @if (lastPage < Model.TotalPages - 1)
+                    {
+                        <span class="faed-pagination__ellipsis" aria-hidden="true">&hellip;</span>
+                    }
+                    var lastData = RouteFor(Model.TotalPages);
+                    <a class="faed-pagination__link faed-pagination__link--page" asp-action="@Model.Action"
+                       asp-all-route-data="lastData" aria-label="Page @Model.TotalPages">@Model.TotalPages</a>
+                }
+            </span>
+
+            @if (Model.HasNextPage)
+            {
+                var nextData = RouteFor(Model.Page + 1);
+                <a class="faed-pagination__link faed-pagination__link--edge" asp-action="@Model.Action"
+                   asp-all-route-data="nextData" rel="next">
+                    <span>Next</span>
+                    <span aria-hidden="true">&rarr;</span>
+                </a>
+            }
+            else
+            {
+                <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">
+                    <span>Next</span>
+                    <span aria-hidden="true">&rarr;</span>
+                </span>
+            }
+        </nav>
+    }
+</div>

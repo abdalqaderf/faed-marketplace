@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div class="faed-panel">
+    <div class="faed-panel faed-merchant-form-panel">
         <form asp-action="Create" method="post" enctype="multipart/form-data">
             <input type="hidden" asp-for="Form.TransactionType" />
             <input type="hidden" asp-for="Form.TransactionId" />
@@ -61,7 +61,9 @@
                 <span class="faed-field__hint">Private — visible only to the two merchants and an administrator.</span>
             </div>
 
-            <button type="submit" class="faed-btn faed-btn--primary">File dispute</button>
+            <div class="faed-merchant-form-actions">
+                <button type="submit" class="faed-btn faed-btn--primary">File dispute</button>
+            </div>
         </form>
     </div>
 </div>

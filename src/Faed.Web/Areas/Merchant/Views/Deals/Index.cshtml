@@ -48,6 +48,12 @@
                 Nothing matches this filter. A deal appears once a wholesale offer is accepted — check
                 <a asp-controller="Offers" asp-action="Index">B2B offers</a>.
             </div>
+            @if (Model.Filter != B2BDealFilter.All)
+            {
+                <div class="faed-empty__actions">
+                    <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Index" asp-route-filter="@B2BDealFilter.All">View all deals</a>
+                </div>
+            }
         </div>
     }
     else
@@ -63,6 +69,7 @@
                         <th scope="col">Deal</th>
                         <th scope="col">Fulfilment</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,6 +89,7 @@
                             </td>
                             <td>@B2BDealStatusDisplay.FulfillmentLabel(d.FulfillmentType)</td>
                             <td><span class="@B2BDealStatusDisplay.BadgeClass(d.Status)">@B2BDealStatusDisplay.Label(d.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@d.Id">Open</a></td>
                         </tr>
                     }
                 </tbody>

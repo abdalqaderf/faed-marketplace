@@ -5,25 +5,11 @@
     var app = Model.Application;
     var docTypes = Enum.GetValues<MerchantVerificationDocumentType>();
     var maxMb = VerificationDocumentValidator.MaxMegabytes(VerificationOptions.Value);
+    ViewData["MerchantWorkspaceRestricted"] = Model.Application?.CanSell != true;
 }
 
 <div class="faed-page">
-    <div class="faed-workspace-nav faed-workspace-nav--merchant">
-        <div class="faed-workspace-nav__identity">
-            <span class="faed-workspace-nav__eyebrow">Seller workspace</span>
-            <strong>Merchant Center</strong>
-        </div>
-        <nav class="faed-subnav faed-subnav--workspace" aria-label="Merchant sections">
-            <a class="is-active" aria-current="page" asp-area="Merchant" asp-controller="Verification" asp-action="Index">Verification</a>
-            @if (Model.Application?.CanSell == true)
-            {
-                <a asp-area="Merchant" asp-controller="Listings" asp-action="Index">Listings</a>
-                <a asp-area="Merchant" asp-controller="Inventory" asp-action="Index">Inventory</a>
-                <a asp-area="Merchant" asp-controller="Orders" asp-action="Index">B2C Orders</a>
-                <a asp-area="Merchant" asp-controller="StoreSettings" asp-action="Index">Store settings</a>
-            }
-        </nav>
-    </div>
+    <partial name="_MerchantSubnav" model="@("Verification")" />
 
     <div class="faed-page__header">
         <div>
