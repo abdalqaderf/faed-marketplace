@@ -8,8 +8,14 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
-        // Stamp the creation time in the database so it is set regardless of which
-        // code path creates the account (the generated Identity UI does not set it).
+        builder.Property(u => u.FirstName)
+            .HasMaxLength(ApplicationUser.MaxNameLength)
+            .IsRequired();
+
+        builder.Property(u => u.LastName)
+            .HasMaxLength(ApplicationUser.MaxNameLength)
+            .IsRequired();
+
         builder.Property(u => u.CreatedAtUtc)
             .HasDefaultValueSql("SYSUTCDATETIME()");
 

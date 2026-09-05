@@ -392,28 +392,51 @@ public static class DemoDataSeeder
 
         // ---- Users & merchants -------------------------------------------------------
 
-        private async Task<string> CreateUserAsync(string email, string? role = null)
+        private async Task<string> CreateUserAsync(
+    string email,
+    string? role = null)
         {
+            var (firstName, lastName) = email switch
+            {
+                AdminEmail => ("Demo", "Admin"),
+                MerchantAEmail => ("Demo", "Merchant A"),
+                MerchantBEmail => ("Demo", "Merchant B"),
+                PendingMerchantEmail => ("Pending", "Merchant"),
+                BuyerAEmail => ("Demo", "Buyer A"),
+                BuyerBEmail => ("Demo", "Buyer B"),
+                _ => ("Demo", "User")
+            };
+
             var user = new ApplicationUser
             {
                 UserName = email,
                 Email = email,
                 EmailConfirmed = true,
+                FirstName = firstName,
+                LastName = lastName,
+                PhoneNumber = "+962790000000",
                 CreatedAtUtc = DateTime.UtcNow,
             };
 
             var created = await _users.CreateAsync(user, _password);
+
             if (!created.Succeeded)
             {
-                throw Fail($"create user '{email}'", created.Errors.Select(e => e.Description));
+                throw Fail(
+                    $"create user '{email}'",
+                    created.Errors.Select(e => e.Description));
             }
 
             if (role is not null)
             {
-                var granted = await _users.AddToRoleAsync(user, role);
+                var granted =
+                    await _users.AddToRoleAsync(user, role);
+
                 if (!granted.Succeeded)
                 {
-                    throw Fail($"grant '{role}' to '{email}'", granted.Errors.Select(e => e.Description));
+                    throw Fail(
+                        $"grant '{role}' to '{email}'",
+                        granted.Errors.Select(e => e.Description));
                 }
             }
 
