@@ -21,7 +21,7 @@
     @if (Model.Disputes.TotalCount == 0)
     {
         <section class="faed-buyer-empty">
-            <span class="faed-buyer-empty__mark" aria-hidden="true">✓</span>
+            <span class="faed-buyer-empty__mark" aria-hidden="true">@FaedIcon.Render("check-circle", "faed-icon")</span>
             <p class="faed-kicker">No open history</p>
             <h2>You have not raised any disputes.</h2>
             <p>If something goes wrong with an eligible order, open that order and choose <strong>Raise a dispute</strong>.</p>
@@ -48,7 +48,7 @@
                             <div><dt>Last updated</dt><dd>@AmmanTime.FormatDate(dispute.UpdatedAtUtc)</dd></div>
                         </dl>
                     </a>
-                    <a class="faed-dispute-card__open" asp-action="Details" asp-route-id="@dispute.Id">View case <span aria-hidden="true">→</span></a>
+                    <a class="faed-dispute-card__open" asp-action="Details" asp-route-id="@dispute.Id">View case @FaedIcon.Render("arrow-right", "faed-icon")</a>
                 </article>
             }
         </div>

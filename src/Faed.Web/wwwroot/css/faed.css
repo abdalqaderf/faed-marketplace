@@ -34,7 +34,7 @@
     --faed-shadow: 0 1px 2px rgba(20, 34, 29, 0.045), 0 8px 24px rgba(20, 34, 29, 0.035);
     --faed-shadow-elevated: 0 20px 54px rgba(7, 59, 50, 0.13);
     --faed-content: 1280px;
-    --faed-header-height: 4.75rem;
+    --faed-header-height: 4.375rem;
     --faed-transition: 170ms ease;
 
     --faed-space-1: 0.25rem;
@@ -54,7 +54,7 @@ body {
     line-height: 1.58;
     margin: 0;
     display: flex;
-    min-height: 100vh;
+    min-height: 100svh;
     flex-direction: column;
     -webkit-font-smoothing: antialiased;
 }
@@ -784,7 +784,7 @@ video {
 .faed-product-card__media {
     position: relative;
     display: block;
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 10 / 11;
     background: var(--faed-surface-muted);
 }
 
@@ -1022,7 +1022,7 @@ video {
 .faed-gallery__hero {
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 10 / 11;
     object-fit: cover;
     border: 1px solid var(--faed-border);
     border-radius: var(--faed-radius-lg);
@@ -1034,7 +1034,7 @@ video {
     place-items: center;
     align-content: center;
     gap: .65rem;
-    min-height: 32rem;
+    min-height: 22rem;
     color: var(--faed-text-muted);
     text-align: center;
 }
@@ -1760,18 +1760,6 @@ video {
     background: rgba(255,255,255,.1) !important;
 }
 
-.faed-store-hero__assurance > span {
-    display: grid;
-    place-items: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    border-radius: 50%;
-    background: #fff;
-    color: var(--faed-brand-deep);
-    font-size: .7rem;
-    font-weight: 800;
-}
-
 .faed-store-hero__assurance p {
     margin: 0;
     color: rgba(255,255,255,.78);
@@ -1932,7 +1920,7 @@ video {
     }
 
     .faed-gallery__hero {
-        aspect-ratio: 4 / 5;
+        aspect-ratio: 1 / 1;
     }
 
     .faed-wholesale-section .faed-listing-section__header {
@@ -1959,7 +1947,7 @@ video {
     }
 
     .faed-gallery__hero--placeholder {
-        min-height: 24rem;
+        min-height: 18rem;
     }
 
     .faed-gallery__thumb {
@@ -2146,6 +2134,20 @@ video {
 .faed-skip-link:focus {
     transform: translateY(0);
 }
+/* ---- Icon family ----
+   One inline-SVG set (Rendering/FaedIcon.cs) drawn on a single 24x24 grid. Sizing is in em
+   so an icon tracks the type size of whatever control holds it and stays optically aligned
+   with adjacent text without per-call-site nudging. */
+.faed-icon {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    flex: none;
+    vertical-align: -0.19em;
+}
+
+.faed-icon--sm { width: 1em; height: 1em; }
+.faed-icon--lg { width: 1.35em; height: 1.35em; }
 
 /* The main header deliberately uses sticky rather than fixed positioning. It stays
    continuously available without requiring page-specific top-padding compensation. */
@@ -2172,17 +2174,22 @@ video {
     background: transparent;
 }
 
+/* Row model. Desktop is a single row; below lg the container wraps and the explicit orders
+   below put the action cluster on row 1 with the wordmark, search on row 2 and the collapsed
+   menu on row 3, so search and account are never hidden behind the Menu button. */
 .faed-navbar__inner {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     min-height: var(--faed-header-height);
-    gap: 1.1rem;
+    gap: 0.5rem 1rem;
 }
 
 .faed-wordmark {
+    order: 1;
     display: inline-flex;
     align-items: center;
-    gap: 0.68rem;
+    gap: 0.6rem;
     flex: none;
     color: var(--faed-ink);
     text-decoration: none;
@@ -2194,16 +2201,16 @@ video {
 
 .faed-wordmark__mark {
     position: relative;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.1rem;
+    height: 2.1rem;
     display: grid;
     place-items: center;
     overflow: hidden;
-    border-radius: 0.42rem 0.9rem 0.42rem 0.42rem;
+    border-radius: 0.4rem 0.85rem 0.4rem 0.4rem;
     background: var(--faed-brand);
     color: #fff;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.11);
-    font-size: 1.02rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .11);
+    font-size: 0.97rem;
     font-weight: 800;
     line-height: 1;
 }
@@ -2219,16 +2226,16 @@ video {
 }
 
 .faed-wordmark__text {
-    font-size: 1.45rem;
+    font-size: 1.36rem;
     font-weight: 790;
     letter-spacing: -0.045em;
 }
 
 .faed-navbar__collapse {
+    order: 2;
+    flex: 0 1 auto;
     min-width: 0;
     align-items: center;
-    gap: 1rem;
-    margin-inline-start: 0.8rem;
 }
 
 .faed-navbar__primary {
@@ -2239,13 +2246,20 @@ video {
 
 .faed-navbar .nav-link {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
     border-radius: var(--faed-radius-sm);
-    padding: 0.58rem 0.72rem !important;
+    padding: 0.52rem 0.7rem !important;
     color: var(--faed-text-muted);
     font-size: 0.9rem;
     font-weight: 620;
     text-decoration: none;
     transition: color var(--faed-transition), background-color var(--faed-transition);
+}
+
+.faed-navbar__primary-icon {
+    color: var(--faed-brand);
 }
 
 .faed-navbar .nav-link:hover {
@@ -2263,8 +2277,8 @@ video {
 .faed-navbar .nav-link[aria-current="page"]::after {
     content: "";
     position: absolute;
-    inset-inline: 0.72rem;
-    inset-block-end: 0.28rem;
+    inset-inline: 0.7rem;
+    inset-block-end: 0.24rem;
     height: 2px;
     border-radius: 999px;
     background: var(--faed-brand);
@@ -2272,19 +2286,29 @@ video {
 
 /* Global marketplace search is intentionally prominent but visually calm. */
 .faed-navbar-search {
+    order: 3;
     position: relative;
     display: flex;
     align-items: center;
-    flex: 1 1 30rem;
-    min-width: 11rem;
-    max-width: 38rem;
+    flex: 1 1 20rem;
+    min-width: 10rem;
+    max-width: 40rem;
     margin-inline: auto;
+}
+
+.faed-navbar-search__leading {
+    position: absolute;
+    inset-inline-start: 0.85rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    color: #8a928e;
+    pointer-events: none;
 }
 
 .faed-navbar-search__input {
     width: 100%;
-    min-height: 2.8rem;
-    padding: 0.62rem 3rem 0.62rem 1rem;
+    min-height: 2.7rem;
+    padding: 0.6rem 2.9rem 0.6rem 2.5rem;
     border: 1px solid var(--faed-border);
     border-radius: 999px;
     background: #fff;
@@ -2308,9 +2332,13 @@ video {
     box-shadow: 0 0 0 3px var(--faed-focus);
 }
 
+.faed-navbar-search__input:focus ~ .faed-navbar-search__leading {
+    color: var(--faed-brand);
+}
+
 .faed-navbar-search__button {
     position: absolute;
-    inset-inline-end: 0.35rem;
+    inset-inline-end: 0.3rem;
     display: grid;
     place-items: center;
     width: 2.1rem;
@@ -2321,9 +2349,13 @@ video {
     background: var(--faed-brand);
     color: #fff;
     cursor: pointer;
-    font-size: 1.02rem;
     line-height: 1;
     transition: background-color var(--faed-transition), transform var(--faed-transition);
+}
+
+.faed-navbar-search__icon {
+    width: 1.05rem;
+    height: 1.05rem;
 }
 
 .faed-navbar-search__button:hover {
@@ -2334,45 +2366,68 @@ video {
     transform: scale(.96);
 }
 
-.faed-navbar__toggler {
-    width: 2.85rem;
-    height: 2.85rem;
-    margin-inline-start: auto;
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius-sm);
-    padding: 0;
-    background: rgba(255,255,255,.66);
-}
-
-.faed-navbar__toggler-lines,
-.faed-navbar__toggler-lines::before,
-.faed-navbar__toggler-lines::after {
-    display: block;
-    width: 1.15rem;
-    height: 2px;
-    margin-inline: auto;
-    background: var(--faed-ink);
-}
-
-.faed-navbar__toggler-lines {
-    position: relative;
-}
-
-.faed-navbar__toggler-lines::before,
-.faed-navbar__toggler-lines::after {
-    content: "";
-    position: absolute;
-    inset-inline-start: 0;
-}
-
-.faed-navbar__toggler-lines::before { inset-block-start: -0.38rem; }
-.faed-navbar__toggler-lines::after { inset-block-start: 0.38rem; }
-
-.faed-account-nav {
+/* ---- Navbar action cluster (workspace, orders, account, auth) ---- */
+.faed-navbar__actions {
+    order: 4;
+    display: flex;
     align-items: center;
-    gap: 0.3rem;
-    margin-inline-start: auto;
     flex: none;
+    gap: 0.2rem;
+    margin-inline-start: auto;
+}
+
+.faed-navbar-action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-height: 2.6rem;
+    padding-inline: 0.72rem;
+    border-radius: var(--faed-radius-sm);
+    color: var(--faed-text-muted);
+    font-size: 0.875rem;
+    font-weight: 640;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--faed-transition), background-color var(--faed-transition), border-color var(--faed-transition);
+}
+
+.faed-navbar-action:hover {
+    background: rgba(13, 105, 87, 0.06);
+    color: var(--faed-brand-strong);
+}
+
+.faed-navbar-action.is-active {
+    background: var(--faed-brand-soft);
+    color: var(--faed-brand-strong);
+}
+
+.faed-navbar-action__icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    color: var(--faed-brand);
+}
+
+.faed-navbar-action:hover .faed-navbar-action__icon,
+.faed-navbar-action.is-active .faed-navbar-action__icon {
+    color: var(--faed-brand-strong);
+}
+
+/* The workspace switcher is deliberately a different shape from ordinary destinations. */
+.faed-navbar-action--workspace {
+    margin-inline-end: 0.25rem;
+    border: 1px solid var(--faed-border);
+    background: #fff;
+    color: var(--faed-brand-strong);
+}
+
+.faed-navbar-action--workspace:hover {
+    border-color: var(--faed-brand);
+    background: var(--faed-brand-soft);
+}
+
+.faed-navbar-action--signin {
+    font-weight: 620;
 }
 
 .faed-account-nav__form {
@@ -2382,8 +2437,8 @@ video {
 .faed-account-nav__avatar {
     display: grid;
     place-items: center;
-    width: 1.9rem;
-    height: 1.9rem;
+    width: 1.85rem;
+    height: 1.85rem;
     flex: none;
     border-radius: 50%;
     background: var(--faed-brand-tint);
@@ -2392,45 +2447,99 @@ video {
     font-weight: 760;
 }
 
-.faed-account-menu__trigger {
-    display: inline-flex !important;
-    align-items: center;
-    gap: 0.48rem;
-    border: 0;
-    background: transparent;
+.faed-account-nav__avatar--lg {
+    width: 2.3rem;
+    height: 2.3rem;
+    font-size: .95rem;
 }
 
-.faed-account-menu__trigger::after {
-    margin-inline-start: .08rem;
+.faed-account-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-height: 2.6rem;
+    padding-inline: 0.45rem 0.55rem;
+    border: 0;
+    border-radius: var(--faed-radius-sm);
+    background: transparent;
+    color: var(--faed-text);
+    font-size: 0.875rem;
+    font-weight: 640;
+    cursor: pointer;
+    transition: background-color var(--faed-transition);
+}
+
+.faed-account-menu__trigger:hover,
+.faed-account-menu__trigger[aria-expanded="true"] {
+    background: rgba(13, 105, 87, 0.06);
+}
+
+.faed-account-menu__caret {
+    width: .82rem;
+    height: .82rem;
+    color: var(--faed-text-muted);
+    transition: transform var(--faed-transition);
+}
+
+.faed-account-menu__trigger[aria-expanded="true"] .faed-account-menu__caret {
+    transform: rotate(180deg);
 }
 
 .faed-account-menu__menu {
-    width: min(18.5rem, calc(100vw - 1.5rem));
-    margin-top: .65rem !important;
-    padding: .45rem;
+    width: min(18rem, calc(100vw - 1.5rem));
+    margin-top: .55rem !important;
+    padding: .4rem;
     border: 1px solid var(--faed-border);
     border-radius: var(--faed-radius);
     background: var(--faed-surface);
     box-shadow: var(--faed-shadow-elevated);
 }
 
-.faed-account-menu__menu .dropdown-item {
+/* Identity block, not a navigation row: it is the answer to "who am I signed in as". */
+.faed-account-menu__identity {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    min-width: 0;
+    padding: .5rem .55rem .55rem;
+}
+
+.faed-account-menu__identity-text {
     display: grid;
-    gap: .08rem;
-    min-height: 2.55rem;
-    align-content: center;
+    min-width: 0;
+}
+
+.faed-account-menu__identity-text strong {
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.faed-account-menu__identity-text small {
+    overflow: hidden;
+    color: var(--faed-text-muted);
+    font-size: .74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.faed-account-menu__menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    min-height: 2.5rem;
     border-radius: var(--faed-radius-sm);
-    padding: .55rem .7rem;
+    padding: .5rem .55rem;
     color: var(--faed-text);
-    font-size: .88rem;
+    font-size: .875rem;
     font-weight: 610;
     white-space: normal;
 }
 
-.faed-account-menu__menu .dropdown-item small {
+.faed-account-menu__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: none;
     color: var(--faed-text-muted);
-    font-size: .72rem;
-    font-weight: 500;
 }
 
 .faed-account-menu__menu .dropdown-item:hover,
@@ -2439,8 +2548,13 @@ video {
     color: var(--faed-brand-strong);
 }
 
+.faed-account-menu__menu .dropdown-item:hover .faed-account-menu__icon,
+.faed-account-menu__menu .dropdown-item:focus .faed-account-menu__icon {
+    color: var(--faed-brand);
+}
+
 .faed-account-menu__menu .dropdown-divider {
-    margin: .35rem .25rem;
+    margin: .3rem .25rem;
     border-color: var(--faed-border);
 }
 
@@ -2452,11 +2566,44 @@ video {
     color: var(--faed-danger) !important;
 }
 
+.faed-account-nav__signout .faed-account-menu__icon {
+    color: var(--faed-danger);
+}
+
 .faed-btn--nav {
     min-height: 2.55rem;
     padding-inline: 0.95rem;
     margin-inline-start: 0.12rem;
     border-radius: 999px;
+}
+
+.faed-navbar__toggler {
+    display: none;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-inline-start: 0.15rem;
+    border: 1px solid var(--faed-border);
+    border-radius: var(--faed-radius-sm);
+    padding: 0;
+    background: rgba(255, 255, 255, .66);
+    color: var(--faed-ink);
+}
+
+.faed-navbar__toggler-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+/* Below lg: the workspace switcher moves into the collapsed menu, where it has room for a
+   full label rather than becoming an ambiguous icon-only button. */
+@media (max-width: 991.98px) {
+    .faed-navbar__toggler { display: grid; }
+    .faed-navbar-action--workspace { display: none; }
+}
+
+@media (min-width: 992px) {
+    .faed-navbar__primary-item--mobile { display: none; }
 }
 
 .faed-flash-stack {
@@ -2757,11 +2904,11 @@ video {
 /* ---- Public marketplace: Home ---- */
 
 .faed-home-main {
-    padding-block: clamp(2.4rem, 5vw, 4.8rem) 0;
+    padding-block: clamp(2rem, 4vw, 3.6rem) 0;
 }
 
 .faed-home-section {
-    margin-bottom: clamp(3.4rem, 7vw, 6.2rem);
+    margin-bottom: clamp(2.6rem, 5vw, 4.4rem);
 }
 
 .faed-section-header {
@@ -2835,7 +2982,9 @@ video {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, .94fr) minmax(28rem, 1.06fr);
-    min-height: clamp(34rem, 62vw, 44rem);
+    /* Viewport-relative and capped so the category row below always breaks the fold:
+       ~68svh on a laptop, never taller than 41rem even on a very tall monitor. */
+    min-height: clamp(26rem, 68svh, 41rem);
     align-items: stretch;
 }
 
@@ -2845,7 +2994,7 @@ video {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: clamp(3.6rem, 7vw, 6rem) clamp(2rem, 5vw, 5rem) clamp(3.4rem, 6vw, 5rem) 0;
+    padding: clamp(2.4rem, 4.6vw, 3.9rem) clamp(2rem, 5vw, 4.4rem) clamp(2.2rem, 4vw, 3.4rem) 0;
 }
 
 .faed-hero__meta {
@@ -2881,7 +3030,7 @@ video {
 .faed-hero__title {
     max-width: 12.7ch;
     margin: 0 0 1rem;
-    font-size: clamp(2.75rem, 5.1vw, 5rem);
+    font-size: clamp(2.3rem, 4.15vw, 3.85rem);
     font-weight: 760;
     line-height: .99;
     letter-spacing: -.062em;
@@ -2889,21 +3038,21 @@ video {
 
 .faed-hero__subtitle {
     max-width: 55ch;
-    margin: 0 0 1.65rem;
+    margin: 0 0 1.35rem;
     color: rgba(255,255,255,.79);
-    font-size: clamp(.98rem, 1.45vw, 1.12rem);
-    line-height: 1.65;
+    font-size: clamp(.95rem, 1.25vw, 1.06rem);
+    line-height: 1.6;
 }
 
 .faed-hero__actions {
     display: flex;
     flex-wrap: wrap;
     gap: .75rem;
-    margin-bottom: 2.05rem;
+    margin-bottom: 1.5rem;
 }
 
 .faed-hero__actions .faed-btn {
-    min-height: 3rem;
+    min-height: 2.85rem;
     padding-inline: 1.15rem;
 }
 
@@ -2928,7 +3077,7 @@ video {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .8rem;
     max-width: 44rem;
-    padding-top: 1.2rem;
+    padding-top: 1rem;
     border-top: 1px solid rgba(255,255,255,.16);
 }
 
@@ -2942,15 +3091,15 @@ video {
 .faed-hero__trust-icon {
     display: grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.35rem;
+    height: 1.35rem;
     flex: none;
     color: #d8f2e9;
 }
 
 .faed-hero__trust-icon svg {
-    width: 100%;
-    height: 100%;
+    width: 1.35rem;
+    height: 1.35rem;
 }
 
 .faed-hero__trust-item strong,
@@ -3121,7 +3270,8 @@ video {
 .faed-category-card {
     position: relative;
     display: block;
-    min-height: clamp(12rem, 22vw, 17rem);
+    /* Discovery tiles, not hero panels: the whole category row stays scannable in one look. */
+    min-height: clamp(10.5rem, 16vw, 14.5rem);
     overflow: hidden;
     border: 1px solid rgba(95,88,77,.13);
     border-radius: var(--faed-radius-lg);
@@ -3282,8 +3432,8 @@ video {
 
 .faed-product-card__body {
     flex: 1;
-    padding: 1rem 1rem 1.05rem;
-    gap: .43rem;
+    padding: .8rem .85rem .85rem;
+    gap: .3rem;
 }
 
 .faed-product-card__condition span {
@@ -3292,16 +3442,17 @@ video {
 }
 
 .faed-product-card__title {
-    font-size: 1.04rem;
-    font-weight: 690;
+    font-size: .95rem;
+    font-weight: 680;
 }
 
 .faed-product-card__merchant {
     order: -1;
 }
 
+/* No reserved empty row: a card without a discount reason simply ends sooner. */
 .faed-product-card__reason {
-    min-height: 1.2rem;
+    min-height: 0;
 }
 
 .faed-product-card__view {
@@ -3558,12 +3709,12 @@ video {
     }
 
     .faed-hero__content {
-        padding: 3.25rem 0 2.4rem;
+        padding: 2.4rem 0 1.9rem;
     }
 
     .faed-hero__title {
         max-width: 14ch;
-        font-size: clamp(2.65rem, 10vw, 4.3rem);
+        font-size: clamp(2.2rem, 8.2vw, 3.2rem);
     }
 
     .faed-hero__trust {
@@ -3576,7 +3727,7 @@ video {
     }
 
     .faed-hero__visual {
-        min-height: 28rem;
+        min-height: 20rem;
         margin-inline: calc(50% - 50vw);
         background-image:
             linear-gradient(180deg, var(--faed-brand-deep) 0%, rgba(7,59,50,.10) 17%, rgba(7,59,50,.04) 80%),
@@ -3600,7 +3751,7 @@ video {
     }
 
     .faed-category-card {
-        min-height: 12rem;
+        min-height: 11rem;
     }
 }
 
@@ -3618,7 +3769,7 @@ video {
     }
 
     .faed-category-card {
-        min-height: 10.5rem;
+        min-height: 9.5rem;
     }
 
     .faed-category-card__media {
@@ -3656,7 +3807,7 @@ video {
     }
 
     .faed-hero__title {
-        font-size: clamp(2.45rem, 13vw, 3.4rem);
+        font-size: clamp(2rem, 10vw, 2.7rem);
     }
 
     .faed-hero__actions {
@@ -3678,7 +3829,7 @@ video {
     }
 
     .faed-hero__visual {
-        min-height: 24rem;
+        min-height: 17rem;
     }
 
     .faed-hero__discovery {
@@ -4281,8 +4432,8 @@ button.faed-quick-filter {
 }
 
 .faed-product-card__reason span {
-    display: block;
-    margin-bottom: .08rem;
+    display: inline;
+    margin-inline-end: .3rem;
     color: var(--faed-text);
     font-size: .64rem;
     font-weight: 710;
@@ -5283,8 +5434,9 @@ button.faed-quick-filter {
 
 .faed-auth-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.02fr) minmax(20rem, .78fr);
-    min-height: 39rem;
+    /* Form leads at ~62%; the context panel supports it rather than competing with it. */
+    grid-template-columns: minmax(0, 1.15fr) minmax(17rem, .72fr);
+    min-height: 33rem;
     overflow: hidden;
     border: 1px solid var(--faed-border);
     border-radius: clamp(1rem, 2vw, 1.5rem);
@@ -5390,12 +5542,162 @@ button.faed-quick-filter {
     opacity: 1;
 }
 
+
+/* ---- Identity: shared form language ----
+   Register is a local page and uses the .faed-field/.faed-input language directly. Login,
+   Forgot password, Reset password and the Manage pages are rendered by the compiled
+   Microsoft.AspNetCore.Identity.UI Razor Class Library, so their markup cannot be edited
+   here without copying authentication PageModel code into the project. The rules below
+   convert that package markup to the same visual language instead.
+
+   The floating-label fix is the important one. Identity.UI wraps each field in
+   Bootstrap's .form-floating and gives the input a placeholder that repeats the label text.
+   Bootstrap only blanks that placeholder while the field is unfocused, so the moment a user
+   focused a field they saw the floated label and an identical placeholder at once. Turning
+   .form-floating into a plain stacked label/input grid removes the overlap entirely and
+   makes Login read exactly like Register. Presentation only: no name, id, validation
+   attribute or posted value is touched. */
 .faed-auth-content .form-floating {
-    position: relative;
+    position: static;
+    display: grid;
+}
+
+.faed-auth-content .form-floating > label {
+    position: static;
+    z-index: auto;
+    order: 1;
+    width: auto;
+    height: auto;
+    max-width: none;
+    padding: 0 0 var(--faed-space-2);
+    border: 0;
+    color: var(--faed-text);
+    font-size: .9rem;
+    font-weight: 620;
+    line-height: 1.4;
+    text-overflow: clip;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    overflow: visible;
+}
+
+.faed-auth-content .form-floating > .form-control,
+.faed-auth-content .form-floating > .form-select {
+    order: 2;
+    height: auto;
+    padding: .62rem .8rem;
+    line-height: 1.5;
+}
+
+/* Belt and braces: even with the label lifted out, never show a placeholder that merely
+   repeats its own label. */
+.faed-auth-content .form-floating > .form-control::placeholder {
+    color: transparent;
+}
+
+.faed-auth-content .form-floating > .form-control:focus ~ label,
+.faed-auth-content .form-floating > .form-control:not(:placeholder-shown) ~ label,
+.faed-auth-content .form-floating > .form-control-plaintext ~ label {
+    color: var(--faed-text);
+    transform: none;
+    opacity: 1;
+}
+
+.faed-auth-content .form-floating > .text-danger,
+.faed-auth-content .form-floating > .field-validation-error {
+    order: 3;
+    margin-top: var(--faed-space-2);
+}
+
+.faed-auth-content .mb-3 {
+    margin-bottom: 1.05rem !important;
+}
+
+/* ---- Identity: local Register page ---- */
+.faed-auth-form-shell {
+    width: 100%;
+    max-width: 34rem;
+}
+
+.faed-auth-form-header {
+    margin-bottom: 1.5rem;
+}
+
+.faed-auth-form-header h1 {
+    margin: 0;
+    max-width: 14ch;
+    color: var(--faed-ink);
+    font-size: clamp(1.85rem, 3.6vw, 2.5rem);
+    font-weight: 760;
+    letter-spacing: -.05em;
+    line-height: 1.04;
+}
+
+.faed-auth-form-header .faed-auth-lead {
+    margin: .75rem 0 0;
+}
+
+.faed-auth-content .faed-field__label {
+    display: block;
+    margin-bottom: var(--faed-space-2);
+    color: var(--faed-text);
+    font-size: .9rem;
+    font-weight: 620;
+}
+
+.faed-field__required {
+    color: var(--faed-danger);
+    font-weight: 700;
+}
+
+.faed-auth-content .faed-input {
+    min-height: 2.9rem;
+    background: #fff;
+    border-color: var(--faed-border-strong);
+}
+
+.faed-auth-content .faed-input:hover {
+    border-color: #aaa69d;
+}
+
+.faed-auth-content .faed-input:focus {
+    outline: none;
+    border-color: var(--faed-brand);
+    box-shadow: 0 0 0 3px var(--faed-focus);
+}
+
+.faed-auth-content .faed-field__hint {
+    margin-top: .35rem;
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+.faed-auth-content .faed-field__error {
+    display: block;
+    margin-top: .3rem;
+    font-size: .82rem;
+}
+
+/* Validation spans are always rendered by the Tag Helper; collapse them until they hold a
+   message so an untouched form has no stray gaps under its fields. */
+.faed-auth-content .faed-field__error:empty {
+    display: none;
+}
+
+.faed-auth-content .faed-form-grid {
+    gap: 0 var(--faed-space-4);
+}
+
+.faed-auth-form__submit {
+    width: 100%;
+    min-height: 3rem;
+    margin-top: .35rem;
+    font-size: .95rem;
 }
 
 .faed-auth-content .form-control {
-    min-height: 3.35rem;
+    min-height: 2.9rem;
     border-color: var(--faed-border-strong);
     background: #fff;
 }
@@ -5409,9 +5711,6 @@ button.faed-quick-filter {
     box-shadow: 0 0 0 3px var(--faed-focus);
 }
 
-.faed-auth-content .form-floating > label {
-    color: var(--faed-text-muted);
-}
 
 .faed-auth-content .form-check {
     display: flex;
@@ -5586,16 +5885,16 @@ button.faed-quick-filter {
     align-items: start;
 }
 
-.faed-auth-context__facts li > span {
-    display: grid;
-    place-items: center;
-    width: 1.55rem;
-    height: 1.55rem;
+.faed-auth-context__icon {
+    box-sizing: content-box;
+    display: block;
+    width: 1rem;
+    height: 1rem;
     border-radius: 50%;
     background: rgba(255,255,255,.12);
     color: #dceee8;
-    font-size: .72rem;
-    font-weight: 800;
+    padding: .28rem;
+    stroke-width: 1.8;
 }
 
 .faed-auth-context__facts strong,
@@ -5766,40 +6065,37 @@ button.faed-quick-filter {
 /* ---- Responsive and motion ---- */
 
 @media (max-width: 991.98px) {
-    .faed-navbar__inner { flex-wrap: wrap; }
+    /* Row 1: wordmark + action cluster + Menu. Row 2: search. Row 3: collapsed menu.
+       Cart-style one-tap access is preserved for Orders and Account without opening Menu. */
+    .faed-navbar__inner { padding-block: .5rem; }
+    .faed-navbar__actions { order: 2; }
+    .faed-navbar-search {
+        order: 3;
+        flex: 1 0 100%;
+        max-width: none;
+        margin: 0;
+    }
     .faed-navbar__collapse {
+        order: 4;
         width: 100%;
         margin: 0;
-        padding: .8rem 0 1rem;
+        padding: .5rem 0 .65rem;
         border-top: 1px solid var(--faed-border);
     }
-    .faed-navbar__primary,
-    .faed-account-nav { align-items: stretch; gap: .1rem; }
+    .faed-navbar__primary { align-items: stretch; gap: .1rem; }
+    .faed-navbar .nav-link {
+        min-height: 2.75rem;
+        padding-inline: .7rem !important;
+    }
     .faed-navbar .nav-link.is-active::after,
     .faed-navbar .nav-link[aria-current="page"]::after { display: none; }
     .faed-navbar .nav-link.is-active,
     .faed-navbar .nav-link[aria-current="page"] { background: var(--faed-brand-tint); }
-    .faed-navbar-search {
-        width: 100%;
-        max-width: none;
-        margin: .65rem 0 0;
-    }
-    .faed-account-nav {
-        width: 100%;
-        margin: .65rem 0 0;
-        padding-top: .65rem;
-        border-top: 1px solid var(--faed-border);
-    }
-    .faed-account-nav .faed-btn--nav { width: 100%; margin: .25rem 0 0; }
-    .faed-account-menu__trigger { width: 100%; justify-content: flex-start; }
-    .faed-account-menu__menu {
-        position: static !important;
-        width: 100%;
-        margin: .35rem 0 0 !important;
-        transform: none !important;
-        box-shadow: none;
-    }
-    .faed-account-nav__signout { width: 100%; text-align: left; }
+    .faed-navbar-action,
+    .faed-account-menu__trigger { min-height: 2.75rem; }
+    .faed-navbar-action--icon { padding-inline: .5rem; }
+    .faed-navbar-action__label--compact { display: none; }
+    .faed-account-menu__trigger-text { display: none; }
     .faed-workspace-nav { grid-template-columns: 1fr; }
     .faed-workspace-nav__identity { min-height: auto; border-right: 0; }
     .faed-subnav--workspace { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
@@ -5816,8 +6112,10 @@ button.faed-quick-filter {
     .faed-listing-layout { grid-template-columns: 1fr; }
     .faed-auth-page main { padding-inline: 0; }
     .faed-auth-layout { grid-template-columns: 1fr; min-height: 0; }
-    .faed-auth-context { min-height: 24rem; }
-    .faed-auth-context__inner { padding-block: 2.5rem; }
+    /* Content-driven below tablet: the supporting panel must not add screens of height
+       underneath a form the user has already finished reading. */
+    .faed-auth-context { min-height: 0; }
+    .faed-auth-context__inner { padding-block: 2rem; }
     .faed-auth-context h2 { max-width: 13ch; }
     .faed-account-settings-page .nav-pills { margin-bottom: .75rem; }
 }
@@ -5825,7 +6123,7 @@ button.faed-quick-filter {
 @media (max-width: 560px) {
     .faed-shell { width: min(100% - 1.25rem, var(--faed-content)); }
     .faed-navbar,
-    .faed-navbar__inner { min-height: 4.25rem; }
+    .faed-navbar__inner { min-height: 4rem; }
     .faed-navbar-search__input { min-height: 2.7rem; }
     .faed-wordmark__mark { width: 2rem; height: 2rem; }
     .faed-page { padding: 2rem .85rem; }
@@ -5840,7 +6138,7 @@ button.faed-quick-filter {
     .faed-auth-page main { width: min(100% - 1.25rem, 1120px); padding-block: 1.25rem 2.5rem; }
     .faed-auth-content { padding: 1.4rem 1.1rem 1.6rem; }
     .faed-auth-content > h1 { font-size: 2rem; }
-    .faed-auth-context { min-height: 21rem; }
+    .faed-auth-context { min-height: 0; }
     .faed-auth-context__inner { padding: 2rem 1.4rem; }
     .faed-auth-context__mark { margin-bottom: 1.5rem; }
     .faed-auth-context h2 { font-size: 2rem; }
@@ -7624,4 +7922,244 @@ button.faed-quick-filter {
     .faed-admin-page .faed-table tbody tr {
         transition: none;
     }
+}
+
+/* ---- Workspace sidebar icons ----
+   One icon per destination at a fixed column width so labels align down the whole sidebar.
+   The active state is carried by background, weight and the existing ::before rail, never by
+   icon color alone, so the current page stays identifiable without relying on colour. */
+.faed-merchant-sidebar__link,
+.faed-admin-sidebar__link {
+    gap: .6rem;
+}
+
+.faed-workspace-nav__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: none;
+    color: #7b8985;
+    transition: color var(--faed-transition);
+}
+
+.faed-merchant-sidebar__link:hover .faed-workspace-nav__icon,
+.faed-admin-sidebar__link:hover .faed-workspace-nav__icon,
+.faed-merchant-sidebar__link.is-active .faed-workspace-nav__icon,
+.faed-admin-sidebar__link.is-active .faed-workspace-nav__icon {
+    color: var(--faed-brand);
+}
+
+.faed-merchant-mobilebar__toggle .faed-icon,
+.faed-admin-mobilebar__toggle .faed-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+/* Round trust marks previously held a "✓" text glyph, which rendered at a different weight
+   and baseline on every platform. They now hold the shared check icon and simply need it
+   sized to the circle. */
+.faed-verified .faed-icon {
+    width: .72rem;
+    height: .72rem;
+    stroke-width: 3;
+}
+
+.faed-shop-header__trust-mark .faed-icon,
+.faed-hero__promise-mark .faed-icon,
+.faed-store-verified__mark .faed-icon {
+    width: .95rem;
+    height: .95rem;
+    stroke-width: 2.6;
+}
+
+/* ---- Inline action affordances ---- */
+.faed-section-header__link .faed-icon,
+.faed-hero__primary-action .faed-icon,
+.faed-merchant-cta > .faed-btn .faed-icon,
+.faed-hero__category-count .faed-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.faed-pagination__icon {
+    width: .95rem;
+    height: .95rem;
+}
+
+.faed-filter-chip__remove {
+    width: .85rem;
+    height: .85rem;
+    stroke-width: 2.2;
+}
+
+.faed-quick-filter__chevron {
+    width: .95rem;
+    height: .95rem;
+}
+
+.faed-more-filters__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.faed-shop-search__clear .faed-icon {
+    width: .95rem;
+    height: .95rem;
+}
+
+/* A trailing arrow indicates onward navigation, so it nudges forward on hover rather than
+   animating on its own. */
+.faed-section-header__link .faed-icon,
+.faed-hero__primary-action .faed-icon {
+    transition: transform var(--faed-transition);
+}
+
+.faed-section-header__link:hover .faed-icon,
+.faed-hero__primary-action:hover .faed-icon {
+    transform: translateX(2px);
+}
+
+.faed-home-empty__icon .faed-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.faed-buyer-empty__mark .faed-icon,
+.faed-shop-empty__mark .faed-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* ---- Identity.UI page polish (presentation only) ----
+   Login, Forgot password and Reset password are served by the compiled
+   Microsoft.AspNetCore.Identity.UI Razor Class Library. Their markup cannot be edited
+   without copying authentication PageModel code into this project, which the project
+   deliberately does not do, so the remaining scaffolding tells are handled here. */
+
+/* Identity.UI always renders an "Use another service to log in" column. Faed configures no
+   external authentication provider (Program.cs adds none), so that column can only ever
+   render the framework's developer notice and a link to Microsoft's docs — the single most
+   scaffolding-looking element on the sign-in page, and of no use to a buyer. Scoped to the
+   second column of an Identity row inside the auth shell; if an external provider is ever
+   added, delete this rule. */
+.faed-auth-content > .row > [class*="col-"] + [class*="col-"] {
+    display: none;
+}
+
+.faed-auth-content > .row > [class*="col-"] {
+    max-width: 34rem;
+}
+
+/* Package submit buttons match the local Register submit exactly. */
+.faed-auth-content .btn-primary,
+.faed-auth-content .btn-lg {
+    min-height: 3rem;
+    padding-inline: 1.1rem;
+    border-radius: var(--faed-radius-sm);
+    font-size: .95rem;
+    font-weight: 720;
+}
+
+/* Identity.UI's "Remember me" uses a bare .checkbox wrapper rather than .form-check. */
+.faed-auth-content .checkbox > label {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    margin: 0;
+    color: var(--faed-text);
+    font-size: .9rem;
+    font-weight: 550;
+}
+
+.faed-auth-content .checkbox .form-check-input {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    flex: none;
+}
+
+/* The package's trailing link list reads as a stack of equal-weight links. Give it the same
+   quiet, separated treatment as the local Register page's "Already have an account?" row. */
+.faed-auth-content #account > div:last-of-type p {
+    margin: .3rem 0;
+}
+
+/* ---- Flash messages ----
+   Scoped to the shared layout's flash stack, which is the only alert that carries an icon.
+   Inline page alerts stay text-only: per the iconography rules an icon may reinforce a
+   status but must never be what carries its meaning, so text alone remains authoritative. */
+.faed-flash-stack .faed-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+}
+
+.faed-alert__icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: none;
+    margin-top: .16rem;
+}
+
+.faed-alert--success .faed-alert__icon { color: var(--faed-success); }
+.faed-alert--error .faed-alert__icon { color: var(--faed-danger); }
+.faed-alert--info .faed-alert__icon { color: var(--faed-info); }
+
+/* ---- Action-button icons ----
+   .faed-btn is already an inline-flex row with a gap, so a leading icon only needs a size.
+   Icons are used where they aid recognition (create, back, navigate) and deliberately not on
+   destructive actions, where the wording and button treatment must carry the risk rather
+   than a trash glyph. */
+.faed-btn > .faed-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: none;
+}
+
+.faed-btn--sm > .faed-icon {
+    width: .95rem;
+    height: .95rem;
+}
+
+/* ---- Reduced motion ----
+   The global reset above neutralises transition timing. These decorative transforms are
+   removed outright so nothing shifts position for a user who asked for less movement. */
+@media (prefers-reduced-motion: reduce) {
+    .faed-product-card:hover,
+    .faed-category-card:hover {
+        transform: none;
+    }
+
+    .faed-product-card:hover .faed-product-card__media img,
+    .faed-category-card:hover .faed-category-card__media,
+    .faed-category-card:hover .faed-category-card__arrow,
+    .faed-section-header__link:hover .faed-icon,
+    .faed-hero__primary-action:hover .faed-icon,
+    .faed-navbar-search__button:active,
+    .faed-auth-content .btn-primary:hover {
+        transform: none;
+    }
+}
+
+/* The storefront assurance mark and the merchant-summary arrow previously held Unicode
+   glyphs inside a <span>; they now hold the shared icon directly, so the circle treatment
+   and sizing move onto the icon element. */
+.faed-store-hero__assurance > .faed-icon {
+    box-sizing: content-box;
+    width: .78rem;
+    height: .78rem;
+    padding: .285rem;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--faed-brand-deep);
+    stroke-width: 2.8;
+}
+
+.faed-merchant-summary__arrow {
+    display: inline-grid;
+    place-items: center;
+}
+
+.faed-merchant-summary__arrow .faed-icon {
+    width: 1.1rem;
+    height: 1.1rem;
 }

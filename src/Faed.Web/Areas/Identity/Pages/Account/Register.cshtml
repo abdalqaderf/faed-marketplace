@@ -4,126 +4,97 @@
     ViewData["Title"] = "Create account";
 }
 
-<h1>@ViewData["Title"]</h1>
+@* Conventional label-above-input rather than Bootstrap .form-floating. Floating labels
+   repeat their own text as the input placeholder, and Bootstrap only hides that placeholder
+   while the field is unfocused — so the label and an identical placeholder were both visible
+   the moment a field was focused. Real labels remove the duplication outright. *@
+<div class="faed-auth-form-shell">
+    <header class="faed-auth-form-header">
+        <h1>@ViewData["Title"]</h1>
+        <p class="faed-auth-lead">
+            Create your Faed account to shop the marketplace. If you want to sell later,
+            merchant access is added after verification.
+        </p>
+    </header>
 
-<p class="faed-auth-lead">
-    Create your Faed account to shop the marketplace.
-    If you want to sell later, merchant access is added after verification.
-</p>
+    <form id="registerForm" class="faed-auth-form" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+        <div asp-validation-summary="ModelOnly" class="faed-auth-validation-summary" role="alert"></div>
 
-<div class="row faed-auth-form-row">
-    <div class="col-md-9 col-lg-8">
-        <form id="registerForm" class="faed-auth-form" asp-route-returnUrl="@Model.ReturnUrl" method="post">
-
-            <div class="faed-auth-form__heading">
-                <h2>Account details</h2>
-                <p>
-                    Enter your basic information and use an email
-                    address you can access for account confirmation.
-                </p>
+        <div class="faed-form-grid">
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="Input.FirstName">
+                    First name <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.FirstName" autocomplete="given-name"
+                       aria-required="true" />
+                <span class="faed-field__error" asp-validation-for="Input.FirstName"></span>
             </div>
 
-            <div asp-validation-summary="ModelOnly" class="text-danger faed-auth-validation-summary" role="alert">
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="Input.LastName">
+                    Last name <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.LastName" autocomplete="family-name"
+                       aria-required="true" />
+                <span class="faed-field__error" asp-validation-for="Input.LastName"></span>
             </div>
 
-            <div class="row g-3">
-                <div class="col-sm-6">
-                    <div class="form-floating">
-                        <input asp-for="Input.FirstName" class="form-control" autocomplete="given-name"
-                               aria-required="true" placeholder="First name" />
-
-                        <label asp-for="Input.FirstName">
-                            First name
-                        </label>
-
-                        <span asp-validation-for="Input.FirstName" class="text-danger">
-                        </span>
-                    </div>
-                </div>
-
-                <div class="col-sm-6">
-                    <div class="form-floating">
-                        <input asp-for="Input.LastName" class="form-control" autocomplete="family-name"
-                               aria-required="true" placeholder="Last name" />
-
-                        <label asp-for="Input.LastName">
-                            Last name
-                        </label>
-
-                        <span asp-validation-for="Input.LastName" class="text-danger">
-                        </span>
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-floating">
-                        <input asp-for="Input.PhoneNumber" class="form-control" autocomplete="tel" inputmode="tel"
-                               aria-required="true" placeholder="+962 7X XXX XXXX" />
-
-                        <label asp-for="Input.PhoneNumber">
-                            Phone number
-                        </label>
-
-                        <span asp-validation-for="Input.PhoneNumber" class="text-danger">
-                        </span>
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-floating">
-                        <input asp-for="Input.Email" class="form-control" autocomplete="email" inputmode="email"
-                               aria-required="true" placeholder="name@example.com" />
-
-                        <label asp-for="Input.Email">
-                            Email
-                        </label>
-
-                        <span asp-validation-for="Input.Email" class="text-danger">
-                        </span>
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-floating">
-                        <input asp-for="Input.Password" class="form-control" autocomplete="new-password"
-                               aria-required="true" placeholder="Password" />
-
-                        <label asp-for="Input.Password">
-                            Password
-                        </label>
-
-                        <span asp-validation-for="Input.Password" class="text-danger">
-                        </span>
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-floating">
-                        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password"
-                               aria-required="true" placeholder="Confirm password" />
-
-                        <label asp-for="Input.ConfirmPassword">
-                            Confirm password
-                        </label>
-
-                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger">
-                        </span>
-                    </div>
-                </div>
+            <div class="faed-field faed-field--full">
+                <label class="faed-field__label" asp-for="Input.PhoneNumber">
+                    Phone number <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.PhoneNumber" autocomplete="tel" inputmode="tel"
+                       aria-required="true" aria-describedby="register-phone-help" />
+                <span class="faed-field__hint" id="register-phone-help">
+                    Include the country code, for example +962 7X XXX XXXX.
+                </span>
+                <span class="faed-field__error" asp-validation-for="Input.PhoneNumber"></span>
             </div>
 
-            <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary mt-4">
-                Create account
-            </button>
+            <div class="faed-field faed-field--full">
+                <label class="faed-field__label" asp-for="Input.Email">
+                    Email <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.Email" autocomplete="email" inputmode="email"
+                       aria-required="true" aria-describedby="register-email-help" />
+                <span class="faed-field__hint" id="register-email-help">
+                    Use an address you can open — account confirmation is sent there.
+                </span>
+                <span class="faed-field__error" asp-validation-for="Input.Email"></span>
+            </div>
 
-            <p class="faed-auth-switch">
-                Already have an account?
-                <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">
-                    Sign in
-                </a>
-            </p>
-        </form>
-    </div>
+            <div class="faed-field faed-field--full">
+                <label class="faed-field__label" asp-for="Input.Password">
+                    Password <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.Password" autocomplete="new-password"
+                       aria-required="true" aria-describedby="register-password-help" />
+                <span class="faed-field__hint" id="register-password-help">
+                    At least 6 characters, with an uppercase letter, a lowercase letter, a
+                    number and a symbol.
+                </span>
+                <span class="faed-field__error" asp-validation-for="Input.Password"></span>
+            </div>
+
+            <div class="faed-field faed-field--full">
+                <label class="faed-field__label" asp-for="Input.ConfirmPassword">
+                    Confirm password <span class="faed-field__required" aria-hidden="true">*</span>
+                </label>
+                <input class="faed-input" asp-for="Input.ConfirmPassword" autocomplete="new-password"
+                       aria-required="true" />
+                <span class="faed-field__error" asp-validation-for="Input.ConfirmPassword"></span>
+            </div>
+        </div>
+
+        <button id="registerSubmit" type="submit" class="faed-btn faed-btn--primary faed-auth-form__submit">
+            Create account
+        </button>
+
+        <p class="faed-auth-switch">
+            Already have an account?
+            <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Sign in</a>
+        </p>
+    </form>
 </div>
 
 @section Scripts {

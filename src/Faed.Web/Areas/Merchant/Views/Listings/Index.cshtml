@@ -22,7 +22,7 @@
             <p class="faed-page__subtitle">Manage your marketplace listings, variants, availability, and stock.</p>
         </div>
         <div class="faed-page__actions">
-            <a class="faed-btn faed-btn--primary" asp-action="Create">New listing</a>
+            <a class="faed-btn faed-btn--primary" asp-action="Create">@FaedIcon.Render("plus", "faed-icon")<span>New listing</span></a>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
             <div class="faed-empty__actions">
                 @if (Model.Filter == MerchantListingFilter.All)
                 {
-                    <a class="faed-btn faed-btn--primary faed-btn--sm" asp-action="Create">Create listing</a>
+                    <a class="faed-btn faed-btn--primary faed-btn--sm" asp-action="Create">@FaedIcon.Render("plus", "faed-icon")<span>Create listing</span></a>
                 }
                 else
                 {

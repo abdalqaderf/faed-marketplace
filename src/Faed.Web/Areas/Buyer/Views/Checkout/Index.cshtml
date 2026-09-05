@@ -25,7 +25,7 @@
         <a class="faed-buyer-heading__merchant" asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@checkout.MerchantSlug">
             <span>Sold by</span>
             <strong>@checkout.MerchantBusinessName</strong>
-            <span aria-hidden="true">→</span>
+            @FaedIcon.Render("arrow-right", "faed-icon")
         </a>
     </header>
 
@@ -44,7 +44,7 @@
                 {
                     <p>This merchant has not set up a pickup location or delivery zone yet.</p>
                 }
-                <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">Back to the listing</a>
+                <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">@FaedIcon.Render("arrow-left", "faed-icon")<span>Back to the listing</span></a>
             </div>
         </section>
     }
@@ -276,7 +276,7 @@
                     <p class="faed-checkout-summary__note">The estimate helps you review the form. Faed confirms stock, prices, and the final total server-side when you place the order.</p>
 
                     <button type="submit" class="faed-btn faed-btn--primary faed-checkout-submit">Place order</button>
-                    <a class="faed-btn faed-btn--ghost faed-checkout-cancel" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">Back to listing</a>
+                    <a class="faed-btn faed-btn--ghost faed-checkout-cancel" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@checkout.ListingSlug">@FaedIcon.Render("arrow-left", "faed-icon")<span>Back to listing</span></a>
 
                     <div class="faed-checkout-summary__next">
                         <strong>What happens next?</strong>

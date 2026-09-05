@@ -33,14 +33,14 @@
                 var previousData = RouteFor(Model.Page - 1);
                 <a class="faed-pagination__link faed-pagination__link--edge" asp-action="@Model.Action"
                    asp-all-route-data="previousData" rel="prev">
-                    <span aria-hidden="true">&larr;</span>
+                    @FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")
                     <span>Previous</span>
                 </a>
             }
             else
             {
                 <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">
-                    <span aria-hidden="true">&larr;</span>
+                    @FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")
                     <span>Previous</span>
                 </span>
             }
@@ -92,14 +92,14 @@
                 <a class="faed-pagination__link faed-pagination__link--edge" asp-action="@Model.Action"
                    asp-all-route-data="nextData" rel="next">
                     <span>Next</span>
-                    <span aria-hidden="true">&rarr;</span>
+                    @FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")
                 </a>
             }
             else
             {
                 <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">
                     <span>Next</span>
-                    <span aria-hidden="true">&rarr;</span>
+                    @FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")
                 </span>
             }
         </nav>

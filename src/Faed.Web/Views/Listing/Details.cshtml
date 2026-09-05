@@ -96,7 +96,7 @@
                         </strong>
                         <small>@(Model.MerchantIsVerified ? "Business identity reviewed by Faed" : "View merchant storefront")</small>
                     </span>
-                    <span class="faed-merchant-summary__arrow" aria-hidden="true">→</span>
+                    <span class="faed-merchant-summary__arrow" aria-hidden="true">@FaedIcon.Render("arrow-right", "faed-icon")</span>
                 </a>
 
                 <div class="faed-listing-price-row">
@@ -385,7 +385,7 @@
                                             <p>Use an offer when you want to negotiate this stock as a business purchase.</p>
                                         </div>
                                         <a class="faed-btn faed-btn--light" asp-area="Merchant" asp-controller="Offers" asp-action="Create"
-                                           asp-route-listingSlug="@Model.Slug">Make an offer <span aria-hidden="true">→</span></a>
+                                           asp-route-listingSlug="@Model.Slug">Make an offer @FaedIcon.Render("arrow-right", "faed-icon")</a>
                                     </div>
                                     <div class="faed-wholesale-facts">
                                         <div><span>Minimum order</span><strong>@(Model.WholesaleMinQuantity ?? 0) units</strong></div>

@@ -40,7 +40,7 @@
            asp-route-slug="@Model.MerchantSlug">
             @if (Model.MerchantIsVerified)
             {
-                <span class="faed-verified" aria-hidden="true">✓</span>
+                <span class="faed-verified" aria-hidden="true">@FaedIcon.Render("check", "faed-icon")</span>
                 <span class="visually-hidden">Verified merchant.</span>
             }
             <span>@Model.MerchantBusinessName</span>
