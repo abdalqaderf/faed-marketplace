@@ -47,6 +47,12 @@
                 Nothing matches this filter. Start a wholesale negotiation from any listing that offers
                 B2B — look for the “Make an offer” button on the listing page.
             </div>
+            @if (Model.Filter != B2BNegotiationFilter.All)
+            {
+                <div class="faed-empty__actions">
+                    <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Index" asp-route-filter="@B2BNegotiationFilter.All">View all offers</a>
+                </div>
+            }
         </div>
     }
     else
@@ -61,6 +67,7 @@
                         <th scope="col">My side</th>
                         <th scope="col">Current offer</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,6 +83,7 @@
                                 <div class="faed-field__hint">Revision @n.CurrentRevisionNumber · total JOD @n.CurrentTotal.ToString("0.000")</div>
                             </td>
                             <td><span class="@B2BNegotiationStatusDisplay.BadgeClass(n.Status)">@B2BNegotiationStatusDisplay.Label(n.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@n.Id">Open</a></td>
                         </tr>
                     }
                 </tbody>

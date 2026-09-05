@@ -206,7 +206,3 @@ src/Faed.Web/
 - Sending real confirmation/notification emails requires registering an `IEmailSender`; none
   is wired up by default, so Identity's account-confirmation email is a no-op locally.
 
-## Deployment
-
-Production configuration, the manual steps required before a public deployment (object
-storage, email provider) and a release checklist are in **[`DEPLOYMENT.md`](DEPLOYMENT.md)**.

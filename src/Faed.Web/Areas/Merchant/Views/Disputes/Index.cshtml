@@ -34,6 +34,7 @@
                         <th scope="col">Other party</th>
                         <th scope="col">Reason</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,6 +46,7 @@
                             <td>@d.CounterpartyName</td>
                             <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
                             <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@d.Id">View</a></td>
                         </tr>
                     }
                 </tbody>

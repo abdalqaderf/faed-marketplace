@@ -25,8 +25,11 @@
 
     <div asp-validation-summary="ModelOnly" class="faed-alert faed-alert--error" role="alert"></div>
 
-    <div class="faed-panel">
-        <h2 class="faed-panel__title">Pickup locations</h2>
+    <div class="faed-panel faed-merchant-settings-section">
+        <div>
+            <h2 class="faed-panel__title">Pickup locations</h2>
+            <p class="faed-panel__hint">Manage where buyers can collect eligible orders.</p>
+        </div>
         @if (settings.Locations.Count == 0)
         {
             <p class="faed-panel__hint">No pickup locations yet.</p>
@@ -64,42 +67,50 @@
             </div>
         }
 
-        <h3 class="faed-panel__title faed-panel__title--sm faed-panel__title--spaced">Add a pickup location</h3>
-        <form asp-action="SaveLocation" method="post">
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_Name">Name</label>
-                <input class="faed-input" asp-for="LocationForm.Name" placeholder="e.g. Main store" />
-                <span asp-validation-for="LocationForm.Name" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_AddressLine">Street address</label>
-                <input class="faed-input" asp-for="LocationForm.AddressLine" />
-                <span asp-validation-for="LocationForm.AddressLine" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_Area">Area</label>
-                <input class="faed-input" asp-for="LocationForm.Area" placeholder="e.g. Abdali" />
-                <span asp-validation-for="LocationForm.Area" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_City">City</label>
-                <input class="faed-input" asp-for="LocationForm.City" />
-                <span asp-validation-for="LocationForm.City" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_PickupHoursText">Pickup hours (optional)</label>
-                <input class="faed-input" asp-for="LocationForm.PickupHoursText" placeholder="e.g. Sun–Thu 10:00–18:00" />
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="LocationForm_PickupInstructions">Instructions (optional)</label>
-                <textarea class="faed-input" asp-for="LocationForm.PickupInstructions" rows="2"></textarea>
-            </div>
-            <button type="submit" class="faed-btn faed-btn--primary">Add location</button>
-        </form>
+        <div class="faed-merchant-settings-form">
+            <h3 class="faed-panel__title faed-panel__title--sm">Add a pickup location</h3>
+            <p class="faed-panel__hint">Add only locations that are ready to serve buyers.</p>
+            <form asp-action="SaveLocation" method="post" class="faed-merchant-form-grid">
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_Name">Name</label>
+                    <input class="faed-input" asp-for="LocationForm.Name" placeholder="e.g. Main store" />
+                    <span asp-validation-for="LocationForm.Name" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_AddressLine">Street address</label>
+                    <input class="faed-input" asp-for="LocationForm.AddressLine" />
+                    <span asp-validation-for="LocationForm.AddressLine" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_Area">Area</label>
+                    <input class="faed-input" asp-for="LocationForm.Area" placeholder="e.g. Abdali" />
+                    <span asp-validation-for="LocationForm.Area" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_City">City</label>
+                    <input class="faed-input" asp-for="LocationForm.City" />
+                    <span asp-validation-for="LocationForm.City" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_PickupHoursText">Pickup hours (optional)</label>
+                    <input class="faed-input" asp-for="LocationForm.PickupHoursText" placeholder="e.g. Sun–Thu 10:00–18:00" />
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="LocationForm_PickupInstructions">Instructions (optional)</label>
+                    <textarea class="faed-input" asp-for="LocationForm.PickupInstructions" rows="2"></textarea>
+                </div>
+                <div class="faed-merchant-form-actions faed-field--full">
+                    <button type="submit" class="faed-btn faed-btn--primary">Add location</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <div class="faed-panel">
-        <h2 class="faed-panel__title">Delivery zones</h2>
+    <div class="faed-panel faed-merchant-settings-section">
+        <div>
+            <h2 class="faed-panel__title">Delivery zones</h2>
+            <p class="faed-panel__hint">Define the delivery areas, fees, minimums, and estimates you currently support.</p>
+        </div>
         @if (settings.DeliveryZones.Count == 0)
         {
             <p class="faed-panel__hint">No delivery zones yet.</p>
@@ -138,29 +149,34 @@
             </div>
         }
 
-        <h3 class="faed-panel__title faed-panel__title--sm faed-panel__title--spaced">Add a delivery zone</h3>
-        <form asp-action="SaveZone" method="post">
-            <div class="faed-field">
-                <label class="faed-field__label" for="ZoneForm_Name">Name</label>
-                <input class="faed-input" asp-for="ZoneForm.Name" placeholder="e.g. West Amman" />
-                <span asp-validation-for="ZoneForm.Name" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="ZoneForm_DeliveryFee">Delivery fee (JOD)</label>
-                <input class="faed-input" asp-for="ZoneForm.DeliveryFee" type="number" step="0.001" min="0" />
-                <span asp-validation-for="ZoneForm.DeliveryFee" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="ZoneForm_MinimumOrderValue">Minimum order value (JOD, optional)</label>
-                <input class="faed-input" asp-for="ZoneForm.MinimumOrderValue" type="number" step="0.001" min="0" />
-                <span asp-validation-for="ZoneForm.MinimumOrderValue" class="faed-field__error"></span>
-            </div>
-            <div class="faed-field">
-                <label class="faed-field__label" for="ZoneForm_EstimatedDeliveryText">Delivery estimate (optional)</label>
-                <input class="faed-input" asp-for="ZoneForm.EstimatedDeliveryText" placeholder="e.g. 1–2 days" />
-            </div>
-            <button type="submit" class="faed-btn faed-btn--primary">Add zone</button>
-        </form>
+        <div class="faed-merchant-settings-form">
+            <h3 class="faed-panel__title faed-panel__title--sm">Add a delivery zone</h3>
+            <p class="faed-panel__hint">The values below are shown to buyers during fulfilment selection.</p>
+            <form asp-action="SaveZone" method="post" class="faed-merchant-form-grid">
+                <div class="faed-field">
+                    <label class="faed-field__label" for="ZoneForm_Name">Name</label>
+                    <input class="faed-input" asp-for="ZoneForm.Name" placeholder="e.g. West Amman" />
+                    <span asp-validation-for="ZoneForm.Name" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="ZoneForm_DeliveryFee">Delivery fee (JOD)</label>
+                    <input class="faed-input" asp-for="ZoneForm.DeliveryFee" type="number" step="0.001" min="0" />
+                    <span asp-validation-for="ZoneForm.DeliveryFee" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="ZoneForm_MinimumOrderValue">Minimum order value (JOD, optional)</label>
+                    <input class="faed-input" asp-for="ZoneForm.MinimumOrderValue" type="number" step="0.001" min="0" />
+                    <span asp-validation-for="ZoneForm.MinimumOrderValue" class="faed-field__error"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" for="ZoneForm_EstimatedDeliveryText">Delivery estimate (optional)</label>
+                    <input class="faed-input" asp-for="ZoneForm.EstimatedDeliveryText" placeholder="e.g. 1–2 days" />
+                </div>
+                <div class="faed-merchant-form-actions faed-field--full">
+                    <button type="submit" class="faed-btn faed-btn--primary">Add zone</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

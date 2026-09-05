@@ -106,17 +106,22 @@
 
     <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
 
-    <!-- ---- Business details ---- -->
+    <!-- ---- Listing details and pricing ---- -->
     <section class="faed-section">
         <div class="faed-section__header">
             <div>
-                <h2 class="faed-section__title">Business details</h2>
-                <p class="faed-section__hint">Category, condition, pricing and disclosure. Changing these while live sends the listing back for review.</p>
+                <h2 class="faed-section__title">Listing details &amp; pricing</h2>
+                <p class="faed-section__hint">Product information, pricing, selling channels and disclosure. Changing material details while live sends the listing back for review.</p>
             </div>
         </div>
         <div class="faed-section__body">
             <form asp-action="UpdateDetails" asp-route-id="@listing.Id" method="post" novalidate>
                 <div class="faed-form-grid">
+                    <div class="faed-form-subsection faed-field--full">
+                        <strong>Basic information</strong>
+                        <span>Classify the product and explain why it is discounted.</span>
+                    </div>
+
                     <div class="faed-field">
                         <label class="faed-field__label" asp-for="Form.CategoryId">Category</label>
                         <select class="faed-select" asp-for="Form.CategoryId" disabled="@(!canEdit)">
@@ -165,6 +170,11 @@
                         </div>
                     </fieldset>
 
+                    <div class="faed-form-subsection faed-field--full">
+                        <strong>Buyer-facing details</strong>
+                        <span>Describe the product clearly without hiding condition or included-item details.</span>
+                    </div>
+
                     <div class="faed-field faed-field--full">
                         <label class="faed-field__label" asp-for="Form.Title">Title</label>
                         <input class="faed-input" asp-for="Form.Title" disabled="@(!canEdit)" />
@@ -175,6 +185,11 @@
                         <label class="faed-field__label" asp-for="Form.Description">Description</label>
                         <textarea class="faed-input" asp-for="Form.Description" rows="4" disabled="@(!canEdit)"></textarea>
                         <span class="faed-field__error" asp-validation-for="Form.Description"></span>
+                    </div>
+
+                    <div class="faed-form-subsection faed-field--full">
+                        <strong>Pricing &amp; selling channels</strong>
+                        <span>Set retail and wholesale terms using the capabilities already supported by this listing.</span>
                     </div>
 
                     <div class="faed-field">
@@ -211,6 +226,11 @@
                     <div class="faed-field">
                         <label class="faed-field__label" asp-for="Form.WholesaleMinQuantity">B2B minimum order quantity</label>
                         <input class="faed-input" type="number" min="1" asp-for="Form.WholesaleMinQuantity" disabled="@(!canEdit)" />
+                    </div>
+
+                    <div class="faed-form-subsection faed-field--full">
+                        <strong>Included items &amp; policies</strong>
+                        <span>Clarify what is included, anything missing, and the applicable return or warranty terms.</span>
                     </div>
 
                     <div class="faed-field faed-field--full">
@@ -309,15 +329,15 @@
                 <table class="faed-table">
                     <thead>
                         <tr>
-                            <th>SKU</th>
-                            <th>Combination</th>
-                            <th>Available</th>
-                            <th>Reserved</th>
-                            <th>Sold</th>
-                            <th>Active</th>
+                            <th scope="col">SKU</th>
+                            <th scope="col">Combination</th>
+                            <th scope="col">Available</th>
+                            <th scope="col">Reserved</th>
+                            <th scope="col">Sold</th>
+                            <th scope="col">Active</th>
                             @if (canEdit)
                             {
-                                <th>Actions</th>
+                                <th scope="col">Actions</th>
                             }
                         </tr>
                     </thead>

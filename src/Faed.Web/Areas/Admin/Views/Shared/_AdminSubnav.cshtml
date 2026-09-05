@@ -1,29 +1,130 @@
 @model string
 @{
     var active = Model ?? string.Empty;
-    (string Section, string Controller, string Action, string Label)[] links =
+
+    var groups = new[]
     {
-        ("Overview", "Home", "Index", "Overview"),
-        ("MerchantVerification", "MerchantVerification", "Index", "Merchant verification"),
-        ("ListingModeration", "ListingModeration", "Index", "Listing moderation"),
-        ("Orders", "Transactions", "Orders", "Orders"),
-        ("Deals", "Transactions", "Deals", "B2B deals"),
-        ("Disputes", "Disputes", "Index", "Disputes"),
-        ("Catalog", "Catalog", "Index", "Catalog"),
-        ("Reviews", "Reviews", "Index", "Reviews"),
-        ("AuditLog", "AuditLog", "Index", "Audit log"),
+        new
+        {
+            Label = "Workspace",
+            Links = new[]
+            {
+                (Section: "Overview", Controller: "Home", Action: "Index", Label: "Overview")
+            }
+        },
+        new
+        {
+            Label = "Marketplace & moderation",
+            Links = new[]
+            {
+                (Section: "MerchantVerification", Controller: "MerchantVerification", Action: "Index", Label: "Merchant Verification"),
+                (Section: "ListingModeration", Controller: "ListingModeration", Action: "Index", Label: "Listing Moderation"),
+                (Section: "Catalog", Controller: "Catalog", Action: "Index", Label: "Catalog")
+            }
+        },
+        new
+        {
+            Label = "Transactions & operations",
+            Links = new[]
+            {
+                (Section: "Orders", Controller: "Transactions", Action: "Orders", Label: "B2C Orders"),
+                (Section: "Deals", Controller: "Transactions", Action: "Deals", Label: "B2B Deals"),
+                (Section: "Disputes", Controller: "Disputes", Action: "Index", Label: "Disputes")
+            }
+        },
+        new
+        {
+            Label = "Trust & governance",
+            Links = new[]
+            {
+                (Section: "Reviews", Controller: "Reviews", Action: "Index", Label: "Reviews"),
+                (Section: "AuditLog", Controller: "AuditLog", Action: "Index", Label: "Audit Log")
+            }
+        }
+    };
+
+    var activeLabel = active switch
+    {
+        "Overview" => "Overview",
+        "MerchantVerification" => "Merchant Verification",
+        "ListingModeration" => "Listing Moderation",
+        "Catalog" => "Catalog",
+        "Orders" => "B2C Orders",
+        "Deals" => "B2B Deals",
+        "Disputes" => "Disputes",
+        "Reviews" => "Reviews",
+        "AuditLog" => "Audit Log",
+        _ => "Admin Workspace"
     };
 }
-<div class="faed-workspace-nav faed-workspace-nav--admin">
-    <div class="faed-workspace-nav__identity">
-        <span class="faed-workspace-nav__eyebrow">Operations</span>
-        <strong>Admin Workspace</strong>
+
+<div class="faed-admin-workspace-nav">
+    <aside class="faed-admin-sidebar" aria-label="Admin workspace navigation">
+        <div class="faed-admin-sidebar__brand">
+            <span class="faed-admin-sidebar__eyebrow">Operations workspace</span>
+            <strong>Admin Workspace</strong>
+            <span>Review queues, marketplace activity, trust, and governance.</span>
+        </div>
+
+        <nav class="faed-admin-sidebar__nav" aria-label="Admin sections">
+            @foreach (var group in groups)
+            {
+                <div class="faed-admin-sidebar__group">
+                    <span class="faed-admin-sidebar__group-label">@group.Label</span>
+                    @foreach (var link in group.Links)
+                    {
+                        <a class="faed-admin-sidebar__link @(active == link.Section ? "is-active" : "")"
+                           aria-current="@(active == link.Section ? "page" : null)"
+                           asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action">
+                            <span>@link.Label</span>
+                        </a>
+                    }
+                </div>
+            }
+        </nav>
+    </aside>
+
+    <div class="faed-admin-mobilebar">
+        <div class="faed-admin-mobilebar__context">
+            <span>Admin Workspace</span>
+            <strong>@activeLabel</strong>
+        </div>
+        <button class="faed-btn faed-btn--ghost faed-admin-mobilebar__toggle" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#faed-admin-navigation"
+                aria-controls="faed-admin-navigation" aria-label="Open admin navigation">
+            <span aria-hidden="true">☰</span>
+            <span>Menu</span>
+        </button>
     </div>
-    <nav class="faed-subnav faed-subnav--workspace" aria-label="Admin sections">
-        @foreach (var link in links)
-        {
-            <a class="@(active == link.Section ? "is-active" : "")" aria-current="@(active == link.Section ? "page" : null)"
-               asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action">@link.Label</a>
-        }
-    </nav>
+
+    <div class="offcanvas offcanvas-start faed-admin-drawer" tabindex="-1" id="faed-admin-navigation"
+         aria-labelledby="faed-admin-navigation-label">
+        <div class="offcanvas-header faed-admin-drawer__header">
+            <div>
+                <span class="faed-admin-sidebar__eyebrow">Operations workspace</span>
+                <h2 class="offcanvas-title" id="faed-admin-navigation-label">Admin Workspace</h2>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+                    aria-label="Close admin navigation"></button>
+        </div>
+        <div class="offcanvas-body faed-admin-drawer__body">
+            <nav class="faed-admin-sidebar__nav" aria-label="Admin sections mobile">
+                @foreach (var group in groups)
+                {
+                    <div class="faed-admin-sidebar__group">
+                        <span class="faed-admin-sidebar__group-label">@group.Label</span>
+                        @foreach (var link in group.Links)
+                        {
+                            <a class="faed-admin-sidebar__link @(active == link.Section ? "is-active" : "")"
+                               aria-current="@(active == link.Section ? "page" : null)"
+                               asp-area="Admin" asp-controller="@link.Controller" asp-action="@link.Action"
+                               data-bs-dismiss="offcanvas">
+                                <span>@link.Label</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </nav>
+        </div>
+    </div>
 </div>

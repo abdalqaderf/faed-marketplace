@@ -3,64 +3,115 @@
     ViewData["Title"] = Model.Merchant.BusinessName;
 }
 
-<div class="faed-page faed-page--wide">
-    <div class="faed-store-header">
-        <div class="faed-store-header__monogram" aria-hidden="true">@Model.Merchant.BusinessName.Substring(0, 1).ToUpperInvariant()</div>
-        <div class="faed-store-header__identity">
-            <p class="faed-kicker">Merchant storefront</p>
-            <h1 class="faed-store-header__name">
-                @Model.Merchant.BusinessName
-                @if (Model.Merchant.IsVerified)
-                {
-                    <span class="faed-badge faed-badge--approved">
-                        <span aria-hidden="true">&#10003;</span> Verified merchant
-                    </span>
-                }
-            </h1>
-            <p class="faed-store-header__meta">
-                Member since @AmmanTime.FormatDate(Model.Merchant.MemberSinceUtc)
-                &middot; @Model.Merchant.LiveListingCount active @(Model.Merchant.LiveListingCount == 1 ? "listing" : "listings")
-            </p>
-            <p class="faed-store-header__assurance">Business identity reviewed by Faed before selling access was granted.</p>
-        </div>
-    </div>
-
-    @if (Model.Reviews is { Summary.HasReviews: true })
-    {
-        <section class="faed-panel" aria-label="Merchant reviews">
-            <h2 class="faed-panel__title">
-                Buyer reviews —
-                <span aria-hidden="true">@DisputeStatusDisplay.Stars((int)Math.Round(Model.Reviews.Summary.AverageRating))</span>
-                @Model.Reviews.Summary.AverageRating.ToString("0.0") / 5
-                (@Model.Reviews.Summary.ReviewCount)
-            </h2>
-            <ul class="faed-review-list">
-                @foreach (var review in Model.Reviews.Reviews)
-                {
-                    <li>
-                        <span aria-hidden="true">@DisputeStatusDisplay.Stars(review.Rating)</span>
-                        <strong>@review.Rating / 5</strong>
-                        <span class="faed-field__hint">@review.ReviewerLabel · @AmmanTime.FormatDate(review.CreatedAtUtc)</span>
-                        @if (!string.IsNullOrWhiteSpace(review.Comment))
+<div class="faed-page faed-page--wide faed-store-page">
+    <section class="faed-store-hero" aria-labelledby="store-name">
+        <div class="faed-store-hero__identity">
+            <div class="faed-store-hero__monogram" aria-hidden="true">@Model.Merchant.BusinessName.Substring(0,
+                                1).ToUpperInvariant()</div>
+                <div>
+                    <p class="faed-kicker">Merchant storefront</p>
+                    <h1 id="store-name" class="faed-store-hero__name">@Model.Merchant.BusinessName</h1>
+                    <div class="faed-store-hero__trust-row">
+                        @if (Model.Merchant.IsVerified)
                         {
-                            <p class="faed-review-comment">@review.Comment</p>
+                            <span class="faed-store-hero__verified"><span aria-hidden="true">✓</span> Verified merchant</span>
                         }
-                    </li>
-                }
-            </ul>
-        </section>
-    }
+                        <span>Member since @AmmanTime.FormatDate(Model.Merchant.MemberSinceUtc)</span>
+                    </div>
+                </div>
+            </div>
 
-    @if (Model.Merchant.LiveListingCount == 0)
-    {
-        <div class="faed-empty">
-            <div class="faed-empty__title">This merchant has no active listings right now</div>
-            <p>Check back soon, or continue browsing the marketplace.</p>
-            <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Continue shopping</a>
-        </div>
-    }
-    else
-    {
-        <partial name="_ShopBrowse" model="Model" />
-    }
-</div>
+            <div class="faed-store-hero__facts" aria-label="Storefront summary">
+                <div>
+                    <span>Live inventory</span>
+                    <strong>@Model.Merchant.LiveListingCount</strong>
+                    <small>@(Model.Merchant.LiveListingCount == 1 ? "active listing" : "active listings")</small>
+                </div>
+                @if (Model.Reviews is { Summary.HasReviews: true })
+                {
+                    <div>
+                        <span>Buyer rating</span>
+                        <strong>@Model.Reviews.Summary.AverageRating.ToString("0.0") <small>/ 5</small></strong>
+                        <small>@Model.Reviews.Summary.ReviewCount review@(Model.Reviews.Summary.ReviewCount == 1 ? "" :
+                                             "s")</small>
+                        </div>
+                    }
+                    <div class="faed-store-hero__assurance">
+                        <span aria-hidden="true">✓</span>
+                        <p>Business identity reviewed by Faed before selling access was granted.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="faed-store-inventory" aria-labelledby="store-inventory-title">
+                <div class="faed-section-header faed-section-header--compact">
+                    <div>
+                        <p class="faed-kicker">Available now</p>
+                        <h2 id="store-inventory-title" class="faed-section-header__title">Shop this merchant</h2>
+                        <p class="faed-section-header__subtitle">Search and refine the merchant's currently live listings.</p>
+                    </div>
+                </div>
+
+                @if (Model.Merchant.LiveListingCount == 0)
+                {
+                    <div class="faed-empty faed-store-empty">
+                        <div class="faed-home-empty__icon" aria-hidden="true">F</div>
+                        <div class="faed-empty__title">No active listings right now</div>
+                        <p>This merchant does not have live inventory at the moment. Continue browsing the marketplace for other
+                            available stock.</p>
+                            <a class="faed-btn faed-btn--ghost" asp-controller="Shop" asp-action="Index">Continue shopping</a>
+                        </div>
+                    }
+        else
+                    {
+                        <partial name="_ShopBrowse" model="Model" />
+                    }
+                </section>
+
+                @if (Model.Reviews is { Summary.HasReviews: true })
+                {
+                    <section class="faed-store-reviews" aria-labelledby="store-reviews-title">
+                        <div class="faed-store-reviews__summary">
+                            <p class="faed-kicker faed-kicker--light">Buyer feedback</p>
+                            <h2 id="store-reviews-title">Recent reviews</h2>
+                            <div class="faed-store-reviews__score">
+                                <strong>@Model.Reviews.Summary.AverageRating.ToString("0.0")</strong>
+                                <span>/ 5</span>
+                            </div>
+                            <div class="faed-store-reviews__stars"
+                                 aria-label="@($"Average rating {Model.Reviews.Summary.AverageRating:0.0} out of 5")">
+                                <span
+                                aria-hidden="true">@DisputeStatusDisplay.Stars((int)Math.Round(Model.Reviews.Summary.AverageRating))</span>
+                            </div>
+                            <p>Based on @Model.Reviews.Summary.ReviewCount buyer review@(Model.Reviews.Summary.ReviewCount == 1 ? "" :
+                                        "s").</p>
+                            </div>
+
+                            <ol class="faed-store-review-list">
+                                @foreach (var review in Model.Reviews.Reviews)
+                                {
+                                    <li class="faed-store-review-card">
+                                        <div class="faed-store-review-card__topline">
+                                            <span class="faed-store-review-card__stars" aria-label="@($"{review.Rating} out of 5 stars")"><span
+                                                aria-hidden="true">@DisputeStatusDisplay.Stars(review.Rating)</span></span>
+                                                <span>@AmmanTime.FormatDate(review.CreatedAtUtc)</span>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(review.Comment))
+                                            {
+                                                <p class="faed-store-review-card__comment">@review.Comment</p>
+                                            }
+                                            else
+                                            {
+                                                <p class="faed-store-review-card__comment faed-store-review-card__comment--muted">Rating submitted
+                                                    without a written comment.</p>
+                                                }
+                                                <div class="faed-store-review-card__meta">
+                                                    <strong>@review.ReviewerLabel</strong>
+                                                    <span>@(review.TransactionType == TrustTransactionType.B2COrder ? "Retail order" : "Wholesale deal")</span>
+                                                </div>
+                                            </li>
+                                        }
+                                    </ol>
+                                </section>
+                            }
+                        </div>

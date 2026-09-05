@@ -4,10 +4,10 @@
     var c = Model.Catalog;
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-catalog-page">
     <partial name="_AdminSubnav" model="@("Catalog")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Catalog</h1>
             <p class="faed-page__subtitle">
@@ -18,14 +18,14 @@
     </div>
 
     @* ---- Categories ---------------------------------------------------------- *@
-    <section class="faed-panel">
+    <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Categories</h2>
         <p class="faed-panel__hint">
             The MVP taxonomy is limited to Fashion Overstock. Add lower-level categories beneath this sector;
             new sector roots remain unavailable until a future-sector readiness decision.
         </p>
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Sort</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
                 </thead>
@@ -67,7 +67,7 @@
                 </tbody>
             </table>
         </div>
-        <form method="post" asp-action="CreateCategory" class="faed-form-grid">
+        <form method="post" asp-action="CreateCategory" class="faed-form-grid faed-admin-catalog-create">
             <label class="faed-field">
                 <span class="faed-field__label">New category name</span>
                 <input class="faed-input" name="name" required maxlength="128" />
@@ -91,11 +91,11 @@
     </section>
 
     @* ---- Condition grades -------------------------------------------------- *@
-    <section class="faed-panel">
+    <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Condition grades</h2>
         <p class="faed-panel__hint">The grade set is fixed at A&ndash;D for the Fashion MVP. Copy and availability only.</p>
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Description</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
                 </thead>
@@ -144,10 +144,10 @@
     </section>
 
     @* ---- Discount reasons ------------------------------------------------ *@
-    <section class="faed-panel">
+    <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Discount reasons</h2>
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Description</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
                 </thead>
@@ -189,7 +189,7 @@
                 </tbody>
             </table>
         </div>
-        <form method="post" asp-action="CreateDiscountReason" class="faed-form-grid">
+        <form method="post" asp-action="CreateDiscountReason" class="faed-form-grid faed-admin-catalog-create">
             <label class="faed-field">
                 <span class="faed-field__label">Code (one word)</span>
                 <input class="faed-input" name="code" required maxlength="64" pattern="\S+" />
@@ -207,11 +207,11 @@
     </section>
 
     @* ---- Brands -------------------------------------------------------- *@
-    <section class="faed-panel">
+    <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Brands</h2>
         <p class="faed-panel__hint">Brands are optional and admin-controlled. Merchants choose from this list; they never create brands.</p>
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Listings</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
                 </thead>
@@ -252,7 +252,7 @@
                 </tbody>
             </table>
         </div>
-        <form method="post" asp-action="CreateBrand" class="faed-form-grid">
+        <form method="post" asp-action="CreateBrand" class="faed-form-grid faed-admin-catalog-create">
             <label class="faed-field">
                 <span class="faed-field__label">New brand name</span>
                 <input class="faed-input" name="name" required maxlength="128" />

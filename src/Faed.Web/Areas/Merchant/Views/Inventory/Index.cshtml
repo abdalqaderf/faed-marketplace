@@ -37,6 +37,9 @@
         <div class="faed-empty">
             <div class="faed-empty__title">No variants yet</div>
             <div>Add variants to a listing to start tracking stock.</div>
+            <div class="faed-empty__actions">
+                <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-area="Merchant" asp-controller="Listings" asp-action="Index">Manage listings</a>
+            </div>
         </div>
     }
     else
@@ -45,14 +48,14 @@
             <table class="faed-table">
                 <thead>
                     <tr>
-                        <th>SKU</th>
-                        <th>Listing</th>
-                        <th>Combination</th>
-                        <th>Available</th>
-                        <th>Reserved</th>
-                        <th>Sold</th>
-                        <th>Active</th>
-                        <th>Adjust</th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Listing</th>
+                        <th scope="col">Combination</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Reserved</th>
+                        <th scope="col">Sold</th>
+                        <th scope="col">Active</th>
+                        <th scope="col">Adjust</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -123,13 +126,13 @@
             <table class="faed-table">
                 <thead>
                     <tr>
-                        <th>When</th>
-                        <th>Listing</th>
-                        <th>SKU</th>
-                        <th>Type</th>
-                        <th>Change</th>
-                        <th>Before &rarr; After</th>
-                        <th>Reason</th>
+                        <th scope="col">When</th>
+                        <th scope="col">Listing</th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Change</th>
+                        <th scope="col">Before &rarr; After</th>
+                        <th scope="col">Reason</th>
                     </tr>
                 </thead>
                 <tbody>

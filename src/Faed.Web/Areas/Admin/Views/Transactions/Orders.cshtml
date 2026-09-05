@@ -10,17 +10,17 @@
     };
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-queue-page">
     <partial name="_AdminSubnav" model="@("Orders")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">B2C orders</h1>
             <p class="faed-page__subtitle">Monitoring view. Fulfilment stays with the buyer and the selling merchant.</p>
         </div>
     </div>
 
-    <nav class="faed-subnav" aria-label="Filter orders">
+    <nav class="faed-subnav faed-admin-filterbar" aria-label="Filter orders">
         @foreach (var (value, label) in tabs)
         {
             <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Orders" asp-route-filter="@value">@label</a>
@@ -37,7 +37,7 @@
     else
     {
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr>
                         <th scope="col">Placed</th>
@@ -47,6 +47,7 @@
                         <th scope="col">Units</th>
                         <th scope="col">Total</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -60,6 +61,7 @@
                             <td>@o.TotalUnits</td>
                             <td>JOD @o.Total.ToString("0.000")</td>
                             <td><span class="@OrderStatusDisplay.BadgeClass(o.Status)">@OrderStatusDisplay.Label(o.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="OrderDetails" asp-route-id="@o.Id">Open</a></td>
                         </tr>
                     }
                 </tbody>

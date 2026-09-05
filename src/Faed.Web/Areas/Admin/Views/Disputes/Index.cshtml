@@ -12,10 +12,10 @@
     };
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-queue-page">
     <partial name="_AdminSubnav" model="@("Disputes")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">Disputes</h1>
             <p class="faed-page__subtitle">
@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    <nav class="faed-subnav" aria-label="Filter disputes">
+    <nav class="faed-subnav faed-admin-filterbar" aria-label="Filter disputes">
         @foreach (var (value, label) in tabs)
         {
             <a class="@(Model.Filter == value ? "is-active" : "")" asp-action="Index" asp-route-filter="@value">@label</a>
@@ -41,7 +41,7 @@
     else
     {
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
                     <tr>
                         <th scope="col">Raised</th>
@@ -49,6 +49,7 @@
                         <th scope="col">Merchant</th>
                         <th scope="col">Reason</th>
                         <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -60,6 +61,7 @@
                             <td>@d.CounterpartyName</td>
                             <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
                             <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
+                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@d.Id">Review</a></td>
                         </tr>
                     }
                 </tbody>

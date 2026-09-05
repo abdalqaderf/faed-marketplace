@@ -3,28 +3,78 @@
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
+@{
+    var currentIdentityPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var isLoginPage = currentIdentityPage.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase);
+    var isRegisterPage = currentIdentityPage.Equals("/Account/Register", StringComparison.OrdinalIgnoreCase);
+}
+
 <ul class="navbar-nav faed-account-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    <li class="nav-item">
-        <a class="nav-link faed-account-nav__user" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage account">
-            <span class="faed-account-nav__avatar" aria-hidden="true">@((User.Identity?.Name ?? "A")[0].ToString().ToUpperInvariant())</span>
-            <span class="faed-account-nav__label">Account</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <form class="faed-account-nav__form" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button type="submit" class="nav-link faed-account-nav__signout">Sign out</button>
-        </form>
-    </li>
-}
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <li class="nav-item dropdown faed-account-menu">
+            <button class="nav-link dropdown-toggle faed-account-menu__trigger" type="button" data-bs-toggle="dropdown"
+                    aria-expanded="false" aria-label="Open account menu">
+                <span class="faed-account-nav__avatar" aria-hidden="true">@((User.Identity?.Name ??
+                           "A")[0].ToString().ToUpperInvariant())</span>
+                    <span class="faed-account-nav__label">Account</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end faed-account-menu__menu">
+                    @if (User.IsInRole(FaedRoles.Admin))
+                    {
+                        <li>
+                            <a class="dropdown-item" asp-area="Admin" asp-controller="Home" asp-action="Index">
+                                <span>Admin Workspace</span>
+                                <small>Marketplace operations</small>
+                            </a>
+                        </li>
+                    }
+                    else
+                    {
+                        @if (User.IsInRole(FaedRoles.Buyer) || User.IsInRole(FaedRoles.Merchant))
+                        {
+                            <li><a class="dropdown-item" asp-area="Buyer" asp-controller="Orders" asp-action="Index">My Orders</a></li>
+                            <li><a class="dropdown-item" asp-area="Buyer" asp-controller="Disputes" asp-action="Index">My Disputes</a>
+                            </li>
+                        }
+                        <li>
+                            <a class="dropdown-item" asp-area="Merchant" asp-controller="Verification" asp-action="Index">
+                                <span>Merchant Center</span>
+                                <small>Sell and manage stock</small>
+                            </a>
+                        </li>
+                    }
+
+                    <li>
+                        <hr class="dropdown-divider" />
+                    </li>
+                    <li><a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Account settings</a></li>
+                    <li>
+                        <hr class="dropdown-divider" />
+                    </li>
+                    <li>
+                        <form class="faed-account-nav__form" asp-area="Identity" asp-page="/Account/Logout"
+                              asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                            <button type="submit" class="dropdown-item faed-account-nav__signout">Sign out</button>
+                        </form>
+                    </li>
+                </ul>
+            </li>
+        }
 else
-{
-    <li class="nav-item">
-        <a class="nav-link faed-account-nav__signin" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
-    </li>
-    <li class="nav-item">
-        <a class="faed-btn faed-btn--primary faed-btn--nav" asp-area="Identity" asp-page="/Account/Register">Create account</a>
-    </li>
-}
-</ul>
+        {
+            @if (!isLoginPage)
+            {
+                <li class="nav-item">
+                    <a class="nav-link faed-account-nav__signin" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                </li>
+            }
+            @if (!isRegisterPage)
+            {
+                <li class="nav-item">
+                    <a class="faed-btn faed-btn--primary faed-btn--nav" asp-area="Identity" asp-page="/Account/Register">Create
+                        account</a>
+                    </li>
+                }
+            }
+        </ul>

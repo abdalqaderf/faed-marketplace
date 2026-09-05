@@ -10,31 +10,44 @@
     })).Replace("</", "<\\/");
 
     var onlyVariant = Model.Options.Count == 0 ? Model.Variants.FirstOrDefault() : null;
+    var hasPolicyDetails = !string.IsNullOrWhiteSpace(Model.IncludedItemsText)
+        || !string.IsNullOrWhiteSpace(Model.MissingItemsText)
+        || !string.IsNullOrWhiteSpace(Model.ReturnPolicyText)
+        || !string.IsNullOrWhiteSpace(Model.WarrantyText);
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-listing-page">
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
         <a asp-controller="Shop" asp-action="Index">Shop</a>
         <span aria-hidden="true">/</span>
         <a asp-controller="Shop" asp-action="Index" asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">@Model.Title</span>
     </nav>
 
     <div class="faed-listing-layout">
-        <div class="faed-gallery">
+        <section class="faed-gallery" aria-label="Product gallery">
             @if (Model.ProductPhotos.Count > 0)
             {
                 var hero = Model.ProductPhotos[0];
-                <img class="faed-gallery__hero" data-gallery-hero src="/listing-images/@hero.Id" alt="@(hero.AltText ?? Model.Title)" />
+                <div class="faed-gallery__stage">
+                    <img class="faed-gallery__hero" data-gallery-hero src="/listing-images/@hero.Id"
+                         alt="@(hero.AltText ?? Model.Title)" />
+                    <span class="faed-gallery__count">@Model.ProductPhotos.Count photo@(Model.ProductPhotos.Count == 1 ? ""       : "s")</span>
+                </div>
                 @if (Model.ProductPhotos.Count > 1)
                 {
-                    <div class="faed-gallery__thumbs" role="group" aria-label="Product photos">
-                        @{ var photoIndex = 0; }
+                    <div class="faed-gallery__thumbs" role="group" aria-label="Choose product photo">
+                        @{
+                            var photoIndex = 0;
+                        }
                         @foreach (var photo in Model.ProductPhotos)
                         {
                             photoIndex++;
                             <button type="button" class="faed-gallery__thumb @(photo.Id == hero.Id ? "is-active" : "")"
-                                    data-gallery-thumb data-full-src="/listing-images/@photo.Id" data-full-alt="@(photo.AltText ?? Model.Title)"
-                                    aria-current="@(photo.Id == hero.Id)" aria-label="@(photo.AltText ?? $"Photo {photoIndex}")">
+                                    data-gallery-thumb data-full-src="/listing-images/@photo.Id"
+                                    data-full-alt="@(photo.AltText ?? Model.Title)" aria-current="@(photo.Id == hero.Id)"
+                                    aria-label="@(photo.AltText ?? $"Photo {photoIndex}")">
                                 <img src="/listing-images/@photo.Id" alt="" loading="lazy" />
                             </button>
                         }
@@ -43,258 +56,349 @@
             }
             else
             {
-                <div class="faed-gallery__hero faed-gallery__hero--placeholder" role="img" aria-label="No product photo available">No photo yet</div>
+                <div class="faed-gallery__hero faed-gallery__hero--placeholder" role="img"
+                     aria-label="No product photo available">
+                    <span class="faed-gallery__placeholder-mark" aria-hidden="true">F</span>
+                    <span>No product photo yet</span>
+                </div>
             }
-        </div>
+        </section>
 
-        <div class="faed-listing-info">
-            <p class="faed-kicker">@Model.CategoryName &middot; reviewed listing</p>
-            <h1 class="faed-listing-info__title">@Model.Title</h1>
-
-            <a class="faed-trust-line" asp-controller="Store" asp-action="Index" asp-route-slug="@Model.MerchantSlug">
-                @if (Model.MerchantIsVerified)
-                {
-                    <span class="faed-verified" aria-hidden="true">&#10003;</span>
-                    <span>Verified merchant &middot; @Model.MerchantBusinessName</span>
-                }
-                else
-                {
-                    <span>@Model.MerchantBusinessName</span>
-                }
-            </a>
-
-            <div class="faed-price faed-price--lg">
-                <span class="faed-price__current">
-                    @if (Model.RetailPrice is { } price)
+        <section class="faed-listing-info" aria-label="Listing information">
+            <div class="faed-listing-info__intro">
+                <div class="faed-listing-info__meta">
+                    <a asp-controller="Shop" asp-action="Index"
+                       asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a>
+                    @if (!string.IsNullOrWhiteSpace(Model.BrandName))
                     {
-                        @($"JOD {price:0.000}")
+                        <span aria-hidden="true">·</span>
+                        <span>@Model.BrandName</span>
                     }
-                    else if (Model.WholesaleIndicativeUnitPrice is { } wholesaleOnlyPrice)
-                    {
-                        @($"JOD {wholesaleOnlyPrice:0.000}")
-                        <span class="faed-price__qualifier">/unit &middot; wholesale</span>
-                    }
-                    else
-                    {
-                        <text>Price on request</text>
-                    }
-                </span>
-                @if (Model.HasValidReferencePrice)
-                {
-                    <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
-                    <span class="faed-price__discount">@(Model.DiscountPercent)% lower</span>
-                }
+                    <span aria-hidden="true">·</span>
+                    <span>Reviewed listing</span>
+                </div>
+                <h1 class="faed-listing-info__title">@Model.Title</h1>
             </div>
 
-            <dl class="faed-condition-block" aria-label="Condition and discount disclosure">
-                <dt>Condition</dt>
-                <dd>Grade @Model.ConditionCode &mdash; @Model.ConditionName. @Model.ConditionDescription</dd>
-                <dt>Why discounted</dt>
-                <dd>
-                    @if (Model.DiscountReasonNames.Count > 0)
-                    {
-                        @string.Join(" + ", Model.DiscountReasonNames)
-                    }
-                    else
-                    {
-                        <text>Not specified</text>
-                    }
-                </dd>
-            </dl>
+            <a class="faed-merchant-summary" asp-controller="Store" asp-action="Index"
+               asp-route-slug="@Model.MerchantSlug">
+                <span class="faed-merchant-summary__mark" aria-hidden="true">@Model.MerchantBusinessName.Substring(0,
+                                        1).ToUpperInvariant()</span>
+                    <span class="faed-merchant-summary__copy">
+                        <span class="faed-merchant-summary__label">Sold by</span>
+                        <strong>
+                            @Model.MerchantBusinessName
+                            @if (Model.MerchantIsVerified)
+                            {
+                                <span class="faed-verified" title="Verified merchant"
+                                      aria-label="Verified merchant">&#10003;</span>
+                            }
+                        </strong>
+                        <small>@(Model.MerchantIsVerified ? "Business identity reviewed by Faed" : "View merchant storefront")</small>
+                    </span>
+                    <span class="faed-merchant-summary__arrow" aria-hidden="true">→</span>
+                </a>
 
-            <div class="faed-purchase-panel">
-                <div class="faed-purchase-panel__heading">
-                    <span>Choose your item</span>
-                    <small>Stock is held at variant level</small>
+                <div class="faed-listing-price-row">
+                    <div class="faed-price faed-price--lg">
+                        <span class="faed-price__current">
+                            @if (Model.RetailPrice is { } price)
+                            {
+                                @($"JOD {price:0.000}")
+                            }
+                            else if (Model.WholesaleIndicativeUnitPrice is { } wholesaleOnlyPrice)
+                            {
+                                @($"JOD {wholesaleOnlyPrice:0.000}")
+                                <span class="faed-price__qualifier">/unit · wholesale</span>
+                            }
+                            else
+                            {
+                                <text>Price on request</text>
+                            }
+                        </span>
+                        @if (Model.HasValidReferencePrice)
+                        {
+                            <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
+                            <span class="faed-price__discount">@(Model.DiscountPercent)% lower</span>
+                        }
+                    </div>
+                    <div class="faed-listing-channels" aria-label="Available buying routes">
+                        @if (Model.AllowB2C)
+                        {
+                            <span>Retail</span>
+                        }
+                        @if (Model.AllowB2B)
+                        {
+                            <span>Wholesale</span>
+                        }
+                    </div>
                 </div>
-            @if (Model.Options.Count > 0)
-            {
-                <div class="faed-variant-picker" data-variant-picker>
-                    @foreach (var option in Model.Options)
+
+                <div class="faed-disclosure-grid" aria-label="Condition and discount disclosure">
+                    <article class="faed-disclosure-card">
+                        <span class="faed-disclosure-card__label">Condition</span>
+                        <strong>Grade @Model.ConditionCode · @Model.ConditionName</strong>
+                        <p>@Model.ConditionDescription</p>
+                    </article>
+                    <article class="faed-disclosure-card">
+                        <span class="faed-disclosure-card__label">Why discounted</span>
+                        <strong>
+                            @if (Model.DiscountReasonNames.Count > 0)
+                            {
+                                @string.Join(" + ", Model.DiscountReasonNames)
+                            }
+                            else
+                            {
+                                <text>Not specified</text>
+                            }
+                        </strong>
+                        <p>Shown separately from physical condition so the reason for the lower price stays clear.</p>
+                    </article>
+                </div>
+
+                <div class="faed-purchase-panel">
+                    <div class="faed-purchase-panel__heading">
+                        <div>
+                            <span>Choose your item</span>
+                            <small>Availability is checked at variant level.</small>
+                        </div>
+                        <span
+                            class="faed-purchase-panel__stock @(Model.IsSoldOut ? "is-out" : Model.IsLowStock ? "is-low" : "is-in")">
+                            @(Model.IsSoldOut ? "Sold out" : Model.IsLowStock ? "Low stock" : "Available")
+                        </span>
+                    </div>
+
+                    @if (Model.Options.Count > 0)
                     {
-                        <div class="faed-variant-group">
-                            <span class="faed-variant-group__label" id="option-label-@option.Id">@option.Name</span>
-                            <div class="faed-chip-list" data-option-name="@option.Name" role="group" aria-labelledby="option-label-@option.Id">
-                                @foreach (var value in option.Values)
-                                {
-                                    var valueIsSellable = Model.SellableOptionValueIds.Contains(value.Id);
-                                    <button type="button" class="faed-chip faed-chip--selectable@(valueIsSellable ? "" : " is-unavailable")"
-                                            data-value="@value.Value" aria-pressed="false" aria-disabled="@(valueIsSellable ? "false" : "true")">@value.Value</button>
-                                }
-                            </div>
+                        <div class="faed-variant-picker" data-variant-picker>
+                            @foreach (var option in Model.Options)
+                            {
+                                <div class="faed-variant-group">
+                                    <span class="faed-variant-group__label" id="option-label-@option.Id">@option.Name</span>
+                                    <div class="faed-chip-list" data-option-name="@option.Name" role="group"
+                                         aria-labelledby="option-label-@option.Id">
+                                        @foreach (var value in option.Values)
+                                        {
+                                            var valueIsSellable = Model.SellableOptionValueIds.Contains(value.Id);
+                                            <button type="button"
+                                                    class="faed-chip faed-chip--selectable@(valueIsSellable ? "" : " is-unavailable")"
+                                                    data-value="@value.Value" aria-pressed="false"
+                                                    aria-disabled="@(valueIsSellable ? "false" : "true")">@value.Value</button>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
                     }
-                </div>
-            }
 
-            <p class="faed-availability @(Model.IsSoldOut ? "faed-availability--out" : Model.IsLowStock ? "faed-availability--low" : "faed-availability--in-stock")" data-variant-status aria-live="polite">
-                @if (Model.Options.Count > 0)
-                {
-                    <text>Select @Model.Options.Count option@(Model.Options.Count == 1 ? "" : "s") to see availability.</text>
-                }
-                else if (onlyVariant is { IsSellable: true } sellable)
-                {
-                    @(sellable.AvailableQuantity <= 3 ? $"Only {sellable.AvailableQuantity} left." : "In stock.")
-                }
-                else
-                {
-                    <text>Sold out.</text>
-                }
-            </p>
-
-            <script type="application/json" id="listing-variants-data">@Html.Raw(variantsJson)</script>
-
-            <div class="faed-cta-row">
-                @if (Model.AllowB2C)
-                {
-                    @if (Model.IsSoldOut)
-                    {
-                        <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold out</button>
-                    }
-                    else
-                    {
-                        <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index" asp-route-slug="@Model.Slug">Order this item</a>
-                    }
-                }
-                @if (Model.AllowB2B)
-                {
-                    <a class="faed-btn faed-btn--ghost" asp-area="Merchant" asp-controller="Offers" asp-action="Create" asp-route-listingSlug="@Model.Slug">Make an Offer</a>
-                }
-                @if (Model.AllowB2B)
-                {
-                    <p class="faed-cta-row__hint">Wholesale offers are between verified merchants — sign in as an approved merchant to negotiate.</p>
-                }
-            </div>
-            </div>
-
-            @* Short "fulfillment summary" that closes the purchase block (faed-commerce-ux
-               "Listing detail order"). The exact pickup locations and delivery zones are shown
-               on the checkout page for this merchant . *@
-            <dl class="faed-details faed-listing-policies">
-                @if (Model.AllowB2C)
-                {
-                    <dt>Retail fulfillment</dt>
-                    <dd>Pickup or merchant delivery — choose an option at checkout.</dd>
-                }
-                @if (Model.AllowB2B)
-                {
-                    <dt>Wholesale fulfillment</dt>
-                    <dd>Direct pickup or seller-arranged shipping, agreed as part of the deal.</dd>
-                }
-            </dl>
-        </div>
-    </div>
-
-    @* Trust-first order : disclosed-issue
-       evidence comes immediately after the purchase block, before the description, the
-       policies and the wholesale block — never after them, where a mobile reader would have
-       to scroll past everything else to see what they are buying. *@
-    @if (Model.HasDisclosedIssues)
-    {
-        <section class="faed-section">
-            <div class="faed-section__header">
-                <div>
-                    <h2 class="faed-section__title">Condition &amp; disclosed issues</h2>
-                    <p class="faed-section__hint">Photographed by the merchant so you can judge condition before buying.</p>
-                </div>
-            </div>
-            <div class="faed-section__body">
-                @if (Model.DefectPhotos.Count > 0)
-                {
-                    <h3 class="faed-panel__title faed-panel__title--sm">Defect photos</h3>
-                    <div class="faed-thumb-grid mb-4">
-                        @foreach (var photo in Model.DefectPhotos)
+                    <p class="faed-availability @(Model.IsSoldOut ? "faed-availability--out" : Model.IsLowStock ? "faed-availability--low" : "faed-availability--in-stock")"
+                       data-variant-status aria-live="polite">
+                        @if (Model.Options.Count > 0)
                         {
-                            <div class="faed-thumb">
-                                <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Defect photo")" loading="lazy" />
-                                <span class="faed-thumb__label">Defect</span>
+                            <text>Select @Model.Options.Count option@(Model.Options.Count == 1 ? "" : "s") to see
+                                availability.</text>
+                            }
+                    else if (onlyVariant is { IsSellable: true } sellable)
+                            {
+                                @(sellable.AvailableQuantity <= 3 ? $"Only {sellable.AvailableQuantity} left." : "In stock.")
+                            }
+                            else
+                            {
+                                <text>Sold out.</text>
+                            }
+                        </p>
+
+                        <script type="application/json" id="listing-variants-data">@Html.Raw(variantsJson)</script>
+
+                        <div class="faed-cta-row faed-listing-cta-row">
+                            @if (Model.AllowB2C)
+                            {
+                                @if (Model.IsSoldOut)
+                                {
+                                    <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold
+                                        out</button>
+                                    }
+                        else
+                                    {
+                                        <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index"
+                                           asp-route-slug="@Model.Slug">Order this item</a>
+                                    }
+                                }
+                                @if (Model.AllowB2B)
+                                {
+                                    <a class="faed-btn faed-btn--ghost" asp-area="Merchant" asp-controller="Offers" asp-action="Create"
+                                       asp-route-listingSlug="@Model.Slug">Make a wholesale offer</a>
+                                }
                             </div>
-                        }
-                    </div>
-                }
-                @if (Model.PackagingPhotos.Count > 0)
-                {
-                    <h3 class="faed-panel__title faed-panel__title--sm">Packaging photos</h3>
-                    <div class="faed-thumb-grid">
-                        @foreach (var photo in Model.PackagingPhotos)
-                        {
-                            <div class="faed-thumb">
-                                <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Packaging photo")" loading="lazy" />
-                                <span class="faed-thumb__label">Packaging</span>
+
+                            @if (Model.AllowB2B)
+                            {
+                                <p class="faed-cta-row__hint">Wholesale offers are between verified merchants. Sign in as an approved
+                                    merchant to negotiate.</p>
+                                }
+
+                                <div class="faed-fulfillment-grid">
+                                    @if (Model.AllowB2C)
+                                    {
+                                        <div>
+                                            <span class="faed-fulfillment-grid__label">Retail fulfillment</span>
+                                            <strong>Pickup or merchant delivery</strong>
+                                            <small>Choose the available option at checkout.</small>
+                                        </div>
+                                    }
+                                    @if (Model.AllowB2B)
+                                    {
+                                        <div>
+                                            <span class="faed-fulfillment-grid__label">Wholesale fulfillment</span>
+                                            <strong>Pickup or seller-arranged shipping</strong>
+                                            <small>Agreed as part of the deal.</small>
+                                        </div>
+                                    }
+                                </div>
                             </div>
-                        }
+                        </section>
                     </div>
-                }
-            </div>
-        </section>
-    }
 
-    <section class="faed-section">
-        <div class="faed-section__header">
-            <h2 class="faed-section__title">Description</h2>
-        </div>
-        <div class="faed-section__body">
-            <p>@Model.Description</p>
-        </div>
-    </section>
+                    @if (Model.HasDisclosedIssues)
+                    {
+                        <section class="faed-listing-section faed-evidence-section" aria-labelledby="listing-evidence-title">
+                            <div class="faed-listing-section__header">
+                                <div>
+                                    <p class="faed-kicker">See it before you decide</p>
+                                    <h2 id="listing-evidence-title">Condition &amp; disclosed issues</h2>
+                                    <p>Merchant-supplied evidence stays close to the buying decision so defects or packaging issues are not
+                                        buried.</p>
+                                    </div>
+                                    <span class="faed-evidence-section__count">@(Model.DefectPhotos.Count + Model.PackagingPhotos.Count)
+                                        evidence photo@((Model.DefectPhotos.Count + Model.PackagingPhotos.Count) == 1 ? "" : "s")</span>
+                                    </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.IncludedItemsText)
-        || !string.IsNullOrWhiteSpace(Model.MissingItemsText)
-        || !string.IsNullOrWhiteSpace(Model.ReturnPolicyText)
-        || !string.IsNullOrWhiteSpace(Model.WarrantyText))
-    {
-        <section class="faed-section">
-            <div class="faed-section__header">
-                <h2 class="faed-section__title">Details &amp; policies</h2>
-            </div>
-            <div class="faed-section__body">
-                <dl class="faed-details faed-listing-policies">
-                    @if (!string.IsNullOrWhiteSpace(Model.IncludedItemsText))
-                    {
-                        <dt>What's included</dt>
-                        <dd>@Model.IncludedItemsText</dd>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.MissingItemsText))
-                    {
-                        <dt>What's missing</dt>
-                        <dd>@Model.MissingItemsText</dd>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.ReturnPolicyText))
-                    {
-                        <dt>Return policy</dt>
-                        <dd>@Model.ReturnPolicyText</dd>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.WarrantyText))
-                    {
-                        <dt>Warranty</dt>
-                        <dd>@Model.WarrantyText</dd>
-                    }
-                </dl>
-            </div>
-        </section>
-    }
+                                    <div class="faed-evidence-groups">
+                                        @if (Model.DefectPhotos.Count > 0)
+                                        {
+                                            <div class="faed-evidence-group">
+                                                <div class="faed-evidence-group__heading">
+                                                    <h3>Defect photos</h3>
+                                                    <span>@Model.DefectPhotos.Count</span>
+                                                </div>
+                                                <div class="faed-evidence-grid">
+                                                    @foreach (var photo in Model.DefectPhotos)
+                                                    {
+                                                        <figure class="faed-evidence-card">
+                                                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Disclosed defect")"
+                                                                 loading="lazy" />
+                                                            <figcaption>Disclosed defect</figcaption>
+                                                        </figure>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
 
-    @if (Model.AllowB2B)
-    {
-        <section class="faed-section faed-b2b-block">
-            <div class="faed-section__header">
-                <h2 class="faed-section__title">Wholesale (B2B)</h2>
-            </div>
-            <div class="faed-section__body">
-                <dl class="faed-details">
-                    <dt>Minimum order</dt>
-                    <dd>@(Model.WholesaleMinQuantity ?? 0) units@(Model.AllowMixedVariantB2B ? ", mixed variants allowed" : ", per variant")</dd>
-                    @if (Model.WholesaleIndicativeUnitPrice is { } wholesalePrice)
-                    {
-                        <dt>Indicative unit price</dt>
-                        <dd>JOD @wholesalePrice.ToString("0.000")</dd>
-                    }
-                </dl>
-            </div>
-        </section>
-    }
-</div>
+                                        @if (Model.PackagingPhotos.Count > 0)
+                                        {
+                                            <div class="faed-evidence-group">
+                                                <div class="faed-evidence-group__heading">
+                                                    <h3>Packaging photos</h3>
+                                                    <span>@Model.PackagingPhotos.Count</span>
+                                                </div>
+                                                <div class="faed-evidence-grid">
+                                                    @foreach (var photo in Model.PackagingPhotos)
+                                                    {
+                                                        <figure class="faed-evidence-card">
+                                                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Packaging condition")"
+                                                                 loading="lazy" />
+                                                            <figcaption>Packaging condition</figcaption>
+                                                        </figure>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </section>
+                            }
 
-@section Scripts {
-    <script src="~/js/listing-detail.js" asp-append-version="true"></script>
-}
+                            <div class="faed-listing-content-grid @(hasPolicyDetails ? "" : "faed-listing-content-grid--single")">
+                                <section class="faed-listing-section" aria-labelledby="listing-description-title">
+                                    <div class="faed-listing-section__header">
+                                        <div>
+                                            <p class="faed-kicker">Product information</p>
+                                            <h2 id="listing-description-title">Description</h2>
+                                        </div>
+                                    </div>
+                                    <div class="faed-listing-section__body faed-listing-description">
+                                        <p>@Model.Description</p>
+                                    </div>
+                                </section>
+
+                                @if (hasPolicyDetails)
+                                {
+                                    <section class="faed-listing-section" aria-labelledby="listing-policies-title">
+                                        <div class="faed-listing-section__header">
+                                            <div>
+                                                <p class="faed-kicker">Before you buy</p>
+                                                <h2 id="listing-policies-title">Details &amp; policies</h2>
+                                            </div>
+                                        </div>
+                                        <div class="faed-listing-section__body">
+                                            <dl class="faed-listing-detail-list">
+                                                @if (!string.IsNullOrWhiteSpace(Model.IncludedItemsText))
+                                                {
+                                                    <div>
+                                                        <dt>What's included</dt>
+                                                        <dd>@Model.IncludedItemsText</dd>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(Model.MissingItemsText))
+                                                {
+                                                    <div>
+                                                        <dt>What's missing</dt>
+                                                        <dd>@Model.MissingItemsText</dd>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(Model.ReturnPolicyText))
+                                                {
+                                                    <div>
+                                                        <dt>Return policy</dt>
+                                                        <dd>@Model.ReturnPolicyText</dd>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(Model.WarrantyText))
+                                                {
+                                                    <div>
+                                                        <dt>Warranty</dt>
+                                                        <dd>@Model.WarrantyText</dd>
+                                                    </div>
+                                                }
+                                            </dl>
+                                        </div>
+                                    </section>
+                                }
+                            </div>
+
+                            @if (Model.AllowB2B)
+                            {
+                                <section class="faed-listing-section faed-wholesale-section" aria-labelledby="listing-wholesale-title">
+                                    <div class="faed-listing-section__header">
+                                        <div>
+                                            <p class="faed-kicker faed-kicker--light">For verified merchants</p>
+                                            <h2 id="listing-wholesale-title">Wholesale buying route</h2>
+                                            <p>Use an offer when you want to negotiate this stock as a business purchase.</p>
+                                        </div>
+                                        <a class="faed-btn faed-btn--light" asp-area="Merchant" asp-controller="Offers" asp-action="Create"
+                                           asp-route-listingSlug="@Model.Slug">Make an offer <span aria-hidden="true">→</span></a>
+                                    </div>
+                                    <div class="faed-wholesale-facts">
+                                        <div><span>Minimum order</span><strong>@(Model.WholesaleMinQuantity ?? 0) units</strong></div>
+                                        <div><span>Variant rule</span><strong>@(Model.AllowMixedVariantB2B ? "Mixed variants allowed" : "Minimum applies per variant")</strong></div>
+                                        @if (Model.WholesaleIndicativeUnitPrice is { } wholesalePrice)
+                                        {
+                                            <div><span>Indicative unit price</span><strong>JOD @wholesalePrice.ToString("0.000")</strong></div>
+                                        }
+                                    </div>
+                                </section>
+                            }
+                        </div>
+
+                        @section Scripts {
+                            <script src="~/js/listing-detail.js" asp-append-version="true"></script>
+                        }

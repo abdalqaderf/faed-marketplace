@@ -3,52 +3,54 @@
     ViewData["Title"] = "My disputes";
 }
 
-<div class="faed-page">
-    <div class="faed-page__header">
+<div class="faed-page faed-page--wide faed-buyer-page faed-disputes-page">
+    <header class="faed-buyer-heading faed-buyer-heading--with-actions">
         <div>
-            <h1 class="faed-page__title">My disputes</h1>
-            <p class="faed-page__subtitle">
-                Disputes you have raised about an order. Start one from the order's page if something
-                went wrong.
-            </p>
+            <p class="faed-kicker">Buyer protection</p>
+            <h1>My disputes</h1>
+            <p>Follow cases you have raised about an order, including their current review status and any final outcome.</p>
         </div>
+        <a class="faed-btn faed-btn--ghost" asp-controller="Orders" asp-action="Index">View my orders</a>
+    </header>
+
+    <div class="faed-buyer-guidance">
+        <span aria-hidden="true">i</span>
+        <p>Start a new dispute from the relevant order page. That keeps the case tied to the correct transaction and its current eligibility rules.</p>
     </div>
 
     @if (Model.Disputes.TotalCount == 0)
     {
-        <div class="faed-empty">
-            <div class="faed-empty__title">No disputes</div>
-            <div>You have not raised any disputes. Open one from an order if you need to.</div>
-        </div>
+        <section class="faed-buyer-empty">
+            <span class="faed-buyer-empty__mark" aria-hidden="true">✓</span>
+            <p class="faed-kicker">No open history</p>
+            <h2>You have not raised any disputes.</h2>
+            <p>If something goes wrong with an eligible order, open that order and choose <strong>Raise a dispute</strong>.</p>
+            <a class="faed-btn faed-btn--primary" asp-controller="Orders" asp-action="Index">Open my orders</a>
+        </section>
     }
     else
     {
-        <div class="faed-table-wrap">
-            <table class="faed-table">
-                <thead>
-                    <tr>
-                        <th scope="col">Raised</th>
-                        <th scope="col">Transaction</th>
-                        <th scope="col">Merchant</th>
-                        <th scope="col">Reason</th>
-                        <th scope="col">Status</th>
-                        <th scope="col"><span class="visually-hidden">Action</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in Model.Disputes.Items)
-                    {
-                        <tr>
-                            <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
-                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
-                            <td>@d.CounterpartyName</td>
-                            <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
-                            <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>
-                            <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@d.Id">View dispute</a></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <div class="faed-dispute-list" role="list">
+            @foreach (var dispute in Model.Disputes.Items)
+            {
+                <article class="faed-dispute-card" role="listitem">
+                    <a class="faed-dispute-card__main" asp-action="Details" asp-route-id="@dispute.Id">
+                        <div class="faed-dispute-card__heading">
+                            <div>
+                                <span>@DisputeStatusDisplay.TransactionLabel(dispute.TransactionType) · @dispute.TransactionReference</span>
+                                <h2>@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode)</h2>
+                            </div>
+                            <span class="@DisputeStatusDisplay.BadgeClass(dispute.Status)">@DisputeStatusDisplay.Label(dispute.Status)</span>
+                        </div>
+                        <dl class="faed-dispute-card__facts">
+                            <div><dt>Merchant</dt><dd>@dispute.CounterpartyName</dd></div>
+                            <div><dt>Raised</dt><dd>@AmmanTime.FormatDate(dispute.CreatedAtUtc)</dd></div>
+                            <div><dt>Last updated</dt><dd>@AmmanTime.FormatDate(dispute.UpdatedAtUtc)</dd></div>
+                        </dl>
+                    </a>
+                    <a class="faed-dispute-card__open" asp-action="Details" asp-route-id="@dispute.Id">View case <span aria-hidden="true">→</span></a>
+                </article>
+            }
         </div>
 
         <partial name="_Pagination" model='PaginationViewModel.From(Model.Disputes, "Index", itemNoun: "dispute")' />

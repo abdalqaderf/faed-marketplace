@@ -1,30 +1,156 @@
 @model string
 @{
     var active = Model ?? string.Empty;
-    (string Section, string Area, string Controller, string Label)[] links =
+    var restrictedToVerification = ViewData["MerchantWorkspaceRestricted"] is true;
+
+    var groups = new[]
     {
-        ("Verification", "Merchant", "Verification", "Verification"),
-        ("Listings", "Merchant", "Listings", "Listings"),
-        ("Inventory", "Merchant", "Inventory", "Inventory"),
-        ("Orders", "Merchant", "Orders", "B2C Orders"),
-        ("Offers", "Merchant", "Offers", "B2B Offers"),
-        ("Deals", "Merchant", "Deals", "B2B Deals"),
-        ("Disputes", "Merchant", "Disputes", "Disputes"),
-        ("Reviews", "Merchant", "Reviews", "Reviews"),
-        ("Analytics", "Merchant", "Analytics", "Analytics"),
-        ("StoreSettings", "Merchant", "StoreSettings", "Store settings"),
+        new
+        {
+            Label = "Account",
+            Links = new[]
+            {
+                (Section: "Verification", Controller: "Verification", Label: "Verification")
+            }
+        },
+        new
+        {
+            Label = "Sell",
+            Links = new[]
+            {
+                (Section: "Listings", Controller: "Listings", Label: "Listings"),
+                (Section: "Inventory", Controller: "Inventory", Label: "Inventory")
+            }
+        },
+        new
+        {
+            Label = "Orders & commerce",
+            Links = new[]
+            {
+                (Section: "Orders", Controller: "Orders", Label: "B2C Orders"),
+                (Section: "Offers", Controller: "Offers", Label: "B2B Offers"),
+                (Section: "Deals", Controller: "Deals", Label: "B2B Deals")
+            }
+        },
+        new
+        {
+            Label = "Customers & resolution",
+            Links = new[]
+            {
+                (Section: "Reviews", Controller: "Reviews", Label: "Reviews"),
+                (Section: "Disputes", Controller: "Disputes", Label: "Disputes")
+            }
+        },
+        new
+        {
+            Label = "Insights",
+            Links = new[]
+            {
+                (Section: "Analytics", Controller: "Analytics", Label: "Analytics")
+            }
+        },
+        new
+        {
+            Label = "Settings",
+            Links = new[]
+            {
+                (Section: "StoreSettings", Controller: "StoreSettings", Label: "Store Settings")
+            }
+        }
+    };
+
+    var activeLabel = active switch
+    {
+        "Verification" => "Verification",
+        "Listings" => "Listings",
+        "Inventory" => "Inventory",
+        "Orders" => "B2C Orders",
+        "Offers" => "B2B Offers",
+        "Deals" => "B2B Deals",
+        "Reviews" => "Reviews",
+        "Disputes" => "Disputes",
+        "Analytics" => "Analytics",
+        "StoreSettings" => "Store Settings",
+        _ => "Merchant Center"
     };
 }
-<div class="faed-workspace-nav faed-workspace-nav--merchant">
-    <div class="faed-workspace-nav__identity">
-        <span class="faed-workspace-nav__eyebrow">Seller workspace</span>
-        <strong>Merchant Center</strong>
+
+<div class="faed-merchant-workspace-nav">
+    <aside class="faed-merchant-sidebar" aria-label="Merchant workspace navigation">
+        <div class="faed-merchant-sidebar__brand">
+            <span class="faed-merchant-sidebar__eyebrow">Seller workspace</span>
+            <strong>Merchant Center</strong>
+            <span>Manage listings, commerce, trust, and store operations.</span>
+        </div>
+
+        <nav class="faed-merchant-sidebar__nav" aria-label="Merchant sections">
+            @foreach (var group in groups)
+            {
+                if (restrictedToVerification && group.Label != "Account")
+                {
+                    continue;
+                }
+
+                <div class="faed-merchant-sidebar__group">
+                    <span class="faed-merchant-sidebar__group-label">@group.Label</span>
+                    @foreach (var link in group.Links)
+                    {
+                        <a class="faed-merchant-sidebar__link @(active == link.Section ? "is-active" : "")"
+                           aria-current="@(active == link.Section ? "page" : null)"
+                           asp-area="Merchant" asp-controller="@link.Controller" asp-action="Index">
+                            <span>@link.Label</span>
+                        </a>
+                    }
+                </div>
+            }
+        </nav>
+    </aside>
+
+    <div class="faed-merchant-mobilebar">
+        <div class="faed-merchant-mobilebar__context">
+            <span>Merchant Center</span>
+            <strong>@activeLabel</strong>
+        </div>
+        <button class="faed-btn faed-btn--ghost faed-merchant-mobilebar__toggle" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#faed-merchant-navigation"
+                aria-controls="faed-merchant-navigation" aria-label="Open merchant navigation">
+            <span aria-hidden="true">☰</span>
+            <span>Menu</span>
+        </button>
     </div>
-    <nav class="faed-subnav faed-subnav--workspace" aria-label="Merchant sections">
-        @foreach (var link in links)
-        {
-            <a class="@(active == link.Section ? "is-active" : "")" aria-current="@(active == link.Section ? "page" : null)"
-               asp-area="@link.Area" asp-controller="@link.Controller" asp-action="Index">@link.Label</a>
-        }
-    </nav>
+
+    <div class="offcanvas offcanvas-start faed-merchant-drawer" tabindex="-1" id="faed-merchant-navigation"
+         aria-labelledby="faed-merchant-navigation-label">
+        <div class="offcanvas-header faed-merchant-drawer__header">
+            <div>
+                <span class="faed-merchant-sidebar__eyebrow">Seller workspace</span>
+                <h2 class="offcanvas-title" id="faed-merchant-navigation-label">Merchant Center</h2>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close merchant navigation"></button>
+        </div>
+        <div class="offcanvas-body faed-merchant-drawer__body">
+            <nav class="faed-merchant-sidebar__nav" aria-label="Merchant sections mobile">
+                @foreach (var group in groups)
+                {
+                    if (restrictedToVerification && group.Label != "Account")
+                    {
+                        continue;
+                    }
+
+                    <div class="faed-merchant-sidebar__group">
+                        <span class="faed-merchant-sidebar__group-label">@group.Label</span>
+                        @foreach (var link in group.Links)
+                        {
+                            <a class="faed-merchant-sidebar__link @(active == link.Section ? "is-active" : "")"
+                               aria-current="@(active == link.Section ? "page" : null)"
+                               asp-area="Merchant" asp-controller="@link.Controller" asp-action="Index"
+                               data-bs-dismiss="offcanvas">
+                                <span>@link.Label</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </nav>
+        </div>
+    </div>
 </div>

@@ -1,7 +1,8 @@
 @model ListingCardView
 
 <article class="faed-product-card">
-    <a class="faed-product-card__media" asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug" aria-label="@Model.Title">
+    <a class="faed-product-card__media" asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug"
+       aria-label="View @Model.Title">
         @if (Model.PrimaryImageId is { } imageId)
         {
             <img src="/listing-images/@imageId" alt="@(Model.PrimaryImageAlt ?? Model.Title)" loading="lazy" />
@@ -10,11 +11,14 @@
         {
             <span class="faed-product-card__no-photo" aria-hidden="true">No photo yet</span>
         }
-        <span class="faed-product-card__media-label">Verified stock</span>
+
+        <span class="faed-product-card__condition-badge">Grade @Model.ConditionCode · @Model.ConditionName</span>
+
         @if (Model.HasValidReferencePrice)
         {
             <span class="faed-product-card__discount">@(Model.DiscountPercent)% lower</span>
         }
+
         @if (Model.IsSoldOut)
         {
             <span class="faed-product-card__stock faed-product-card__stock--out">Sold out</span>
@@ -24,48 +28,58 @@
             <span class="faed-product-card__stock faed-product-card__stock--low">Low stock</span>
         }
     </a>
+
     <div class="faed-product-card__body">
-        <div class="faed-product-card__condition"><span>Condition</span> Grade @Model.ConditionCode &middot; @Model.ConditionName</div>
+        <div class="faed-product-card__eyebrow">@Model.CategoryName</div>
+
         <h3 class="faed-product-card__title">
             <a asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug">@Model.Title</a>
         </h3>
-        <a class="faed-product-card__merchant" asp-controller="Store" asp-action="Index" asp-route-slug="@Model.MerchantSlug">
+
+        <a class="faed-product-card__merchant" asp-controller="Store" asp-action="Index"
+           asp-route-slug="@Model.MerchantSlug">
             @if (Model.MerchantIsVerified)
             {
-                <span class="faed-verified" aria-hidden="true">&#10003;</span>
+                <span class="faed-verified" aria-hidden="true">✓</span>
                 <span class="visually-hidden">Verified merchant.</span>
             }
             <span>@Model.MerchantBusinessName</span>
         </a>
-        <div class="faed-price faed-price--sm" aria-label="Price">
-            <span class="faed-price__current">
-                @if (Model.EffectivePrice is { } price)
-                {
-                    @($"JOD {price:0.000}")
-                    if (Model.EffectivePriceIsWholesale)
+
+        <div class="faed-product-card__price-row">
+            <div class="faed-price faed-price--sm" aria-label="Price">
+                <span class="faed-price__current">
+                    @if (Model.EffectivePrice is { } price)
                     {
-                        <span class="faed-price__qualifier">/unit &middot; wholesale</span>
+                        @($"JOD {price:0.000}")
+                        if (Model.EffectivePriceIsWholesale)
+                        {
+                            <span class="faed-price__qualifier">/unit · wholesale</span>
+                        }
                     }
-                }
-                else
+                    else
+                    {
+                        <text>Price on request</text>
+                    }
+                </span>
+                @if (Model.HasValidReferencePrice)
                 {
-                    <text>Price on request</text>
+                    <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
                 }
-            </span>
-            @if (Model.HasValidReferencePrice)
-            {
-                <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
-            }
+            </div>
         </div>
+
         @if (!string.IsNullOrEmpty(Model.PrimaryDiscountReasonName))
         {
-            <div class="faed-product-card__reason">
-                Why discounted: @Model.PrimaryDiscountReasonName@(Model.HasMoreReasons ? " + more" : "")
-            </div>
+            <p class="faed-product-card__reason">
+                <span>Why discounted</span>
+                @Model.PrimaryDiscountReasonName@(Model.HasMoreReasons ? " + more" : "")
+            </p>
         }
+
         @if (Model.AllowB2C || Model.AllowB2B)
         {
-            <div class="faed-chip-list faed-product-card__channels">
+            <div class="faed-chip-list faed-product-card__channels" aria-label="Available buying routes">
                 @if (Model.AllowB2C)
                 {
                     <span class="faed-chip faed-chip--sm">Retail</span>
@@ -76,6 +90,5 @@
                 }
             </div>
         }
-        <span class="faed-product-card__view">View listing <span aria-hidden="true">&rarr;</span></span>
     </div>
 </article>

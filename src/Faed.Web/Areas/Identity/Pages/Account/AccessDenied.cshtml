@@ -1,22 +1,26 @@
-﻿@page
+@page
 @model Faed.Web.Areas.Identity.Pages.Account.AccessDeniedModel
 @{
     ViewData["Title"] = "Access denied";
 }
 
-@* Reached whenever a signed-in user fails a server-side authorization policy — e.g. an
-   administrator hitting a Buyer/Merchant-only route by direct URL, or a merchant applicant
-   who is not yet approved reaching an approved-only screen. The link that got them here is
-   already hidden from navigation where possible; this page is the recovery for the
-   direct-URL case. It provides recovery without information leakage: no detail about the
-   denied resource is shown, only that access was denied . *@
-<div class="faed-page">
-    <div class="faed-empty faed-error-state">
-        <span class="faed-error-state__code">403</span>
-        <h1 class="faed-empty__title">Access denied</h1>
-        <p>Your account does not have permission to view that page.</p>
-        <div class="faed-page__actions faed-page__actions--center">
-            <a class="faed-btn faed-btn--primary" href="/">Back to Faed</a>
+<div class="faed-page faed-page--wide faed-access-state">
+    <section class="faed-access-state__card" aria-labelledby="access-denied-title">
+        <div class="faed-access-state__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+                <path
+                d="M12 2.7 19 5.4v5.4c0 4.5-2.7 8.2-7 10.4-4.3-2.2-7-5.9-7-10.4V5.4L12 2.7Zm0 2.1L7 6.7v4.1c0 3.4 1.9 6.3 5 8 3.1-1.7 5-4.6 5-8V6.7l-5-1.9Zm-.9 3.7h1.8v5.7h-1.8V8.5Zm0 7.1h1.8v1.8h-1.8v-1.8Z"
+                fill="currentColor" />
+            </svg>
         </div>
-    </div>
-</div>
+        <p class="faed-access-state__eyebrow">403 · Permission required</p>
+        <h1 id="access-denied-title">This page is not available to your account.</h1>
+        <p class="faed-access-state__copy">Your current role or verification status does not allow access to this area.
+            No restricted information has been shown.</p>
+            <div class="faed-page__actions faed-page__actions--center">
+                <a class="faed-btn faed-btn--primary" asp-area="" asp-controller="Home" asp-action="Index">Back to Faed</a>
+                <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Shop" asp-action="Index">Browse
+                    marketplace</a>
+                </div>
+            </section>
+        </div>

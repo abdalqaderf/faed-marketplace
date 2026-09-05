@@ -3,18 +3,24 @@
     ViewData["Title"] = "Shop";
 }
 
-<div class="faed-page faed-page--wide">
-    <div class="faed-page__header faed-shop-header">
+<div class="faed-page faed-page--wide faed-shop-page">
+    <header class="faed-page__header faed-shop-header">
         <div>
-            <p class="faed-kicker">Verified merchants &middot; Amman</p>
-            <h1 class="faed-page__title">Shop Fashion Overstock</h1>
-            <p class="faed-page__subtitle">Surplus and non-perfect stock from verified merchants in Amman, at retail and wholesale prices.</p>
+            <p class="faed-kicker">Verified marketplace · Current launch</p>
+            <h1 class="faed-page__title">Shop the marketplace</h1>
+            <p class="faed-page__subtitle">
+                Browse the current clothing, shoes and accessories launch from verified merchants,
+                with condition and discount context made clear before you buy.
+            </p>
         </div>
         <div class="faed-shop-header__trust" aria-label="Marketplace disclosure standard">
-            <strong>Every live listing is reviewed.</strong>
-            <span>Condition and discount reason are shown separately.</span>
+            <span class="faed-shop-header__trust-mark" aria-hidden="true">✓</span>
+            <span>
+                <strong>Reviewed before publication</strong>
+                <small>Condition and discount reason stay separate.</small>
+            </span>
         </div>
-    </div>
+    </header>
 
     <partial name="_ShopBrowse" model="Model" />
 </div>

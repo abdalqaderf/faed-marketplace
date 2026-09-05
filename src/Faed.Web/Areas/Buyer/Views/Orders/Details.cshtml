@@ -2,209 +2,257 @@
 @{
     var order = Model.Order;
     ViewData["Title"] = $"Order — {order.MerchantBusinessName}";
+    var orderReference = order.Id.ToString()[..8].ToUpperInvariant();
+    var isTerminalProblem = order.Status is OrderStatus.Cancelled or OrderStatus.NoShow;
 }
 
-<div class="faed-page">
+<div class="faed-page faed-page--wide faed-buyer-page faed-order-detail-page">
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
         <a asp-action="Index">My orders</a>
         <span aria-hidden="true">/</span>
-        <span>@AmmanTime.FormatDate(order.CreatedAtUtc)</span>
+        <span aria-current="page">Order @orderReference</span>
     </nav>
 
-    <div class="faed-page__header">
+    <header class="faed-order-detail-hero">
         <div>
-            <h1 class="faed-page__title">Order from @order.MerchantBusinessName</h1>
-            <p class="faed-page__subtitle">Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) (Amman time).</p>
+            <p class="faed-kicker">Order @orderReference</p>
+            <h1>Order from @order.MerchantBusinessName</h1>
+            <p>Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) · @OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</p>
         </div>
-        <div class="faed-page__actions">
+        <div class="faed-order-detail-hero__status">
+            <span>Status</span>
             <span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span>
         </div>
-    </div>
+    </header>
 
     @if (order.Status == OrderStatus.Pending && order.ReservationExpiresAtUtc is { } expires)
     {
-        <div class="faed-alert faed-alert--info" role="status">
-            Your items are reserved until about @AmmanTime.FormatDateTime(expires). If the merchant hasn't
-            confirmed by then, the order is cancelled automatically and the stock is released.
+        <div class="faed-order-callout faed-order-callout--info" role="status">
+            <strong>Your stock is reserved.</strong>
+            <span>The merchant has until about @AmmanTime.FormatDateTime(expires) to confirm. If it is not confirmed, the order is cancelled automatically and the stock is released.</span>
         </div>
     }
 
-    @if (!string.IsNullOrEmpty(order.StatusReason) && order.Status is OrderStatus.Cancelled or OrderStatus.NoShow)
+    @if (!string.IsNullOrEmpty(order.StatusReason) && isTerminalProblem)
     {
-        <div class="faed-alert faed-alert--error" role="status">@order.StatusReason</div>
+        <div class="faed-order-callout faed-order-callout--danger" role="status">
+            <strong>@OrderStatusDisplay.Label(order.Status)</strong>
+            <span>@order.StatusReason</span>
+        </div>
     }
 
-    <div class="faed-panel">
-        <h2 class="faed-panel__title">Items</h2>
-        <div class="faed-table-wrap">
-            <table class="faed-table">
-                <thead>
-                    <tr>
-                        <th scope="col">Item</th>
-                        <th scope="col">Condition</th>
-                        <th scope="col">Unit price</th>
-                        <th scope="col">Qty</th>
-                        <th scope="col">Line total</th>
-                    </tr>
-                </thead>
-                <tbody>
+    @if (!isTerminalProblem)
+    {
+        <ol class="faed-order-progress" aria-label="Order progress">
+            <li class="is-reached">
+                <span>1</span><strong>Placed</strong><small>Waiting for merchant</small>
+            </li>
+            <li class="@(order.Status is OrderStatus.Confirmed or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed ? "is-reached" : "")">
+                <span>2</span><strong>Confirmed</strong><small>Merchant accepted</small>
+            </li>
+            <li class="@(order.Status is OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed ? "is-reached" : "")">
+                <span>3</span><strong>Fulfilment</strong><small>@(order.FulfillmentType == OrderFulfillmentType.Pickup ? "Ready for pickup" : "Delivery")</small>
+            </li>
+            <li class="@(order.Status == OrderStatus.Completed ? "is-reached" : "")">
+                <span>4</span><strong>Complete</strong><small>Receipt confirmed</small>
+            </li>
+        </ol>
+    }
+
+    <div class="faed-order-detail-layout">
+        <main class="faed-order-detail-main">
+            <section class="faed-buyer-surface" aria-labelledby="order-items-title">
+                <div class="faed-buyer-surface__header">
+                    <div>
+                        <p class="faed-kicker">Purchase details</p>
+                        <h2 id="order-items-title">Items</h2>
+                    </div>
+                    <strong>@order.Items.Sum(item => item.Quantity) unit@(order.Items.Sum(item => item.Quantity) == 1 ? "" : "s")</strong>
+                </div>
+
+                <div class="faed-order-items">
                     @foreach (var item in order.Items)
                     {
-                        <tr>
-                            <td>
+                        <article class="faed-order-item">
+                            <div class="faed-order-item__identity">
                                 @if (item.ListingSlug is { } slug)
                                 {
                                     <a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@slug">@item.ListingTitle</a>
                                 }
                                 else
                                 {
-                                    @item.ListingTitle
+                                    <strong>@item.ListingTitle</strong>
                                 }
-                                <div class="faed-field__hint">@item.VariantSnapshot</div>
+                                <span>@item.VariantSnapshot</span>
+                                <span>Condition · @item.ConditionSnapshot</span>
                                 @if (!string.IsNullOrEmpty(item.DiscountReasonSnapshot))
                                 {
-                                    <div class="faed-field__hint">Why discounted: @item.DiscountReasonSnapshot</div>
+                                    <span>Why discounted · @item.DiscountReasonSnapshot</span>
                                 }
-                            </td>
-                            <td>@item.ConditionSnapshot</td>
-                            <td>JOD @item.UnitPrice.ToString("0.000")</td>
-                            <td>@item.Quantity</td>
-                            <td>JOD @item.LineTotal.ToString("0.000")</td>
-                        </tr>
+                            </div>
+                            <div class="faed-order-item__numbers">
+                                <div><span>Qty</span><strong>@item.Quantity</strong></div>
+                                <div><span>Unit</span><strong>JOD @item.UnitPrice.ToString("0.000")</strong></div>
+                                <div><span>Line total</span><strong>JOD @item.LineTotal.ToString("0.000")</strong></div>
+                            </div>
+                        </article>
                     }
-                </tbody>
-                <tfoot>
-                    <tr><th scope="row" colspan="4">Subtotal</th><td>JOD @order.Subtotal.ToString("0.000")</td></tr>
-                    <tr><th scope="row" colspan="4">@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType) fee</th><td>JOD @order.DeliveryFeeSnapshot.ToString("0.000")</td></tr>
-                    <tr><th scope="row" colspan="4">Total</th><td><strong>JOD @order.Total.ToString("0.000")</strong></td></tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
+                </div>
+            </section>
 
-    <div class="faed-panel">
-        <h2 class="faed-panel__title">Fulfilment &amp; contact</h2>
-        <dl class="faed-details">
-            <dt>Method</dt>
-            <dd>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</dd>
-            <dt>Details</dt>
-            <dd>@order.FulfillmentSnapshot</dd>
-            @if (!string.IsNullOrWhiteSpace(order.DeliveryAddressText))
+            @if (order.BuyerCanConfirmReceipt)
             {
-                <dt>Delivery address</dt>
-                <dd>@order.DeliveryAddressText</dd>
+                <section class="faed-buyer-action-card faed-buyer-action-card--primary" aria-labelledby="confirm-receipt-title">
+                    <div>
+                        <p class="faed-kicker">Your next step</p>
+                        <h2 id="confirm-receipt-title">Confirm when the order is in your hands.</h2>
+                        <p>This completes the order and unlocks the ability to review the merchant.</p>
+                    </div>
+                    <form asp-action="ConfirmReceipt" asp-route-id="@order.Id" method="post">
+                        <button type="submit" class="faed-btn faed-btn--light">I've received this order</button>
+                    </form>
+                </section>
             }
-            <dt>Contact</dt>
-            <dd>@order.ContactName · @order.ContactPhone</dd>
-            @if (!string.IsNullOrWhiteSpace(order.BuyerNote))
-            {
-                <dt>Your note</dt>
-                <dd>@order.BuyerNote</dd>
-            }
-        </dl>
-    </div>
 
-    @if (order.BuyerCanConfirmReceipt)
-    {
-        <div class="faed-panel">
-            <h2 class="faed-panel__title">Confirm receipt</h2>
-            <p class="faed-panel__hint">
-                Once you have collected or received your order, confirm it here. This completes the
-                order and lets you review the merchant.
-            </p>
-            <form asp-action="ConfirmReceipt" asp-route-id="@order.Id" method="post">
-                <button type="submit" class="faed-btn faed-btn--primary">I've received this order</button>
-            </form>
-        </div>
-    }
+            @if (Model.ActiveDispute is not null || Model.PastDisputes.Count > 0 || Model.CanRaiseDispute)
+            {
+                <section class="faed-buyer-surface" aria-labelledby="order-disputes-title">
+                    <div class="faed-buyer-surface__header">
+                        <div>
+                            <p class="faed-kicker">Buyer protection</p>
+                            <h2 id="order-disputes-title">Disputes</h2>
+                        </div>
+                        <a asp-controller="Disputes" asp-action="Index">My disputes</a>
+                    </div>
 
-    @if (Model.ActiveDispute is not null || Model.PastDisputes.Count > 0 || Model.CanRaiseDispute)
-    {
-        <div class="faed-panel">
-            <h2 class="faed-panel__title">Disputes</h2>
-            @if (Model.ActiveDispute is { } dispute)
-            {
-                <p class="faed-panel__hint">
-                    <span class="@DisputeStatusDisplay.BadgeClass(dispute.Status)">@DisputeStatusDisplay.Label(dispute.Status)</span>
-                    &nbsp;@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode) · raised @AmmanTime.FormatDate(dispute.CreatedAtUtc)
-                </p>
-                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Details" asp-route-id="@dispute.Id">
-                    View dispute
-                </a>
-            }
-            @if (Model.PastDisputes.Count > 0)
-            {
-                <ul class="faed-field__hint">
-                    @foreach (var past in Model.PastDisputes)
+                    @if (Model.ActiveDispute is { } dispute)
                     {
-                        <li>
-                            <a asp-controller="Disputes" asp-action="Details" asp-route-id="@past.Id">
-                                @DisputeStatusDisplay.ReasonLabel(past.ReasonCode)
-                            </a>
-                            — @DisputeStatusDisplay.Label(past.Status), @AmmanTime.FormatDate(past.CreatedAtUtc)
-                        </li>
+                        <div class="faed-dispute-inline faed-dispute-inline--active">
+                            <div>
+                                <span class="@DisputeStatusDisplay.BadgeClass(dispute.Status)">@DisputeStatusDisplay.Label(dispute.Status)</span>
+                                <strong>@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode)</strong>
+                                <small>Raised @AmmanTime.FormatDate(dispute.CreatedAtUtc)</small>
+                            </div>
+                            <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-controller="Disputes" asp-action="Details" asp-route-id="@dispute.Id">View dispute</a>
+                        </div>
                     }
-                </ul>
+
+                    @if (Model.PastDisputes.Count > 0)
+                    {
+                        <div class="faed-dispute-history">
+                            <span class="faed-dispute-history__label">Past disputes</span>
+                            @foreach (var past in Model.PastDisputes)
+                            {
+                                <a asp-controller="Disputes" asp-action="Details" asp-route-id="@past.Id">
+                                    <span>@DisputeStatusDisplay.ReasonLabel(past.ReasonCode)</span>
+                                    <small>@DisputeStatusDisplay.Label(past.Status) · @AmmanTime.FormatDate(past.CreatedAtUtc)</small>
+                                </a>
+                            }
+                        </div>
+                    }
+
+                    @if (Model.CanRaiseDispute)
+                    {
+                        <div class="faed-dispute-inline">
+                            <div>
+                                <strong>Something went wrong?</strong>
+                                <small>If the item was not as described, defective, incomplete, wrong, or never arrived, an administrator can review the case.</small>
+                            </div>
+                            <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Create" asp-route-orderId="@order.Id">Raise a dispute</a>
+                        </div>
+                    }
+                </section>
             }
-            @if (Model.CanRaiseDispute)
+
+            @if (Model.ReviewEligibility is { ExistingReview: { } mine })
             {
-                <p class="faed-panel__hint">
-                    If the item was not as described, defective, missing parts or never arrived, you can raise a
-                    dispute. An administrator will review it.
-                </p>
-                <a class="faed-btn faed-btn--ghost" asp-controller="Disputes" asp-action="Create" asp-route-orderId="@order.Id">
-                    Raise a dispute
+                <section class="faed-buyer-surface" aria-labelledby="existing-review-title">
+                    <div class="faed-buyer-surface__header">
+                        <div>
+                            <p class="faed-kicker">Your feedback</p>
+                            <h2 id="existing-review-title">Your review</h2>
+                        </div>
+                        <span class="faed-review-score"><strong aria-hidden="true">@DisputeStatusDisplay.Stars(mine.Rating)</strong> @mine.Rating / 5</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(mine.Comment))
+                    {
+                        <p class="faed-prewrap faed-review-copy">@mine.Comment</p>
+                    }
+                    <p class="faed-panel__hint">Posted @AmmanTime.FormatDate(mine.CreatedAtUtc).</p>
+                </section>
+            }
+            else if (Model.ReviewEligibility is { CanReview: true })
+            {
+                <section class="faed-buyer-surface" aria-labelledby="leave-review-title">
+                    <div class="faed-buyer-surface__header">
+                        <div>
+                            <p class="faed-kicker">Share your experience</p>
+                            <h2 id="leave-review-title">Review @order.MerchantBusinessName</h2>
+                        </div>
+                    </div>
+                    <p class="faed-panel__hint">Your order is complete. A clear rating helps other buyers judge the merchant.</p>
+                    <form asp-action="Review" asp-route-id="@order.Id" method="post" class="faed-review-form">
+                        <div class="faed-field">
+                            <label class="faed-field__label" for="review-rating">Rating (1–5)</label>
+                            <input class="faed-input faed-input--quantity" id="review-rating" name="Rating" type="number" min="1" max="5" value="5" required />
+                        </div>
+                        <div class="faed-field faed-review-form__comment">
+                            <label class="faed-field__label" for="review-comment">Comment <span class="faed-optional">Optional</span></label>
+                            <textarea class="faed-input" id="review-comment" name="Comment" rows="3" maxlength="2000" placeholder="What would another buyer find useful to know?"></textarea>
+                        </div>
+                        <button type="submit" class="faed-btn faed-btn--primary">Post review</button>
+                    </form>
+                </section>
+            }
+        </main>
+
+        <aside class="faed-order-summary">
+            <section class="faed-order-summary__card" aria-labelledby="order-summary-title">
+                <p class="faed-kicker">Summary</p>
+                <h2 id="order-summary-title">Order total</h2>
+                <dl class="faed-order-money">
+                    <div><dt>Subtotal</dt><dd>JOD @order.Subtotal.ToString("0.000")</dd></div>
+                    <div><dt>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType) fee</dt><dd>JOD @order.DeliveryFeeSnapshot.ToString("0.000")</dd></div>
+                    <div class="faed-order-money__total"><dt>Total</dt><dd>JOD @order.Total.ToString("0.000")</dd></div>
+                </dl>
+            </section>
+
+            <section class="faed-order-summary__card" aria-labelledby="fulfilment-summary-title">
+                <p class="faed-kicker">Fulfilment</p>
+                <h2 id="fulfilment-summary-title">@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</h2>
+                <dl class="faed-order-summary-list">
+                    <div><dt>Details</dt><dd>@order.FulfillmentSnapshot</dd></div>
+                    @if (!string.IsNullOrWhiteSpace(order.DeliveryAddressText))
+                    {
+                        <div><dt>Delivery address</dt><dd>@order.DeliveryAddressText</dd></div>
+                    }
+                    <div><dt>Contact</dt><dd>@order.ContactName<br />@order.ContactPhone</dd></div>
+                    @if (!string.IsNullOrWhiteSpace(order.BuyerNote))
+                    {
+                        <div><dt>Your note</dt><dd>@order.BuyerNote</dd></div>
+                    }
+                </dl>
+                <a class="faed-order-summary__merchant" asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@order.MerchantSlug">
+                    Visit @order.MerchantBusinessName <span aria-hidden="true">→</span>
                 </a>
-            }
-        </div>
-    }
+            </section>
 
-    @if (Model.ReviewEligibility is { ExistingReview: { } mine })
-    {
-        <div class="faed-panel">
-            <h2 class="faed-panel__title">Your review</h2>
-            <p><strong aria-hidden="true">@DisputeStatusDisplay.Stars(mine.Rating)</strong> @mine.Rating / 5</p>
-            @if (!string.IsNullOrWhiteSpace(mine.Comment))
+            @if (order.BuyerCanCancel)
             {
-                <p class="faed-prewrap">@mine.Comment</p>
+                <details class="faed-order-danger">
+                    <summary>Need to cancel this order?</summary>
+                    <div>
+                        <p>You can cancel while the order is awaiting confirmation or confirmed. Reserved stock is released immediately.</p>
+                        <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
+                            <div class="faed-field">
+                                <label class="faed-field__label" for="cancel-reason">Reason <span class="faed-optional">Optional</span></label>
+                                <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" />
+                            </div>
+                            <button type="submit" class="faed-btn faed-btn--danger">Cancel order</button>
+                        </form>
+                    </div>
+                </details>
             }
-            <p class="faed-panel__hint">Posted @AmmanTime.FormatDate(mine.CreatedAtUtc).</p>
-        </div>
-    }
-    else if (Model.ReviewEligibility is { CanReview: true })
-    {
-        <div class="faed-panel">
-            <h2 class="faed-panel__title">Review @order.MerchantBusinessName</h2>
-            <p class="faed-panel__hint">Your order is complete. Leave a rating to help other buyers.</p>
-            <form asp-action="Review" asp-route-id="@order.Id" method="post">
-                <div class="faed-field">
-                    <label class="faed-field__label" for="review-rating">Rating (1–5)</label>
-                    <input class="faed-input faed-input--quantity" id="review-rating" name="Rating" type="number" min="1" max="5" value="5" required />
-                </div>
-                <div class="faed-field">
-                    <label class="faed-field__label" for="review-comment">Comment (optional)</label>
-                    <textarea class="faed-input" id="review-comment" name="Comment" rows="3" maxlength="2000"></textarea>
-                </div>
-                <button type="submit" class="faed-btn faed-btn--primary">Post review</button>
-            </form>
-        </div>
-    }
-
-    @if (order.BuyerCanCancel)
-    {
-        <div class="faed-panel">
-            <h2 class="faed-panel__title">Cancel this order</h2>
-            <p class="faed-panel__hint">
-                You can cancel while the order is still awaiting confirmation or just confirmed. The reserved
-                stock is released straight away.
-            </p>
-            <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
-                <div class="faed-field">
-                    <label class="faed-field__label" for="cancel-reason">Reason (optional)</label>
-                    <input class="faed-input" id="cancel-reason" name="reason" maxlength="500" />
-                </div>
-                <button type="submit" class="faed-btn faed-btn--danger">Cancel order</button>
-            </form>
-        </div>
-    }
+        </aside>
+    </div>
 </div>

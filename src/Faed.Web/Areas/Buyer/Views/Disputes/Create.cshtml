@@ -1,64 +1,108 @@
 @model FileDisputePageModel
 @{
     ViewData["Title"] = "Raise a dispute";
-    var reasons = new (DisputeReasonCode Value, string Label)[]
+    var reasons = new (DisputeReasonCode Value, string Label, string Hint)[]
     {
-        (DisputeReasonCode.ItemNotAsDescribed, "Item not as described"),
-        (DisputeReasonCode.UndisclosedDefect, "Undisclosed defect"),
-        (DisputeReasonCode.MissingItems, "Missing items"),
-        (DisputeReasonCode.ItemNotReceived, "Item not received"),
-        (DisputeReasonCode.WrongItem, "Wrong item supplied"),
-        (DisputeReasonCode.Other, "Something else"),
+        (DisputeReasonCode.ItemNotAsDescribed, "Item not as described", "The item materially differs from the listing information."),
+        (DisputeReasonCode.UndisclosedDefect, "Undisclosed defect", "A defect or issue was not disclosed before purchase."),
+        (DisputeReasonCode.MissingItems, "Missing items", "Something expected in the order or package is missing."),
+        (DisputeReasonCode.ItemNotReceived, "Item not received", "The order was not received as expected."),
+        (DisputeReasonCode.WrongItem, "Wrong item supplied", "You received a different item or variant."),
+        (DisputeReasonCode.Other, "Something else", "Use this when none of the listed reasons accurately describes the problem."),
     };
 }
 
-<div class="faed-page">
+<div class="faed-page faed-page--wide faed-buyer-page faed-dispute-create-page">
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
         <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">Order</a>
         <span aria-hidden="true">/</span>
-        <span>Raise a dispute</span>
+        <span aria-current="page">Raise a dispute</span>
     </nav>
 
-    <div class="faed-page__header">
+    <header class="faed-buyer-heading">
         <div>
-            <h1 class="faed-page__title">Raise a dispute</h1>
-            <p class="faed-page__subtitle">@Model.OrderReference</p>
+            <p class="faed-kicker">Buyer protection</p>
+            <h1>Raise a dispute</h1>
+            <p>@Model.OrderReference</p>
         </div>
-    </div>
+    </header>
 
-    <div class="faed-panel">
-        <form asp-action="Create" method="post" enctype="multipart/form-data">
-            <input type="hidden" asp-for="Form.OrderId" />
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="faed-dispute-create-layout">
+        <input type="hidden" asp-for="Form.OrderId" />
+
+        <main class="faed-dispute-create-main">
             <div asp-validation-summary="All" class="faed-alert faed-alert--error" role="alert"></div>
 
-            <fieldset class="faed-field faed-fieldset-reset">
-                <legend class="faed-field__label">What went wrong?</legend>
-                @foreach (var (value, label) in reasons)
-                {
-                    <label class="faed-checkbox-row">
-                        <input type="radio" asp-for="Form.ReasonCode" value="@value" />
-                        <span>@label</span>
-                    </label>
-                }
-            </fieldset>
+            <section class="faed-buyer-surface" aria-labelledby="dispute-reason-title">
+                <div class="faed-checkout-section__header">
+                    <span class="faed-checkout-section__step" aria-hidden="true">1</span>
+                    <div>
+                        <h2 id="dispute-reason-title">What went wrong?</h2>
+                        <p>Choose the reason that most closely matches the problem. This helps the reviewer understand the case quickly.</p>
+                    </div>
+                </div>
 
-            <div class="faed-field">
-                <label class="faed-field__label" asp-for="Form.Description">Describe the problem</label>
-                <textarea class="faed-input" asp-for="Form.Description" rows="5"
-                          maxlength="@Faed.Web.Models.Entities.Dispute.MaxDescriptionLength" required></textarea>
-                <span asp-validation-for="Form.Description" class="faed-field__error"></span>
-            </div>
+                <fieldset class="faed-fieldset-reset faed-dispute-reasons">
+                    <legend class="visually-hidden">Dispute reason</legend>
+                    @foreach (var (value, label, hint) in reasons)
+                    {
+                        <label class="faed-dispute-reason">
+                            <input type="radio" asp-for="Form.ReasonCode" value="@value" />
+                            <span class="faed-dispute-reason__radio" aria-hidden="true"></span>
+                            <span><strong>@label</strong><small>@hint</small></span>
+                        </label>
+                    }
+                </fieldset>
+            </section>
 
-            <div class="faed-field">
-                <label class="faed-field__label" for="evidence">Evidence (optional)</label>
-                <input class="faed-input" id="evidence" type="file" name="Form.Evidence" multiple
-                       accept=".jpg,.jpeg,.png,.pdf" />
-                <span class="faed-field__hint">
-                    Photos or a PDF. These are private — only you, the merchant and an administrator can see them.
-                </span>
-            </div>
+            <section class="faed-buyer-surface" aria-labelledby="dispute-description-title">
+                <div class="faed-checkout-section__header">
+                    <span class="faed-checkout-section__step" aria-hidden="true">2</span>
+                    <div>
+                        <h2 id="dispute-description-title">Explain what happened</h2>
+                        <p>Describe the issue factually. Include what you expected, what you received, and any detail that helps compare the order with the listing.</p>
+                    </div>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.Description">Problem description</label>
+                    <textarea class="faed-input" asp-for="Form.Description" rows="7"
+                              maxlength="@Faed.Web.Models.Entities.Dispute.MaxDescriptionLength" required
+                              placeholder="Describe the problem clearly and chronologically..."></textarea>
+                    <span asp-validation-for="Form.Description" class="faed-field__error"></span>
+                </div>
+            </section>
 
-            <button type="submit" class="faed-btn faed-btn--primary">File dispute</button>
-        </form>
-    </div>
+            <section class="faed-buyer-surface" aria-labelledby="dispute-evidence-title">
+                <div class="faed-checkout-section__header">
+                    <span class="faed-checkout-section__step" aria-hidden="true">3</span>
+                    <div>
+                        <h2 id="dispute-evidence-title">Add evidence</h2>
+                        <p>Evidence is optional, but useful photos or a PDF can make the issue easier to assess.</p>
+                    </div>
+                </div>
+                <label class="faed-file-drop" for="evidence">
+                    <span class="faed-file-drop__icon" aria-hidden="true">＋</span>
+                    <strong>Choose photos or a PDF</strong>
+                    <span>JPG, PNG, or PDF · multiple files allowed</span>
+                    <input id="evidence" type="file" name="Form.Evidence" multiple accept=".jpg,.jpeg,.png,.pdf" />
+                </label>
+                <p class="faed-field__hint">These files are private. Only you, the merchant, and an administrator can access dispute evidence.</p>
+            </section>
+        </main>
+
+        <aside class="faed-dispute-create-aside">
+            <section class="faed-order-summary__card">
+                <p class="faed-kicker">Before you file</p>
+                <h2>Keep the case focused.</h2>
+                <ul class="faed-buyer-checklist">
+                    <li>Choose the closest matching reason.</li>
+                    <li>Describe facts rather than assumptions.</li>
+                    <li>Attach only evidence relevant to this order.</li>
+                    <li>You can add more evidence later while the case allows it.</li>
+                </ul>
+            </section>
+            <button type="submit" class="faed-btn faed-btn--primary faed-dispute-submit">File dispute</button>
+            <a class="faed-btn faed-btn--ghost faed-dispute-cancel" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">Back to order</a>
+        </aside>
+    </form>
 </div>

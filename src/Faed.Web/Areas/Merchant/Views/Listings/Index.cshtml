@@ -19,7 +19,7 @@
     <div class="faed-page__header">
         <div>
             <h1 class="faed-page__title">Listings</h1>
-            <p class="faed-page__subtitle">Manage your Fashion Overstock listings, variants and stock.</p>
+            <p class="faed-page__subtitle">Manage your marketplace listings, variants, availability, and stock.</p>
         </div>
         <div class="faed-page__actions">
             <a class="faed-btn faed-btn--primary" asp-action="Create">New listing</a>
@@ -42,6 +42,16 @@
                     ? "Create your first listing to start selling."
                     : "Nothing matches this filter right now.")
             </div>
+            <div class="faed-empty__actions">
+                @if (Model.Filter == MerchantListingFilter.All)
+                {
+                    <a class="faed-btn faed-btn--primary faed-btn--sm" asp-action="Create">Create listing</a>
+                }
+                else
+                {
+                    <a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Index" asp-route-filter="@MerchantListingFilter.All">View all listings</a>
+                }
+            </div>
         </div>
     }
     else
@@ -50,15 +60,15 @@
             <table class="faed-table">
                 <thead>
                     <tr>
-                        <th>Listing</th>
-                        <th>Status</th>
-                        <th>Category</th>
-                        <th>Condition</th>
-                        <th>Retail price</th>
-                        <th>Variants</th>
-                        <th>Available</th>
-                        <th>Updated</th>
-                        <th><span class="visually-hidden">Action</span></th>
+                        <th scope="col">Listing</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Condition</th>
+                        <th scope="col">Retail price</th>
+                        <th scope="col">Variants</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Updated</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
                 </thead>
                 <tbody>

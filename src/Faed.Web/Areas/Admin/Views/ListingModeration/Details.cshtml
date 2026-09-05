@@ -1,13 +1,13 @@
-﻿@model ListingModerationDetailPageModel
+@model ListingModerationDetailPageModel
 @{
     ViewData["Title"] = Model.Listing.Title;
     var listing = Model.Listing;
 }
 
-<div class="faed-page faed-page--wide">
+<div class="faed-page faed-page--wide faed-admin-detail-page">
     <partial name="_AdminSubnav" model="@("ListingModeration")" />
 
-    <div class="faed-page__header">
+    <div class="faed-page__header faed-admin-page-header">
         <div>
             <h1 class="faed-page__title">@listing.Title</h1>
             <p class="faed-page__subtitle">@listing.MerchantBusinessName &middot; /@listing.Slug</p>
@@ -97,9 +97,9 @@
     <div class="faed-panel">
         <h2 class="faed-panel__title">Variants</h2>
         <div class="faed-table-wrap">
-            <table class="faed-table">
+            <table class="faed-table faed-admin-table">
                 <thead>
-                    <tr><th>SKU</th><th>Combination</th><th>Available</th><th>Active</th></tr>
+                    <tr><th scope="col">SKU</th><th scope="col">Combination</th><th scope="col">Available</th><th scope="col">Active</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var variant in listing.Variants)
@@ -179,7 +179,7 @@
 
     @if (listing.Status == ListingStatus.PendingReview)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel">
             <h2 class="faed-panel__title">Decision</h2>
             <div class="faed-decision-row">
                 <form asp-action="Approve" asp-route-id="@listing.Id" method="post" class="faed-decision-row__grow">
@@ -201,7 +201,7 @@
     }
     else if (listing.Status is ListingStatus.Live or ListingStatus.SoldOut)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel faed-admin-decision-panel--danger">
             <h2 class="faed-panel__title">Take down</h2>
             <form asp-action="Hide" asp-route-id="@listing.Id" method="post">
                 <div class="faed-field">
@@ -214,7 +214,7 @@
     }
     else if (listing.Status == ListingStatus.Hidden)
     {
-        <div class="faed-panel">
+        <div class="faed-panel faed-admin-decision-panel">
             <h2 class="faed-panel__title">Hidden</h2>
             <p class="faed-panel__hint">
                 @(listing.HiddenByAdmin

@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div class="faed-panel">
+    <div class="faed-panel faed-merchant-form-panel">
         <div class="faed-form-stage">
             <span class="faed-form-stage__number" aria-hidden="true">01</span>
             <div>
@@ -27,6 +27,10 @@
         <form asp-action="Create" method="post" novalidate>
             <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
 
+            <div class="faed-merchant-form-section__heading">
+                <strong>Classification</strong>
+                <span>Choose the marketplace category and condition that describe this product.</span>
+            </div>
             <div class="faed-form-grid">
                 <div class="faed-field">
                     <label class="faed-field__label" asp-for="CategoryId">Category</label>
@@ -52,6 +56,11 @@
                     <span class="faed-field__error" asp-validation-for="ConditionGradeId"></span>
                 </div>
 
+                <div class="faed-field faed-field--full faed-merchant-form-section__heading">
+                    <strong>Buyer-facing details</strong>
+                    <span>Use a clear product title and describe what the buyer will receive.</span>
+                </div>
+
                 <div class="faed-field faed-field--full">
                     <label class="faed-field__label" asp-for="Title">Title</label>
                     <input class="faed-input" asp-for="Title" placeholder="e.g. Men's Running Sneakers" />
@@ -66,8 +75,10 @@
                 </div>
             </div>
 
-            <button type="submit" class="faed-btn faed-btn--primary">Create draft</button>
-            <a class="faed-btn faed-btn--ghost" asp-action="Index">Cancel</a>
+            <div class="faed-merchant-form-actions">
+                <button type="submit" class="faed-btn faed-btn--primary">Create draft</button>
+                <a class="faed-btn faed-btn--ghost" asp-action="Index">Cancel</a>
+            </div>
         </form>
     </div>
 </div>
