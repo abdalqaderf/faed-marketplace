@@ -1,4 +1,4 @@
-﻿using Faed.Web.Data;
+using Faed.Web.Data;
 using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Admin;
@@ -199,11 +199,12 @@ public static class DependencyInjection
 
                 var resolvedRoot = Path.GetFullPath(options.LocalRootPath);
                 var webRoot = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "wwwroot"));
+
                 if (IsWithin(resolvedRoot, webRoot) || PathsEqual(resolvedRoot, webRoot))
                 {
                     throw new InvalidOperationException(
                         $"FileStorage:LocalRootPath ('{resolvedRoot}') must not be inside the web root. " +
-                        "Verification documents are private .");
+                        "Verification documents are private.");
                 }
 
                 options.LocalRootPath = resolvedRoot;
@@ -211,15 +212,10 @@ public static class DependencyInjection
 
         if (!environment.IsDevelopment())
         {
-            // LocalFileStorage is a development-only convenience. Every non-Development
-            // environment — Production, Staging, or any custom name — must bind a real
-            // private object store to IFileStorage. Fail loudly the first time a verification
-            // document, listing image or dispute-evidence file is stored or read, rather
-            // than silently writing sensitive documents to ephemeral local disk.
-            services.AddSingleton<IFileStorage>(_ => throw new InvalidOperationException(
-                $"No private IFileStorage is configured for the '{environment.EnvironmentName}' " +
-                "environment. LocalFileStorage is Development-only; register a cloud object " +
-                "storage implementation ."));
+            services.AddOptions<R2FileStorageOptions>()
+                .Bind(configuration.GetSection(R2FileStorageOptions.SectionName));
+
+            services.AddSingleton<IFileStorage, R2FileStorage>();
             return;
         }
 
