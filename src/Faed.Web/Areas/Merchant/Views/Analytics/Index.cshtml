@@ -13,7 +13,7 @@
             <h1 class="faed-page__title">Recovery analytics</h1>
             <p class="faed-page__subtitle">
                 How much value you have recovered through Faed. Every figure is calculated from your
-                completed orders, deals and listings &mdash; nothing here can be edited by hand.
+                completed orders and listings &mdash; nothing here can be edited by hand.
             </p>
         </div>
     </div>
@@ -30,16 +30,8 @@
     <h2 class="faed-section__title">Recovered value</h2>
     <div class="faed-stat-row">
         <div class="faed-stat">
-            <div class="faed-stat__value">JOD @a.RecoveredValueTotal.ToString("0.000")</div>
-            <div class="faed-stat__label">Total recovered</div>
-        </div>
-        <div class="faed-stat">
-            <div class="faed-stat__value">JOD @a.RecoveredValueB2C.ToString("0.000")</div>
-            <div class="faed-stat__label">Retail (B2C) &middot; @a.CompletedOrders order@(a.CompletedOrders == 1 ? "" : "s")</div>
-        </div>
-        <div class="faed-stat">
-            <div class="faed-stat__value">JOD @a.RecoveredValueB2B.ToString("0.000")</div>
-            <div class="faed-stat__label">Wholesale (B2B) &middot; @a.CompletedDeals deal@(a.CompletedDeals == 1 ? "" : "s")</div>
+            <div class="faed-stat__value">JOD @a.RecoveredValue.ToString("0.000")</div>
+            <div class="faed-stat__label">Total recovered &middot; @a.CompletedOrders order@(a.CompletedOrders == 1 ? "" : "s")</div>
         </div>
     </div>
 
@@ -50,12 +42,8 @@
             <div class="faed-stat__label">Sell-through rate</div>
         </div>
         <div class="faed-stat">
-            <div class="faed-stat__value">@a.UnitsSoldTotal / @a.UnitsListed</div>
+            <div class="faed-stat__value">@a.UnitsSold / @a.UnitsListed</div>
             <div class="faed-stat__label">Units sold / units listed</div>
-        </div>
-        <div class="faed-stat">
-            <div class="faed-stat__value">@a.UnitsSoldB2C &middot; @a.UnitsSoldB2B</div>
-            <div class="faed-stat__label">Units sold: retail &middot; wholesale</div>
         </div>
         <div class="faed-stat">
             <div class="faed-stat__value">@(a.AverageDaysToSale is { } d ? d.ToString("0.0") : "—")</div>
@@ -65,10 +53,6 @@
 
     <h2 class="faed-section__title">Attention</h2>
     <div class="faed-stat-row">
-        <div class="faed-stat@(a.ActiveNegotiations > 0 ? " faed-stat--attention" : "")">
-            <div class="faed-stat__value">@a.ActiveNegotiations</div>
-            <div class="faed-stat__label">Active B2B negotiations</div>
-        </div>
         <div class="faed-stat@(a.StaleListings.Count > 0 ? " faed-stat--attention" : "")">
             <div class="faed-stat__value">@a.StaleListings.Count</div>
             <div class="faed-stat__label">Stale listings (older than @a.StaleListingThresholdLabel, no sales)</div>
@@ -78,8 +62,8 @@
             <div class="faed-stat__label">Cancelled orders</div>
         </div>
         <div class="faed-stat">
-            <div class="faed-stat__value">@a.NoShowOrders &middot; @a.CancelledDeals</div>
-            <div class="faed-stat__label">No-shows &middot; cancelled deals</div>
+            <div class="faed-stat__value">@a.NoShowOrders</div>
+            <div class="faed-stat__label">No-shows</div>
         </div>
     </div>
 
@@ -87,8 +71,8 @@
     {
         <h2 class="faed-section__title">Stale listings</h2>
         <p class="faed-section__hint">
-            Live for more than @a.StaleListingThresholdLabel with no completed sale. Consider repricing,
-            refreshing the photos, or enabling wholesale.
+            Live for more than @a.StaleListingThresholdLabel with no completed sale. Consider repricing
+            or refreshing the photos.
         </p>
         <div class="faed-table-wrap">
             <table class="faed-table">

@@ -31,14 +31,6 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                     && o.Status != OrderStatus.NoShow,
                 cancellationToken);
 
-        var dealsAwaiting = await db.B2BDeals
-            .AsNoTracking()
-            .CountAsync(d => d.Status == B2BDealStatus.AwaitingFulfillment, cancellationToken);
-
-        var openNegotiations = await db.B2BNegotiations
-            .AsNoTracking()
-            .CountAsync(n => n.Status == B2BNegotiationStatus.Open, cancellationToken);
-
         var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
             db, activeOnly: false, includeRoot: true, cancellationToken);
         var inactiveCatalog =
@@ -50,7 +42,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
 
         return new AdminDashboardView(
             merchantsAwaiting, listingsAwaiting, openDisputes,
-            ordersInProgress, dealsAwaiting, openNegotiations, inactiveCatalog);
+            ordersInProgress, inactiveCatalog);
     }
 
     // ---- Orders ---------------------------------------------------------------
@@ -143,102 +135,6 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
             disputes);
     }
 
-    // ---- Deals ---------------------------------------------------------------
-
-    public async Task<PagedResult<AdminDealRow>> GetDealsAsync(
-        AdminDealFilter filter, int page = 1, CancellationToken cancellationToken = default)
-    {
-        var query =
-            from d in db.B2BDeals.AsNoTracking()
-            join s in db.MerchantProfiles.AsNoTracking() on d.SellingMerchantProfileId equals s.Id
-            join b in db.MerchantProfiles.AsNoTracking() on d.BuyingMerchantProfileId equals b.Id
-            select new { d, Seller = s.BusinessName, Buyer = b.BusinessName };
-
-        query = filter switch
-        {
-            AdminDealFilter.InProgress => query.Where(x =>
-                x.d.Status != B2BDealStatus.Completed && x.d.Status != B2BDealStatus.Cancelled),
-            AdminDealFilter.Completed => query.Where(x => x.d.Status == B2BDealStatus.Completed),
-            AdminDealFilter.Cancelled => query.Where(x => x.d.Status == B2BDealStatus.Cancelled),
-            _ => query,
-        };
-
-        var totalCount = await query.CountAsync(cancellationToken);
-        page = NormalizePage(page, totalCount);
-        var rows = await query
-            .OrderByDescending(x => x.d.CreatedAtUtc)
-            .ThenByDescending(x => x.d.Id)
-            .Skip((page - 1) * Paging.AdminPageSize)
-            .Take(Paging.AdminPageSize)
-            .Select(x => new AdminDealRow(
-                x.d.Id,
-                x.d.CreatedAtUtc,
-                x.d.Status,
-                x.d.FulfillmentType,
-                x.Seller,
-                x.Buyer,
-                x.d.Lines.Sum(l => l.Quantity),
-                x.d.TotalSnapshot))
-            .ToListAsync(cancellationToken);
-
-        return new PagedResult<AdminDealRow>(rows, totalCount, page, Paging.AdminPageSize);
-    }
-
-    public async Task<AdminDealDetailView?> GetDealAsync(Guid dealId, CancellationToken cancellationToken = default)
-    {
-        var row = await (
-            from d in db.B2BDeals.AsNoTracking().Include(d => d.Lines)
-            where d.Id == dealId
-            join s in db.MerchantProfiles.AsNoTracking() on d.SellingMerchantProfileId equals s.Id
-            join b in db.MerchantProfiles.AsNoTracking() on d.BuyingMerchantProfileId equals b.Id
-            join n in db.B2BNegotiations.AsNoTracking() on d.B2BNegotiationId equals n.Id
-            join l in db.Listings.AsNoTracking() on n.ListingId equals l.Id
-            select new
-            {
-                d,
-                Seller = s.BusinessName,
-                SellerSlug = s.PublicSlug,
-                Buyer = b.BusinessName,
-                BuyerSlug = b.PublicSlug,
-                ListingTitle = l.Title,
-                ListingSlug = l.Slug,
-            })
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (row is null)
-        {
-            return null;
-        }
-
-        var disputes = await GetLinkedDisputesForDealAsync(dealId, cancellationToken);
-
-        return new AdminDealDetailView(
-            row.d.Id,
-            row.d.Status,
-            row.d.StatusReason,
-            row.d.FulfillmentType,
-            row.d.ShipmentReference,
-            row.d.SubtotalSnapshot,
-            row.d.ShippingCostSnapshot,
-            row.d.TotalSnapshot,
-            row.Seller,
-            row.SellerSlug,
-            row.Buyer,
-            row.BuyerSlug,
-            row.ListingTitle,
-            row.ListingSlug,
-            row.d.CreatedAtUtc,
-            row.d.CompletedAtUtc,
-            row.d.CancelledAtUtc,
-            row.d.ReservationExpiresAtUtc,
-            row.d.Lines
-                .OrderBy(l => l.VariantSnapshot)
-                .Select(l => new AdminDealLineView(
-                    l.VariantSnapshot, l.Quantity, l.UnitPriceSnapshot, l.LineTotalSnapshot))
-                .ToList(),
-            disputes);
-    }
-
     // ---- Reviews -----------------------------------------------------------
 
     public async Task<PagedResult<AdminReviewRow>> GetReviewsAsync(
@@ -263,8 +159,7 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
                 x.Review.Comment,
                 x.BusinessName,
                 x.PublicSlug,
-                x.Review.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
-                x.Review.OrderId != null ? x.Review.OrderId.Value : x.Review.B2BDealId!.Value))
+                x.Review.OrderId))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<AdminReviewRow>(rows, totalCount, page, Paging.AdminPageSize);
@@ -332,14 +227,6 @@ public sealed class AdminOperationsService(IApplicationDbContext db) : IAdminOpe
         Guid orderId, CancellationToken cancellationToken) =>
         await db.Disputes.AsNoTracking()
             .Where(d => d.OrderId == orderId)
-            .OrderByDescending(d => d.CreatedAtUtc)
-            .Select(d => new AdminLinkedDisputeView(d.Id, d.Status, d.ReasonCode, d.CreatedAtUtc))
-            .ToListAsync(cancellationToken);
-
-    private async Task<IReadOnlyList<AdminLinkedDisputeView>> GetLinkedDisputesForDealAsync(
-        Guid dealId, CancellationToken cancellationToken) =>
-        await db.Disputes.AsNoTracking()
-            .Where(d => d.B2BDealId == dealId)
             .OrderByDescending(d => d.CreatedAtUtc)
             .Select(d => new AdminLinkedDisputeView(d.Id, d.Status, d.ReasonCode, d.CreatedAtUtc))
             .ToListAsync(cancellationToken);

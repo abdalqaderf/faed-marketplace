@@ -21,18 +21,6 @@ public sealed class AdminOrderDetailPageModel
     public required AdminOrderDetailView Order { get; init; }
 }
 
-public sealed class AdminDealMonitorPageModel
-{
-    public required AdminDealFilter Filter { get; init; }
-
-    public required PagedResult<AdminDealRow> Deals { get; init; }
-}
-
-public sealed class AdminDealDetailPageModel
-{
-    public required AdminDealDetailView Deal { get; init; }
-}
-
 public sealed class AdminReviewMonitorPageModel
 {
     public required PagedResult<AdminReviewRow> Reviews { get; init; }

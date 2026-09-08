@@ -1,0 +1,318 @@
+# Phase Plan — `faed-core`
+
+Eleven phases. **One phase per session.** Every phase ends with a green build and green tests
+before the next begins.
+
+`main` is never touched. All work happens on `faed-core`.
+
+The database is **dropped and recreated** — production data is not preserved (decision 18 in
+`BUSINESS-MODEL.md`). This is what makes the schema work simple: old migrations are deleted
+and replaced by one clean `InitialCreate` in Phase 7.
+
+**Global rule for every phase:** `dotnet build Faed.slnx` and `dotnet test` must both pass
+before the phase is reported complete.
+
+---
+
+## Phase 0 — Branch and documents
+
+**Goal:** the branch exists and carries the rules, before any code moves.
+
+**Do**
+- `git checkout -b faed-core`
+- Add `CLAUDE.md` at the repo root
+- Add `docs/CORE.md`, `docs/BUSINESS-MODEL.md`, `docs/PHASE-PLAN.md`
+- Replace `README.md`
+- Move the current B2B design into `docs/B2B-DESIGN.md`: the negotiation state machine, why
+  offer revisions are immutable, and how stock is held on acceptance — written from the
+  existing `Services/B2B/` code **before it is deleted**
+
+**Acceptance**
+- `git branch --show-current` prints `faed-core`
+- `main` has no new commits
+- `docs/B2B-DESIGN.md` describes the module well enough to rebuild it later
+- No `.cs` or `.cshtml` file changed
+
+**Verify:** `dotnet build Faed.slnx`
+
+---
+
+## Phase 1 — Smoke tests
+
+**Goal:** a safety net before deleting 7,200 lines.
+
+**Do**
+- Create `tests/Faed.Web.Tests` (xUnit) and add it to `Faed.slnx`
+- Packages: `xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`,
+  `Microsoft.EntityFrameworkCore.InMemory`, `FluentAssertions`
+- Write **four** tests against current behaviour:
+
+| # | Test | Asserts |
+|---|---|---|
+| 1 | Listing status transitions | Draft → PendingReview → Live is allowed; illegal transitions throw `DomainException` |
+| 2 | Submission blockers | A listing missing a product photo, a discount reason, or an active variant cannot be submitted, and each blocker is reported |
+| 3 | Role authorization | A buyer cannot reach merchant endpoints; an unapproved merchant cannot publish |
+| 4 | Reservation expiry | An unconfirmed order past its window is cancelled and its stock released |
+
+**Do not** attempt a real `rowversion` concurrency test on the InMemory provider — it does not
+support concurrency tokens. Test that `OrderService` handles `DbUpdateConcurrencyException`
+correctly instead, and note the limitation in the test file.
+
+**Acceptance**
+- `dotnet test` passes with 4 tests
+- Tests exercise services and entities, not controllers-over-HTTP
+
+**Verify:** `dotnet test`
+
+---
+
+## Phase 2 — Delete the B2B module
+
+**Goal:** −4,640 lines, −5 entities.
+
+**Do**
+- Delete `Services/B2B/` (all files), `Areas/Merchant/Controllers/{OffersController,DealsController}.cs`,
+  `Areas/Merchant/ViewModels/{B2BOfferModels,B2BDealModels}.cs`,
+  `Areas/Merchant/Views/{Offers,Deals}/`, `Areas/Admin/Views/Transactions/{Deals,DealDetails}.cshtml`,
+  `Rendering/{B2BDealStatusDisplay,B2BNegotiationStatusDisplay}.cs`
+- Delete entities `B2BNegotiation`, `B2BOfferRevision`, `B2BOfferLine`, `B2BDeal`, `B2BDealLine`
+  and their `Data/Configurations/`
+- Delete enums `B2BDealStatus`, `B2BNegotiationStatus`, `B2BFulfillmentType`, `TrustTransactionType`
+- Remove B2B `DbSet`s from `ApplicationDbContext` and `IApplicationDbContext`
+- Remove B2B registrations from `DependencyInjection.cs` (including the two expiry services)
+- `Review`: drop `B2BDealId`, make `OrderId` required, remove the "exactly one" constraint
+- `Dispute`: drop `B2BDealId` for now (the entity itself goes in Phase 3)
+- Clean `AdminOperationsService`, `MerchantAnalyticsService`, `ReviewService`, `DisputeService`,
+  admin transaction views and `DemoDataSeeder` of every B2B reference
+- Remove B2B links from `_MerchantSubnav.cshtml` and `_AdminSubnav.cshtml`
+
+**Do not** create a migration yet.
+
+**Acceptance**
+- `grep -ri "b2b" src/ --include=*.cs --include=*.cshtml` returns nothing
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 3 — Remove disputes and secondary entities
+
+**Do**
+- Delete `Dispute`, `DisputeEvidence`, `AdminActionLog`, `InventoryAdjustment`,
+  `MerchantDeliveryZone`, `Brand` and their configurations
+- Delete enums `DisputeStatus`, `DisputeReasonCode`, `AdminActionType`,
+  `InventoryAdjustmentType`
+- Delete `Services/Trust/Dispute*`, `Controllers/DisputeEvidenceController.cs`, all
+  `Areas/*/Controllers/DisputesController.cs`, all `Areas/*/Views/Disputes/`,
+  `Areas/Admin/Controllers/AuditLogController.cs` and its view,
+  `Rendering/{DisputeStatusDisplay,AdminActivityDisplay}.cs`
+- Keep `Services/Trust/Review*` — reviews stay
+- `Listing`: remove `BrandId` and its navigation
+- `Order`: remove `DeliveryZoneId` and `DeliveryFeeSnapshot`; `OrderFulfillmentType` keeps
+  `Pickup` and `MerchantDelivery`, but the fee is no longer modelled
+- Strip audit-log calls out of every admin service
+
+**Acceptance**
+- Those type names appear nowhere in `src/`
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 4 — Simplify the upload validator
+
+**Goal:** 2,705 lines → about 100.
+
+**Do**
+- Rewrite `Services/Merchants/VerificationDocumentValidator.cs` to check only:
+  declared content type is one of `application/pdf`, `image/jpeg`, `image/png`; the extension
+  agrees with it; size is within `MerchantVerificationOptions`; and the first bytes match the
+  magic number for that type (`%PDF-`, `FF D8 FF`, `89 50 4E 47 0D 0A 1A 0A`)
+- Delete the deflate/PDF-stream inspection entirely
+- Keep the public API (`ValidateMetadata`, `ValidateContent`, `SignatureProbeBytes`) so callers
+  do not change
+
+**Acceptance**
+- The file is under 150 lines
+- A `.exe` renamed to `.pdf` is still rejected
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 5 — Sector repivot
+
+**Do**
+- `CatalogDataSeeder.RootCategorySlug` → `open-box-ex-display`
+- Launch categories → `small-kitchen-appliances` (Small Kitchen Appliances),
+  `home-cleaning` (Home & Cleaning Appliances), `power-tools` (Power Tools & Workshop)
+- Discount reason `PastSeason` → `SupersededModel` ("Superseded Model")
+- Condition grade names and descriptions rewritten for appliances (see the four cards in
+  `CORE.md` §3.3); the A–D codes do not change
+- `Listing`: remove `AllowB2C`, `AllowB2B`, `AllowMixedVariantB2B`,
+  `WholesaleIndicativeUnitPrice`, `WholesaleMinQuantity`, `WarrantyText`
+- `Listing`: add `WarrantyType` enum (`None`, `ManufacturerWarranty`, `ShopWarranty`) and
+  `WarrantyMonths` (nullable int, 1–120)
+- `ReferencePriceEvidenceType`: reduce to `Photo` and `Link`
+- `Order`: add `Reference` — 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, unique index,
+  generated on creation
+- Update `DescribeSubmissionBlockers` — the B2C/B2B channel blockers are gone; a retail price
+  is now always required
+- Replace the category images in `wwwroot/images/categories/` with placeholders named for the
+  new slugs
+
+**Acceptance**
+- No fashion vocabulary anywhere in `src/`
+- Every new order gets a unique 6-character reference
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 6 — Subscriptions
+
+**Do**
+- Entity `SubscriptionPlan`: `Code`, `Name`, `MonthlyPriceJod` `decimal(18,3)`,
+  `ActiveListingQuota`, `HasFeaturedPlacement`, `SortOrder`, `IsActive`
+- Entity `MerchantSubscription`: `MerchantProfileId`, `SubscriptionPlanId`, `Status`,
+  `StartsAtUtc`, `ExpiresAtUtc`, `PaymentReference`, `ActivatedByAdminId`, `RowVersion`
+- Enum `SubscriptionStatus`: `PendingActivation`, `Active`, `Expired`, `Cancelled`
+- Seed the three plans in `CatalogDataSeeder`: Basic 35/15, Standard 50/40, Pro 80/120
+- `ISubscriptionBilling` + a manual implementation that records an admin-entered payment
+- `SubscriptionService`: choose a plan, activate a month, extend, cancel, report quota usage
+- **Publish gate:** `verification approved` **AND** `subscription active` **AND**
+  `live listings < quota` — three independent checks with three distinct messages
+- **Downgrade rule:** on moving to a smaller quota, keep the N most recently published live and
+  pause the rest, then notify the merchant
+- `SubscriptionExpiryService` (hosted): move `Active` past `ExpiresAtUtc` to `Expired` and hide
+  that merchant's listings — hidden, never archived
+- Merchant page: current plan, quota usage, how to pay, plan chooser
+- Admin page: activate a month, extend, cancel, with a payment reference
+- **Reorder onboarding:** verification is submitted and approved *before* a plan is chosen.
+  Drafts are creatable from registration
+- Add a fifth test: a merchant at quota cannot publish, and can after pausing one
+
+**Acceptance**
+- A merchant who is approved but unsubscribed sees the plan chooser, not an error page
+- A merchant who is subscribed but unverified cannot publish
+- Downgrading from Pro to Basic with 120 live listings leaves exactly 15 live
+- `dotnet test` passes with 5 tests
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 7 — One clean migration
+
+**Goal:** replace eleven migrations of history with a single truthful schema.
+
+**Do**
+- `dotnet ef database drop -f --project src/Faed.Web`
+- Delete every file in `src/Faed.Web/Data/Migrations/`
+- `dotnet ef migrations add InitialCreate --project src/Faed.Web`
+- `dotnet ef database update --project src/Faed.Web`
+- Run the app and confirm roles and reference data seed cleanly
+
+**Acceptance**
+- Exactly one migration plus the model snapshot
+- A fresh database is created from empty in one command
+- The three subscription plans, four condition grades, eight discount reasons and three
+  categories are present after first run
+
+**Verify:** `dotnet ef database drop -f --project src/Faed.Web && dotnet ef database update --project src/Faed.Web && dotnet run --project src/Faed.Web`
+
+---
+
+## Phase 8 — Merchant listing form
+
+**Goal:** two pages and five sections → one page and eight fields.
+
+**Do**
+- `ListingFormModel`: 17 properties → 8 (see `CORE.md` §3.2)
+- Merge `Views/Listings/Create.cshtml` and `Workspace.cshtml` into one page under 250 lines
+- Build the four condition cards; one click sets `ConditionGradeId` **and**
+  `DiscountReasonIds`. Put the mapping in one small class, `ConditionPresets`
+- Selecting card 2 or 4 reveals the defect-photo upload inline
+- Hide options and variants entirely: the quantity field creates one variant with a generated
+  SKU
+- One photo box plus the contextual defect box — not three typed buckets
+- Original price is optional; when set, one evidence field appears (photo or link)
+- Rename the merchant's actions to **Pause** and **Delete** only
+- Convert `DescribeSubmissionBlockers` into inline validation shown next to each field
+- One **Publish** button; afterwards the listing shows "Under review"
+
+**Acceptance**
+- Publishing an item takes one page and eight inputs
+- The words "variant", "SKU", "condition grade", "discount reason" appear nowhere in the
+  merchant UI
+- Choosing "Ex-display" without a defect photo blocks publishing, inline
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`, then publish an item by hand
+
+---
+
+## Phase 9 — Buyer journey and the handoff
+
+**Do**
+- Rename checkout to **Reserve** everywhere; `Checkout/Index.cshtml` 362 lines → about 80
+- Remove all cart-and-payment language from views and copy
+- `ShopFilterModel`: 10 filters → 4 (category, condition, price range, text). Delete the
+  advanced-filter drawer
+- **Contact reveal:** before `Confirmed` the buyer sees the shop's area only; after, the full
+  address, map link, pickup hours and phone
+- **WhatsApp button** on the order page for both sides — a `wa.me` link with a pre-filled
+  message including the order reference. No API, no package
+- Extend the background services: 12 h confirm, 48 h no-show, 72 h auto-close, each with its
+  own message to the buyer
+- **Response rate:** rolling 30 days, confirmed-before-deadline ÷ received, plus a bucketed
+  median response time. Below 5 orders show a "New seller" badge instead. Display on the
+  storefront and under each listing, and factor it into catalogue ordering
+- Add a visible order status timeline for both sides
+
+**Acceptance**
+- The word "checkout" appears nowhere
+- An unconfirmed order is cancelled after 12 hours and its stock released
+- A merchant with fewer than 5 orders shows "New seller", never a percentage
+- The WhatsApp link opens with the correct pre-filled text
+- Build and tests green
+
+**Verify:** `dotnet build Faed.slnx && dotnet test`
+
+---
+
+## Phase 10 — Demo data and final verification
+
+**Do**
+- Rewrite `DemoDataSeeder` for the new world: an admin; two approved and subscribed merchants
+  (one Standard, one Basic); one merchant pending verification; one approved but unsubscribed;
+  two buyers; a catalogue across the three categories using every condition card; and one order
+  in each state — pending, confirmed, ready, completed, cancelled, no-show; plus one review
+- The seeder must call the same application services a real user would — no direct
+  `DbContext` writes that bypass moderation, authorization, quota or concurrency
+- Walk all three roles by hand
+- Update `README.md` with anything that drifted
+
+**Acceptance**
+- A clean database plus demo seed produces a browsable site with no empty screens
+- Every role can complete its journey end to end
+- `dotnet build` and `dotnet test` green
+
+**Verify:** drop, update, run, and walk the three roles
+
+---
+
+## Expected result
+
+| | Before | After |
+|---|---|---|
+| Entities | 30 | 17 |
+| C# lines | ~25,600 | ~19,500 |
+| Migrations | 11 | 1 |
+| Tests | 0 | 5 |
+| Fields to publish | ~20 across 2 pages | 8 on 1 page |
+| Shop filters | 10 | 4 |

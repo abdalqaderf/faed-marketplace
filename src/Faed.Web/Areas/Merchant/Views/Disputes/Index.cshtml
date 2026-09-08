@@ -10,8 +10,7 @@
         <div>
             <h1 class="faed-page__title">Disputes</h1>
             <p class="faed-page__subtitle">
-                Disputes on orders you sell and wholesale deals you take part in. An administrator reviews
-                and resolves each one.
+                Disputes on orders you sell. An administrator reviews and resolves each one.
             </p>
         </div>
     </div>
@@ -20,7 +19,7 @@
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No disputes</div>
-            <div>Nothing has been disputed. You can raise a dispute from a wholesale deal's page.</div>
+            <div>Nothing has been disputed. You can raise a dispute from an order's page.</div>
         </div>
     }
     else
@@ -42,7 +41,7 @@
                     {
                         <tr>
                             <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
-                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
+                            <td>@d.TransactionReference</td>
                             <td>@d.CounterpartyName</td>
                             <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
                             <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>

@@ -3,7 +3,6 @@ using Faed.Web.Services;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Admin;
 using Faed.Web.Services.Analytics;
-using Faed.Web.Services.B2B;
 using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Marketplace;
@@ -64,32 +63,6 @@ public static class DependencyInjection
         if (!environment.IsEnvironment("Testing"))
         {
             services.AddHostedService<ReservationExpiryService>();
-        }
-
-        // B2B negotiation: immutable offer/counter-offer history and the offer-expiry sweep
-        services.AddOptions<B2BNegotiationOptions>()
-            .Bind(configuration.GetSection(B2BNegotiationOptions.SectionName));
-        services.AddScoped<IB2BNegotiationService, B2BNegotiationService>();
-
-        if (!environment.IsEnvironment("Testing"))
-        {
-            // Like the B2C reservation sweep, the offer-expiry timer is not hosted under the
-            // test environment: the integration tests drive expiry deterministically through
-            // the service and a fake clock.
-            services.AddHostedService<B2BOfferExpiryService>();
-        }
-
-        // B2B accepted deal: atomic reservation on acceptance, the fulfilment state machine
-        // and the deal-reservation-expiry sweep.
-        services.AddOptions<B2BDealOptions>()
-            .Bind(configuration.GetSection(B2BDealOptions.SectionName));
-        services.AddScoped<IB2BDealService, B2BDealService>();
-
-        if (!environment.IsEnvironment("Testing"))
-        {
-            // Same reasoning as the other two sweeps: the deal-expiry timer is not hosted
-            // under the test environment.
-            services.AddHostedService<B2BDealExpiryService>();
         }
 
         // Post-transaction trust: disputes + evidence, the admin dispute workflow, and

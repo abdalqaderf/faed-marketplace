@@ -36,11 +36,9 @@ public sealed class OrdersController(
             return NotFound();
         }
 
-        var eligibility = await reviews.GetEligibilityAsync(
-            userId, TrustTransactionType.B2COrder, id, cancellationToken);
+        var eligibility = await reviews.GetEligibilityAsync(userId, id, cancellationToken);
 
-        var forThisOrder = await disputes.GetDisputesForTransactionAsync(
-            userId, TrustTransactionType.B2COrder, id, cancellationToken);
+        var forThisOrder = await disputes.GetDisputesForOrderAsync(userId, id, cancellationToken);
         // Only an Open/UnderReview dispute suppresses a new filing; a closed one is history
         // and the authoritative rules may allow another dispute.
         var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
@@ -80,7 +78,7 @@ public sealed class OrdersController(
     {
         var result = await reviews.SubmitReviewAsync(
             User.RequireUserId(),
-            new SubmitReviewInput(TrustTransactionType.B2COrder, id, form.Rating, form.Comment),
+            new SubmitReviewInput(id, form.Rating, form.Comment),
             cancellationToken);
 
         if (result.Succeeded)

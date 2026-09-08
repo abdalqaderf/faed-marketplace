@@ -17,7 +17,7 @@
 
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
         <a asp-controller="@Model.BackController" asp-action="Details" asp-route-id="@Model.TransactionId">
-            @(Model.TransactionType == TrustTransactionType.B2BDeal ? "Deal" : "Order")
+            Order
         </a>
         <span aria-hidden="true">/</span>
         <span>Raise a dispute</span>
@@ -32,7 +32,6 @@
 
     <div class="faed-panel faed-merchant-form-panel">
         <form asp-action="Create" method="post" enctype="multipart/form-data">
-            <input type="hidden" asp-for="Form.TransactionType" />
             <input type="hidden" asp-for="Form.TransactionId" />
             <div asp-validation-summary="All" class="faed-alert faed-alert--error" role="alert"></div>
 

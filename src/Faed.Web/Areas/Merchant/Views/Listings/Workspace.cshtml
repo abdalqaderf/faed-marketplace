@@ -188,8 +188,8 @@
                     </div>
 
                     <div class="faed-form-subsection faed-field--full">
-                        <strong>Pricing &amp; selling channels</strong>
-                        <span>Set retail and wholesale terms using the capabilities already supported by this listing.</span>
+                        <strong>Pricing</strong>
+                        <span>Set the reference and retail prices for this listing.</span>
                     </div>
 
                     <div class="faed-field">
@@ -201,31 +201,6 @@
                     <div class="faed-field">
                         <label class="faed-field__label" asp-for="Form.RetailPrice">Faed retail price (JOD)</label>
                         <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.RetailPrice" disabled="@(!canEdit)" />
-                    </div>
-
-                    <div class="faed-field">
-                        <label class="faed-checkbox-row">
-                            <input type="checkbox" asp-for="Form.AllowB2C" disabled="@(!canEdit)" />
-                            <span>Sell to individual buyers (B2C)</span>
-                        </label>
-                        <label class="faed-checkbox-row">
-                            <input type="checkbox" asp-for="Form.AllowB2B" disabled="@(!canEdit)" />
-                            <span>Sell to other merchants (B2B)</span>
-                        </label>
-                        <label class="faed-checkbox-row">
-                            <input type="checkbox" asp-for="Form.AllowMixedVariantB2B" disabled="@(!canEdit)" />
-                            <span>Allow mixed variants toward the B2B minimum</span>
-                        </label>
-                    </div>
-
-                    <div class="faed-field">
-                        <label class="faed-field__label" asp-for="Form.WholesaleIndicativeUnitPrice">Wholesale indicative price (JOD)</label>
-                        <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.WholesaleIndicativeUnitPrice" disabled="@(!canEdit)" />
-                    </div>
-
-                    <div class="faed-field">
-                        <label class="faed-field__label" asp-for="Form.WholesaleMinQuantity">B2B minimum order quantity</label>
-                        <input class="faed-input" type="number" min="1" asp-for="Form.WholesaleMinQuantity" disabled="@(!canEdit)" />
                     </div>
 
                     <div class="faed-form-subsection faed-field--full">

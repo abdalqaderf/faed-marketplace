@@ -2,7 +2,6 @@
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
-using Faed.Web.Services.B2B;
 using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
@@ -21,7 +20,7 @@ namespace Faed.Web.Data.Seed;
 /// <summary>
 /// Deterministic development/demo data set for field validation and portfolio demonstration
 /// <para>
-/// Every merchant, listing, order, negotiation, deal, dispute and review it creates goes
+/// Every merchant, listing, order, dispute and review it creates goes
 /// through the <em>same</em> application services and the <em>same</em> production rules a
 /// real request would. It never writes aggregates directly, never bypasses moderation,
 /// authorization, price integrity or stock concurrency, and never relaxes a validation rule.
@@ -153,7 +152,7 @@ public static class DemoDataSeeder
 
         // The last thing RunAsync does is submit the buyer's 5-star review.
         var complete = await db.Reviews.AsNoTracking()
-            .AnyAsync(r => demoUserIds.Contains(r.ReviewerUserId) && r.OrderId != null && r.Rating == 5, cancellationToken);
+            .AnyAsync(r => demoUserIds.Contains(r.ReviewerUserId) && r.Rating == 5, cancellationToken);
 
         return complete ? SeedState.Complete : SeedState.Partial;
     }
@@ -178,22 +177,13 @@ public static class DemoDataSeeder
             .Where(v => listingIds.Contains(v.ListingId)).Select(v => v.Id).ToListAsync(cancellationToken);
         var orderIds = await db.Orders
             .Where(o => merchantIds.Contains(o.MerchantProfileId)).Select(o => o.Id).ToListAsync(cancellationToken);
-        var dealIds = await db.B2BDeals
-            .Where(d => merchantIds.Contains(d.SellingMerchantProfileId) || merchantIds.Contains(d.BuyingMerchantProfileId))
-            .Select(d => d.Id).ToListAsync(cancellationToken);
-        var negotiationIds = await db.B2BNegotiations
-            .Where(n => merchantIds.Contains(n.SellingMerchantProfileId) || merchantIds.Contains(n.BuyingMerchantProfileId))
-            .Select(n => n.Id).ToListAsync(cancellationToken);
         var disputeIds = await db.Disputes
-            .Where(d => (d.OrderId != null && orderIds.Contains(d.OrderId.Value))
-                        || (d.B2BDealId != null && dealIds.Contains(d.B2BDealId.Value)))
+            .Where(d => orderIds.Contains(d.OrderId))
             .Select(d => d.Id).ToListAsync(cancellationToken);
 
         await DeleteAsync(db, db.DisputeEvidence.Where(e => disputeIds.Contains(e.DisputeId)), cancellationToken);
         await DeleteAsync(db, db.Disputes.Where(d => disputeIds.Contains(d.Id)), cancellationToken);
         await DeleteAsync(db, db.Reviews.Where(r => merchantIds.Contains(r.ReviewedMerchantProfileId)), cancellationToken);
-        await DeleteAsync(db, db.B2BDeals.Where(d => dealIds.Contains(d.Id)), cancellationToken);
-        await DeleteAsync(db, db.B2BNegotiations.Where(n => negotiationIds.Contains(n.Id)), cancellationToken);
         await DeleteAsync(db, db.Orders.Where(o => orderIds.Contains(o.Id)), cancellationToken);
         await DeleteAsync(db, db.InventoryAdjustments.Where(a => variantIds.Contains(a.ListingVariantId)), cancellationToken);
         await DeleteAsync(db, db.MerchantLocations.Where(l => merchantIds.Contains(l.MerchantProfileId)), cancellationToken);
@@ -239,8 +229,6 @@ public static class DemoDataSeeder
         private readonly IListingModerationService _moderation;
         private readonly IMerchantStoreService _store;
         private readonly IOrderService _orders;
-        private readonly IB2BNegotiationService _negotiations;
-        private readonly IB2BDealService _deals;
         private readonly IDisputeService _disputes;
         private readonly IReviewService _reviews;
         private readonly IInventoryService _inventory;
@@ -259,8 +247,6 @@ public static class DemoDataSeeder
             _moderation = sp.GetRequiredService<IListingModerationService>();
             _store = sp.GetRequiredService<IMerchantStoreService>();
             _orders = sp.GetRequiredService<IOrderService>();
-            _negotiations = sp.GetRequiredService<IB2BNegotiationService>();
-            _deals = sp.GetRequiredService<IB2BDealService>();
             _disputes = sp.GetRequiredService<IDisputeService>();
             _reviews = sp.GetRequiredService<IReviewService>();
             _inventory = sp.GetRequiredService<IInventoryService>();
@@ -301,7 +287,7 @@ public static class DemoDataSeeder
             await CreateLeatherBeltListingAsync(merchantA, adminId);
             await CreateCanvasBackpackListingAsync(merchantA, adminId);
 
-            var sneakers = await CreateSneakersListingAsync(merchantB, adminId);
+            await CreateSneakersListingAsync(merchantB, adminId);
             var clearance = await CreateClearanceListingAsync(merchantB, adminId);
             var runningShoes = await CreateRunningShoesListingAsync(merchantB, adminId, trailHeadId);
             await CreateLeatherSandalsListingAsync(merchantB, adminId);
@@ -346,38 +332,12 @@ public static class DemoDataSeeder
                     "Found an extra carton of black medium tees during the seasonal stockroom count."), _ct),
                 "adjust demo tee inventory");
 
-            // One open B2B negotiation: Petra Footwear enquires about Amman Threads' wholesale tees.
-            await StartNegotiationAsync(
-                merchantB.UserId, tshirt.Slug, [(tshirt.VariantIds[0], 12)], 6.500m,
-                "Interested in a wholesale lot of the black medium tees for our outlet.");
-
-            // One counter-offer chain: Amman Threads offers on Petra's sneakers, Petra counters.
-            var counterNegotiationId = await StartNegotiationAsync(
-                merchantA.UserId, sneakers.Slug, [(sneakers.VariantIds[0], 12)], 16.000m,
-                "Opening offer for a mixed pallet of the past-season sneakers.");
-            Ok(
-                await _negotiations.CounterOfferAsync(merchantB.UserId, counterNegotiationId, new CounterOfferInput(
-                    [new B2BOfferLineInput(sneakers.VariantIds[0], 12)], 21.000m,
-                    "We can do 21 JOD a pair at that quantity.", null), _ct),
-                "counter demo negotiation");
-
-            // One completed B2B deal: Amman Threads buys a lot of Petra's sneakers end to end.
-            var dealNegotiationId = await StartNegotiationAsync(
-                merchantA.UserId, sneakers.Slug, [(sneakers.VariantIds[1], 15)], 19.000m,
-                "Firm order for 15 pairs, size 42, for our summer sale.");
-            var dealId = OkValue(
-                await _deals.AcceptOfferAsync(merchantB.UserId, dealNegotiationId, new AcceptOfferInput(B2BFulfillmentType.Pickup), _ct),
-                "accept demo deal");
-            Ok(await _deals.MarkReadyForPickupAsync(merchantB.UserId, dealId, _ct), "ready demo deal");
-            Ok(await _deals.MarkDeliveredAsync(merchantB.UserId, dealId, _ct), "deliver demo deal");
-            Ok(await _deals.CompleteAsync(merchantA.UserId, dealId, _ct), "complete demo deal");
-
-            // One dispute: the buying merchant raises an issue on the completed deal; an admin
+            // One dispute: the buyer raises an issue on the dispatched delivery order; an admin
             // takes it under review (a full audited lifecycle example, still visible in the queue).
             var disputeId = OkValue(
-                await _disputes.FileDisputeAsync(merchantA.UserId, new FileDisputeInput(
-                    TrustTransactionType.B2BDeal, dealId, DisputeReasonCode.MissingItems,
-                    "Two pairs were missing from the collected lot. Requesting a partial refund or replacement.",
+                await _disputes.FileDisputeAsync(buyerBId, new FileDisputeInput(
+                    deliveryOrderId, DisputeReasonCode.MissingItems,
+                    "One item was missing from the delivered order. Requesting a partial refund or replacement.",
                     []), _ct),
                 "file demo dispute");
             Ok(await _disputes.StartReviewAsync(adminId, disputeId, _ct), "start review of demo dispute");
@@ -385,7 +345,7 @@ public static class DemoDataSeeder
             // One review: the buyer leaves a positive review on the completed B2C order.
             Ok(
                 await _reviews.SubmitReviewAsync(buyerBId, new SubmitReviewInput(
-                    TrustTransactionType.B2COrder, completedOrderId, 5,
+                    completedOrderId, 5,
                     "Bag was exactly as described, including the disclosed corner scuff. Smooth pickup."), _ct),
                 "submit demo review");
         }
@@ -508,14 +468,13 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateTshirtListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL ×
-            // Colour Black/White, B2C + B2B.
+            // Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL × Colour Black/White.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("clothing"), null, await GradeIdAsync("A"),
                 "Everyday Cotton Crew Tee (Overstock)",
                 "End-of-run stock of our best-selling 180gsm combed-cotton crew tee. Brand-new with tags; " +
                 "the only reason for the discount is that we over-ordered for the season.",
-                null, 12.000m, 7.000m, 10, AllowB2C: true, AllowB2B: true, AllowMixedVariantB2B: true,
+                null, 12.000m,
                 "14-day size-exchange on unworn items.", null, "One tee, folded with tag.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create tee listing");
@@ -535,14 +494,13 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateHandbagListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 3 — Handbag, Condition D, Display Item, visible
-            // cosmetic-defect photo, B2C only (B2B disabled).
+            // Listing 3 — Handbag, Condition D, Display Item, visible cosmetic-defect photo.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("D"),
                 "Structured Leather Tote — Display Unit",
                 "Former window-display tote in full-grain leather. Structurally perfect; there is light " +
                 "surface scuffing to one bottom corner from the display stand, shown in the defect photo.",
-                null, 55.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 55.000m,
                 "Sold as-is; no size exchange on clearance display units.", null, "Tote and dust bag.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create handbag listing");
@@ -566,7 +524,7 @@ public static class DemoDataSeeder
                 "Last winter's colourway of our best-selling trucker jacket. Brand-new and unworn; the " +
                 "swing tags are present but the retail box was opened for a photo shoot, which is why it " +
                 "is being cleared at a discount.",
-                null, 28.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 28.000m,
                 "14-day size-exchange on unworn items.", null, "One jacket, folded with tag.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create denim jacket listing");
@@ -593,7 +551,7 @@ public static class DemoDataSeeder
                 "Charcoal Wool-Blend Scarf — Final Units",
                 "Soft brushed wool-blend scarf from our overstock run. New with tags; only a handful of " +
                 "units are left after our winter promotion.",
-                null, 9.500m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 9.500m,
                 "7-day exchange while stock lasts.", null, "One scarf with tag.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create wool scarf listing");
@@ -615,7 +573,7 @@ public static class DemoDataSeeder
                 "Genuine Leather Belt — Customer Return",
                 "Full-grain leather belt returned unused within our exchange window. Inspected, re-boxed " +
                 "and in full working order; sold at a discount because it can no longer be sold as new.",
-                null, 14.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 14.000m,
                 "Sold as-is; no further exchange on returned units.", null, "One belt, boxed.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather belt listing");
@@ -637,7 +595,7 @@ public static class DemoDataSeeder
                 "Heavyweight Canvas Backpack (Packaging Damage)",
                 "Durable waxed-canvas backpack with a padded laptop sleeve. Brand-new and unused; some " +
                 "retail boxes arrived crushed from the freight pallet, which is why these are discounted.",
-                null, 24.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 24.000m,
                 "14-day exchange on unused items.", null, "One backpack; box condition varies.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create canvas backpack listing");
@@ -659,14 +617,14 @@ public static class DemoDataSeeder
 
         private async Task<DemoListing> CreateSneakersListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 1 — Sneakers, Condition B, Past Season + Packaging
-            // Damage, Size 41/42/43 × Colour Black, B2C + B2B, MOQ 10.
+            // Listing 1 — Sneakers, Condition B, Past Season + Packaging Damage,
+            // Size 41/42/43 × Colour Black.
             var details = new ListingDetailsInput(
                 await CategoryIdAsync("shoes"), null, await GradeIdAsync("B"),
                 "Court Low Sneakers (Past Season)",
                 "Last season's colourway of our court low. The shoes are brand-new and unworn; some boxes " +
                 "are crushed or missing lids from warehouse handling, which is why they are discounted.",
-                null, 45.000m, 22.000m, 10, AllowB2C: true, AllowB2B: true, AllowMixedVariantB2B: true,
+                null, 45.000m,
                 "14-day exchange on unworn pairs in any condition of box.", null, "One pair; box condition varies.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create sneakers listing");
@@ -695,7 +653,7 @@ public static class DemoDataSeeder
                 "Merino Half-Zip — Final Units",
                 "Customer-returned but unworn merino half-zips from our winter range. Inspected and " +
                 "re-tagged. Only a handful of units left.",
-                null, 38.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 38.000m,
                 "14-day size-exchange while stock lasts.", null, "One half-zip with tag.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create clearance listing");
@@ -717,7 +675,7 @@ public static class DemoDataSeeder
                 "TrailHead Runner — Overstock Colourway",
                 "A colourway we simply over-ordered for the season. New, unworn and boxed; nothing wrong " +
                 "with the pair, just more stock than we can sell at full price.",
-                null, 42.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 42.000m,
                 "14-day exchange on unworn pairs.", null, "One pair, boxed.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create running shoes listing");
@@ -742,7 +700,7 @@ public static class DemoDataSeeder
                 "Leather Sandals — Display Unit",
                 "Former window-display sandals in tan leather. Structurally sound; there is a light mark " +
                 "on the strap from the display stand, shown in the defect photo.",
-                null, 19.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 19.000m,
                 "Sold as-is; no exchange on clearance display units.", null, "One pair, no box.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather sandals listing");
@@ -764,7 +722,7 @@ public static class DemoDataSeeder
                 await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("A"),
                 "Sports Socks 3-Pack — Final Units",
                 "Cushioned sports socks from our overstock run. New with tags; only a few packs are left.",
-                null, 6.500m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 6.500m,
                 "7-day exchange while stock lasts.", null, "One 3-pack, tagged.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create sports socks listing");
@@ -786,7 +744,7 @@ public static class DemoDataSeeder
                 "Travel Shoe Bag Set (3-Pack) — Cosmetic Defect",
                 "Drawstring travel bags for keeping shoes separate in a suitcase. New and unused; the " +
                 "printed logo is slightly off-centre on one bag in the set, which does not affect use.",
-                null, 11.000m, null, null, AllowB2C: true, AllowB2B: false, AllowMixedVariantB2B: false,
+                null, 11.000m,
                 "7-day exchange on unused sets.", null, "Set of three drawstring bags.", null, []);
 
             var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create shoe bag set listing");
@@ -882,14 +840,6 @@ public static class DemoDataSeeder
                     OrderFulfillmentType.MerchantDelivery, null, zoneId, deliveryAddress, contactName, contactPhone, null), _ct),
                 "place demo delivery order");
         }
-
-        private async Task<Guid> StartNegotiationAsync(
-            string buyingMerchantUserId, string listingSlug,
-            IReadOnlyList<(Guid VariantId, int Quantity)> lines, decimal unitPrice, string message) =>
-            OkValue(
-                await _negotiations.StartNegotiationAsync(buyingMerchantUserId, new StartNegotiationInput(
-                    listingSlug, [.. lines.Select(l => new B2BOfferLineInput(l.VariantId, l.Quantity))], unitPrice, message, null), _ct),
-                "start demo negotiation");
 
         // ---- Reference-data lookups ---------------------------------------------------
 

@@ -54,7 +54,6 @@ public class Listing
         Slug = RequireText(slug, "slug", 1, MaxSlugLength);
         Description = RequireText(description, "description", 1, MaxDescriptionLength);
         Status = ListingStatus.Draft;
-        AllowB2C = true;
         CreatedAtUtc = nowUtc;
         UpdatedAtUtc = nowUtc;
     }
@@ -80,21 +79,8 @@ public class Listing
     /// <summary>What the item normally sells for. Requires provenance evidence to be submitted.</summary>
     public decimal? ReferencePrice { get; private set; }
 
-    /// <summary>The B2C unit price. Required when <see cref="AllowB2C"/> is set.</summary>
+    /// <summary>The retail unit price. Always required to publish.</summary>
     public decimal? RetailPrice { get; private set; }
-
-    /// <summary>Indicative wholesale unit price; the binding B2B price comes from a negotiation.</summary>
-    public decimal? WholesaleIndicativeUnitPrice { get; private set; }
-
-    /// <summary>Minimum B2B order quantity. Required and positive when <see cref="AllowB2B"/> is set.</summary>
-    public int? WholesaleMinQuantity { get; private set; }
-
-    public bool AllowB2C { get; private set; }
-
-    public bool AllowB2B { get; private set; }
-
-    /// <summary>Whether mixed variants may be combined toward the B2B minimum.</summary>
-    public bool AllowMixedVariantB2B { get; private set; }
 
     public string? ReturnPolicyText { get; private set; }
 
@@ -169,11 +155,6 @@ public class Listing
         string description,
         decimal? referencePrice,
         decimal? retailPrice,
-        decimal? wholesaleIndicativeUnitPrice,
-        int? wholesaleMinQuantity,
-        bool allowB2C,
-        bool allowB2B,
-        bool allowMixedVariantB2B,
         string? returnPolicyText,
         string? warrantyText,
         string? includedItemsText,
@@ -196,12 +177,6 @@ public class Listing
         missingItemsText = OptionalText(missingItemsText, "missing items", MaxPolicyTextLength);
         RequireNonNegative(referencePrice, "Reference price");
         RequireNonNegative(retailPrice, "Retail price");
-        RequireNonNegative(wholesaleIndicativeUnitPrice, "Wholesale price");
-
-        if (wholesaleMinQuantity is <= 0)
-        {
-            throw new DomainException("The B2B minimum order quantity must be greater than zero.");
-        }
 
         var changes = new List<string>();
         Compare(changes, "category", CategoryId != categoryId);
@@ -213,9 +188,6 @@ public class Listing
         Compare(changes, "missing items", !string.Equals(MissingItemsText, missingItemsText, StringComparison.Ordinal));
         Compare(changes, "reference price", ReferencePrice != referencePrice);
         Compare(changes, "retail price", RetailPrice != retailPrice);
-        Compare(changes, "wholesale price", WholesaleIndicativeUnitPrice != wholesaleIndicativeUnitPrice);
-        Compare(changes, "B2B minimum quantity", WholesaleMinQuantity != wholesaleMinQuantity);
-        Compare(changes, "sales channels", AllowB2C != allowB2C || AllowB2B != allowB2B);
 
         var requestedReasons = discountReasonIds.Distinct().ToHashSet();
         var currentReasons = _discountReasons.Select(r => r.DiscountReasonId).ToHashSet();
@@ -230,14 +202,9 @@ public class Listing
         MissingItemsText = missingItemsText;
         ReferencePrice = referencePrice;
         RetailPrice = retailPrice;
-        WholesaleIndicativeUnitPrice = wholesaleIndicativeUnitPrice;
-        WholesaleMinQuantity = wholesaleMinQuantity;
-        AllowB2C = allowB2C;
-        AllowB2B = allowB2B;
 
-        // Return policy, warranty and the mixed-lot flag are commercial terms rather than
-        // claims about the product, so they are deliberately not on the material list.
-        AllowMixedVariantB2B = allowMixedVariantB2B;
+        // Return policy and warranty are commercial terms rather than claims about the
+        // product, so they are deliberately not on the material list.
         ReturnPolicyText = returnPolicyText;
         WarrantyText = warrantyText;
 
@@ -591,19 +558,9 @@ public class Listing
     {
         var problems = new List<string>();
 
-        if (!AllowB2C && !AllowB2B)
+        if (RetailPrice is null)
         {
-            problems.Add("Enable retail selling, wholesale selling, or both.");
-        }
-
-        if (AllowB2C && RetailPrice is null)
-        {
-            problems.Add("A retail price is required when the listing is sold to individual buyers.");
-        }
-
-        if (AllowB2B && WholesaleMinQuantity is null or <= 0)
-        {
-            problems.Add("A positive B2B minimum order quantity is required when wholesale is enabled.");
+            problems.Add("A retail price is required.");
         }
 
         if (ReferencePrice is { } reference && RetailPrice is { } retail && reference <= retail)
@@ -805,7 +762,7 @@ public class Listing
 
     /// <summary>
     /// Records that a transaction just released reserved stock back to available against this
-    /// listing (a B2C cancellation/expiry, or a B2B deal cancellation/expiry). Like
+    /// listing (an order cancellation or reservation expiry). Like
     /// <see cref="RegisterStockReservation"/> it always advances the row's concurrency token,
     /// so a release and a competing reservation touching <em>different</em> variants of the
     /// same listing serialize on this row instead of both committing against a stale

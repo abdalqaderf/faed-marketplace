@@ -7,9 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Admin monitoring of B2C orders and B2B deals.
-/// Read-only: an administrator sees the full transaction for support, but the B2C / B2B
-/// state machines stay with their participants.
+/// Admin monitoring of B2C orders.
+/// Read-only: an administrator sees the full order for support, but the order state machine
+/// stays with its participants.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]
@@ -30,22 +30,5 @@ public sealed class TransactionsController(IAdminOperationsService operations) :
     {
         var order = await operations.GetOrderAsync(id, cancellationToken);
         return order is null ? NotFound() : View(new AdminOrderDetailPageModel { Order = order });
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Deals(
-        AdminDealFilter filter = AdminDealFilter.InProgress,
-        int page = 1,
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await operations.GetDealsAsync(filter, page, cancellationToken);
-        return View(new AdminDealMonitorPageModel { Filter = filter, Deals = rows });
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> DealDetails(Guid id, CancellationToken cancellationToken)
-    {
-        var deal = await operations.GetDealAsync(id, cancellationToken);
-        return deal is null ? NotFound() : View(new AdminDealDetailPageModel { Deal = deal });
     }
 }

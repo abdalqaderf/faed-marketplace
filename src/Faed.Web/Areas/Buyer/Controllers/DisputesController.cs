@@ -65,7 +65,6 @@ public sealed class DisputesController(IDisputeService disputes, IOrderService o
         var result = await disputes.FileDisputeAsync(
             User.RequireUserId(),
             new FileDisputeInput(
-                TrustTransactionType.B2COrder,
                 form.OrderId,
                 form.ReasonCode,
                 form.Description,

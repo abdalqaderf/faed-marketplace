@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
-/// The reviews a merchant has received from buyers and wholesale buying merchants
+/// The reviews a merchant has received from buyers.
 /// Read-only — a merchant never edits or removes a review.
 /// </summary>
 [Area("Merchant")]

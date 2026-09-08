@@ -20,7 +20,7 @@
     {
         <div class="faed-empty">
             <div class="faed-empty__title">No reviews yet</div>
-            <div>Reviews left by buyers and wholesale buyers will appear here.</div>
+            <div>Reviews left by buyers will appear here.</div>
         </div>
     }
     else
@@ -32,7 +32,6 @@
                         <th scope="col">Date</th>
                         <th scope="col">Merchant</th>
                         <th scope="col">Rating</th>
-                        <th scope="col">Channel</th>
                         <th scope="col">Comment</th>
                     </tr>
                 </thead>
@@ -43,7 +42,6 @@
                             <td>@AmmanTime.FormatDate(r.CreatedAtUtc)</td>
                             <td><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@r.ReviewedMerchantSlug">@r.ReviewedMerchantBusinessName</a></td>
                             <td><span aria-hidden="true">@DisputeStatusDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
-                            <td>@DisputeStatusDisplay.TransactionLabel(r.TransactionType)</td>
                             <td>@(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment)</td>
                         </tr>
                     }

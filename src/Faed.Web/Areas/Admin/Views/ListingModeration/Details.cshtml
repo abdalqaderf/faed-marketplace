@@ -38,15 +38,9 @@
             <dt>Description</dt>
             <dd>@listing.Description</dd>
             <dt>Retail price</dt>
-            <dd>@(listing.RetailPrice is { } retail ? $"JOD {retail:0.000}" : "—") @(listing.AllowB2C ? "(B2C enabled)" : "")</dd>
+            <dd>@(listing.RetailPrice is { } retail ? $"JOD {retail:0.000}" : "—")</dd>
             <dt>Reference price</dt>
             <dd>@(listing.ReferencePrice is { } reference ? $"JOD {reference:0.000}" : "—")</dd>
-            <dt>Wholesale</dt>
-            <dd>
-                @(listing.AllowB2B
-                    ? $"JOD {listing.WholesaleIndicativeUnitPrice:0.000} indicative, MOQ {listing.WholesaleMinQuantity}"
-                    : "Not offered")
-            </dd>
             <dt>Included / missing</dt>
             <dd>
                 Included: @(listing.IncludedItemsText ?? "—")<br />

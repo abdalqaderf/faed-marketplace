@@ -1,4 +1,4 @@
-﻿using Faed.Web.Authorization;
+using Faed.Web.Authorization;
 using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
@@ -28,7 +28,7 @@ public sealed class DisputeService(
     private const string ActiveDisputeIndex = "IX_Disputes_ActiveTransactionKey_Unique";
 
     private const string DuplicateActiveDisputeMessage =
-        "There is already an open dispute for this transaction.";
+        "There is already an open dispute for this order.";
 
     private readonly TrustOptions _options = options.Value;
 
@@ -72,28 +72,28 @@ public sealed class DisputeService(
                 $"Attach at most {_options.MaxEvidenceFilesPerDispute} evidence files.");
         }
 
-        var context = await ResolveContextAsync(input.TransactionType, input.TransactionId, cancellationToken);
+        var context = await ResolveContextAsync(input.OrderId, cancellationToken);
         if (context is null)
         {
-            return Result<Guid>.NotFound("That transaction was not found.");
+            return Result<Guid>.NotFound("That order was not found.");
         }
 
         if (!context.ParticipantUserIds.Contains(userId))
         {
             // A non-participant learns nothing — same as "not found".
-            return Result<Guid>.NotFound("That transaction was not found.");
+            return Result<Guid>.NotFound("That order was not found.");
         }
 
         if (!context.AllowsNewDispute)
         {
             return Result<Guid>.Validation(context.DisputeBlockedReason
-                ?? "This transaction cannot be disputed right now.");
+                ?? "This order cannot be disputed right now.");
         }
 
         // Fast, friendly path. The authoritative guard against two filings racing is the
         // filtered unique index on Dispute.ActiveTransactionKey — a concurrent second insert
         // is rejected by the database and translated below.
-        var activeKey = Dispute.ActiveKeyFor(input.TransactionType, input.TransactionId);
+        var activeKey = Dispute.ActiveKeyFor(input.OrderId);
         if (await db.Disputes.AnyAsync(d => d.ActiveTransactionKey == activeKey, cancellationToken))
         {
             return Result<Guid>.Conflict(DuplicateActiveDisputeMessage);
@@ -114,8 +114,7 @@ public sealed class DisputeService(
         }
 
         var dispute = new Dispute(
-            input.TransactionType == TrustTransactionType.B2COrder ? input.TransactionId : null,
-            input.TransactionType == TrustTransactionType.B2BDeal ? input.TransactionId : null,
+            input.OrderId,
             userId,
             input.ReasonCode,
             description,
@@ -152,14 +151,14 @@ public sealed class DisputeService(
                 await TryDeleteAsync(key, cancellationToken);
             }
 
-            logger.LogError(ex, "Failed to persist dispute for user {UserId} on {Type} {TransactionId}",
-                userId, input.TransactionType, input.TransactionId);
+            logger.LogError(ex, "Failed to persist dispute for user {UserId} on order {OrderId}",
+                userId, input.OrderId);
             return Result<Guid>.Conflict("The dispute could not be saved. Please try again.");
         }
 
         logger.LogInformation(
-            "User {UserId} filed dispute {DisputeId} on {Type} {TransactionId}",
-            userId, dispute.Id, input.TransactionType, input.TransactionId);
+            "User {UserId} filed dispute {DisputeId} on order {OrderId}",
+            userId, dispute.Id, input.OrderId);
         return Result<Guid>.Success(dispute.Id);
     }
 
@@ -180,7 +179,7 @@ public sealed class DisputeService(
             return Result.NotFound("That dispute was not found.");
         }
 
-        var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+        var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
         if (context is null || !context.ParticipantUserIds.Contains(userId))
         {
             return Result.NotFound("That dispute was not found.");
@@ -255,13 +254,11 @@ public sealed class DisputeService(
         return new PagedResult<DisputeSummaryView>(summaries, totalCount, page, Paging.DefaultPageSize);
     }
 
-    public async Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForTransactionAsync(
-        string userId, TrustTransactionType transactionType, Guid transactionId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForOrderAsync(
+        string userId, Guid orderId, CancellationToken cancellationToken = default)
     {
         var mine = await MyDisputesQueryAsync(userId, cancellationToken);
-        mine = transactionType == TrustTransactionType.B2COrder
-            ? mine.Where(d => d.OrderId == transactionId)
-            : mine.Where(d => d.B2BDealId == transactionId);
+        mine = mine.Where(d => d.OrderId == orderId);
 
         var disputes = await mine.OrderByDescending(d => d.UpdatedAtUtc).ToListAsync(cancellationToken);
         return await ToParticipantSummariesAsync(disputes, userId, cancellationToken);
@@ -277,19 +274,9 @@ public sealed class DisputeService(
             .Select(o => o.Id)
             .ToListAsync(cancellationToken);
 
-        var dealIds = myMerchantId is null
-            ? []
-            : await db.B2BDeals
-                .AsNoTracking()
-                .Where(d => d.SellingMerchantProfileId == myMerchantId || d.BuyingMerchantProfileId == myMerchantId)
-                .Select(d => d.Id)
-                .ToListAsync(cancellationToken);
-
         return db.Disputes
             .AsNoTracking()
-            .Where(d => d.RaisedByUserId == userId
-                || (d.OrderId != null && orderIds.Contains(d.OrderId.Value))
-                || (d.B2BDealId != null && dealIds.Contains(d.B2BDealId.Value)));
+            .Where(d => d.RaisedByUserId == userId || orderIds.Contains(d.OrderId));
     }
 
     private async Task<List<DisputeSummaryView>> ToParticipantSummariesAsync(
@@ -298,7 +285,7 @@ public sealed class DisputeService(
         var summaries = new List<DisputeSummaryView>(disputes.Count);
         foreach (var dispute in disputes)
         {
-            var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+            var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
             if (context is null)
             {
                 continue;
@@ -308,8 +295,7 @@ public sealed class DisputeService(
                 dispute.Id,
                 dispute.Status,
                 dispute.ReasonCode,
-                dispute.TransactionType,
-                TransactionIdOf(dispute),
+                dispute.OrderId,
                 context.Reference,
                 dispute.RaisedByUserId == userId ? context.CounterpartyNameFor(userId) : context.RaisedByNameFor(dispute.RaisedByUserId),
                 dispute.CreatedAtUtc,
@@ -332,7 +318,7 @@ public sealed class DisputeService(
             return null;
         }
 
-        var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+        var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
         var isAdmin = await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken);
         if (context is null || (!context.ParticipantUserIds.Contains(userId) && !isAdmin))
         {
@@ -345,8 +331,7 @@ public sealed class DisputeService(
             dispute.ReasonCode,
             dispute.Description,
             dispute.AdminResolution,
-            dispute.TransactionType,
-            TransactionIdOf(dispute),
+            dispute.OrderId,
             context.Reference,
             context.ListingSlug,
             context.RaisedByNameFor(dispute.RaisedByUserId),
@@ -387,7 +372,7 @@ public sealed class DisputeService(
         var isAdmin = await userRoles.IsInRoleAsync(userId, FaedRoles.Admin, cancellationToken);
         if (!isAdmin)
         {
-            var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+            var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
             if (context is null || !context.ParticipantUserIds.Contains(userId))
             {
                 // Dispute evidence is private to the participants and admins. A non-participant
@@ -449,7 +434,7 @@ public sealed class DisputeService(
         var summaries = new List<DisputeSummaryView>(disputes.Count);
         foreach (var dispute in disputes)
         {
-            var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+            var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
             if (context is null)
             {
                 continue;
@@ -459,8 +444,7 @@ public sealed class DisputeService(
                 dispute.Id,
                 dispute.Status,
                 dispute.ReasonCode,
-                dispute.TransactionType,
-                TransactionIdOf(dispute),
+                dispute.OrderId,
                 context.Reference,
                 context.SellingMerchantName,
                 dispute.CreatedAtUtc,
@@ -487,7 +471,7 @@ public sealed class DisputeService(
             return null;
         }
 
-        var context = await ResolveContextAsync(dispute.TransactionType, TransactionIdOf(dispute), cancellationToken);
+        var context = await ResolveContextAsync(dispute.OrderId, cancellationToken);
         if (context is null)
         {
             return null;
@@ -500,8 +484,7 @@ public sealed class DisputeService(
             dispute.Description,
             dispute.AdminResolution,
             dispute.ResolvedByAdminId,
-            dispute.TransactionType,
-            TransactionIdOf(dispute),
+            dispute.OrderId,
             context.Reference,
             context.RaisedByNameFor(dispute.RaisedByUserId),
             dispute.RaisedByUserId,
@@ -703,105 +686,54 @@ public sealed class DisputeService(
             .Select(p => (Guid?)p.Id)
             .SingleOrDefaultAsync(cancellationToken);
 
-    private static Guid TransactionIdOf(Dispute dispute) =>
-        dispute.OrderId ?? dispute.B2BDealId!.Value;
-
     private async Task<TransactionContext?> ResolveContextAsync(
-        TrustTransactionType type, Guid transactionId, CancellationToken cancellationToken)
+        Guid orderId, CancellationToken cancellationToken)
     {
-        if (type == TrustTransactionType.B2COrder)
-        {
-            var order = await db.Orders
-                .AsNoTracking()
-                .Include(o => o.Items)
-                .SingleOrDefaultAsync(o => o.Id == transactionId, cancellationToken);
-            if (order is null)
-            {
-                return null;
-            }
-
-            var merchant = await db.MerchantProfiles
-                .AsNoTracking()
-                .Where(m => m.Id == order.MerchantProfileId)
-                .Select(m => new { m.UserId, m.BusinessName })
-                .SingleOrDefaultAsync(cancellationToken);
-            if (merchant is null)
-            {
-                return null;
-            }
-
-            var listingId = order.Items.Select(i => i.ListingId).FirstOrDefault();
-            var slug = listingId == Guid.Empty
-                ? null
-                : await db.Listings.AsNoTracking()
-                    .Where(l => l.Id == listingId).Select(l => l.Slug).SingleOrDefaultAsync(cancellationToken);
-
-            var allowsDispute = order.Status is OrderStatus.Confirmed or OrderStatus.ReadyForPickup
-                or OrderStatus.OutForDelivery or OrderStatus.Completed;
-
-            return new TransactionContext
-            {
-                Reference = $"Order {order.Id.ToString()[..8]}",
-                ListingSlug = slug,
-                SellingMerchantName = merchant.BusinessName,
-                BuyerName = order.ContactName,
-                SellingMerchantUserId = merchant.UserId,
-                BuyerOrBuyingMerchantUserId = order.BuyerUserId,
-                TransactionTotal = order.Total,
-                AllowsNewDispute = allowsDispute,
-                DisputeBlockedReason = allowsDispute
-                    ? null
-                    : "A dispute can be raised once the merchant has confirmed the order.",
-            };
-        }
-
-        var deal = await db.B2BDeals
+        var order = await db.Orders
             .AsNoTracking()
-            .SingleOrDefaultAsync(d => d.Id == transactionId, cancellationToken);
-        if (deal is null)
+            .Include(o => o.Items)
+            .SingleOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        if (order is null)
         {
             return null;
         }
 
-        var merchants = await db.MerchantProfiles
+        var merchant = await db.MerchantProfiles
             .AsNoTracking()
-            .Where(m => m.Id == deal.SellingMerchantProfileId || m.Id == deal.BuyingMerchantProfileId)
-            .Select(m => new { m.Id, m.UserId, m.BusinessName })
-            .ToListAsync(cancellationToken);
-        var seller = merchants.SingleOrDefault(m => m.Id == deal.SellingMerchantProfileId);
-        var buyer = merchants.SingleOrDefault(m => m.Id == deal.BuyingMerchantProfileId);
-        if (seller is null || buyer is null)
-        {
-            return null;
-        }
-
-        var negotiation = await db.B2BNegotiations
-            .AsNoTracking()
-            .Where(n => n.Id == deal.B2BNegotiationId)
-            .Select(n => n.ListingId)
+            .Where(m => m.Id == order.MerchantProfileId)
+            .Select(m => new { m.UserId, m.BusinessName })
             .SingleOrDefaultAsync(cancellationToken);
-        var dealSlug = negotiation == Guid.Empty
+        if (merchant is null)
+        {
+            return null;
+        }
+
+        var listingId = order.Items.Select(i => i.ListingId).FirstOrDefault();
+        var slug = listingId == Guid.Empty
             ? null
             : await db.Listings.AsNoTracking()
-                .Where(l => l.Id == negotiation).Select(l => l.Slug).SingleOrDefaultAsync(cancellationToken);
+                .Where(l => l.Id == listingId).Select(l => l.Slug).SingleOrDefaultAsync(cancellationToken);
 
-        var dealAllows = deal.Status != B2BDealStatus.Cancelled;
+        var allowsDispute = order.Status is OrderStatus.Confirmed or OrderStatus.ReadyForPickup
+            or OrderStatus.OutForDelivery or OrderStatus.Completed;
 
         return new TransactionContext
         {
-            Reference = $"Deal {deal.Id.ToString()[..8]}",
-            ListingSlug = dealSlug,
-            SellingMerchantName = seller.BusinessName,
-            BuyerName = buyer.BusinessName,
-            SellingMerchantUserId = seller.UserId,
-            BuyerOrBuyingMerchantUserId = buyer.UserId,
-            TransactionTotal = deal.TotalSnapshot,
-            AllowsNewDispute = dealAllows,
-            DisputeBlockedReason = dealAllows ? null : "A cancelled deal cannot be disputed.",
+            Reference = $"Order {order.Id.ToString()[..8]}",
+            ListingSlug = slug,
+            SellingMerchantName = merchant.BusinessName,
+            BuyerName = order.ContactName,
+            SellingMerchantUserId = merchant.UserId,
+            BuyerOrBuyingMerchantUserId = order.BuyerUserId,
+            TransactionTotal = order.Total,
+            AllowsNewDispute = allowsDispute,
+            DisputeBlockedReason = allowsDispute
+                ? null
+                : "A dispute can be raised once the merchant has confirmed the order.",
         };
     }
 
-    /// <summary>The participant-facing facts about the order or deal a dispute references.</summary>
+    /// <summary>The participant-facing facts about the order a dispute references.</summary>
     private sealed class TransactionContext
     {
         public required string Reference { get; init; }

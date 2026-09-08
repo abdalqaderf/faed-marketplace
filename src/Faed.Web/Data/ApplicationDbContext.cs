@@ -48,16 +48,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 
-    public DbSet<B2BNegotiation> B2BNegotiations => Set<B2BNegotiation>();
-
-    public DbSet<B2BOfferRevision> B2BOfferRevisions => Set<B2BOfferRevision>();
-
-    public DbSet<B2BOfferLine> B2BOfferLines => Set<B2BOfferLine>();
-
-    public DbSet<B2BDeal> B2BDeals => Set<B2BDeal>();
-
-    public DbSet<B2BDealLine> B2BDealLines => Set<B2BDealLine>();
-
     public DbSet<Dispute> Disputes => Set<Dispute>();
 
     public DbSet<DisputeEvidence> DisputeEvidence => Set<DisputeEvidence>();

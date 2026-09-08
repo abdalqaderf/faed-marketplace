@@ -37,7 +37,7 @@
                     <a class="faed-dispute-card__main" asp-action="Details" asp-route-id="@dispute.Id">
                         <div class="faed-dispute-card__heading">
                             <div>
-                                <span>@DisputeStatusDisplay.TransactionLabel(dispute.TransactionType) · @dispute.TransactionReference</span>
+                                <span>@dispute.TransactionReference</span>
                                 <h2>@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode)</h2>
                             </div>
                             <span class="@DisputeStatusDisplay.BadgeClass(dispute.Status)">@DisputeStatusDisplay.Label(dispute.Status)</span>

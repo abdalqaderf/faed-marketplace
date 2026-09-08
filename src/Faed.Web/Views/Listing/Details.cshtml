@@ -106,11 +106,6 @@
                             {
                                 @($"JOD {price:0.000}")
                             }
-                            else if (Model.WholesaleIndicativeUnitPrice is { } wholesaleOnlyPrice)
-                            {
-                                @($"JOD {wholesaleOnlyPrice:0.000}")
-                                <span class="faed-price__qualifier">/unit · wholesale</span>
-                            }
                             else
                             {
                                 <text>Price on request</text>
@@ -120,16 +115,6 @@
                         {
                             <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
                             <span class="faed-price__discount">@(Model.DiscountPercent)% lower</span>
-                        }
-                    </div>
-                    <div class="faed-listing-channels" aria-label="Available buying routes">
-                        @if (Model.AllowB2C)
-                        {
-                            <span>Retail</span>
-                        }
-                        @if (Model.AllowB2B)
-                        {
-                            <span>Wholesale</span>
                         }
                     </div>
                 </div>
@@ -211,50 +196,24 @@
                         <script type="application/json" id="listing-variants-data">@Html.Raw(variantsJson)</script>
 
                         <div class="faed-cta-row faed-listing-cta-row">
-                            @if (Model.AllowB2C)
+                            @if (Model.IsSoldOut)
                             {
-                                @if (Model.IsSoldOut)
-                                {
-                                    <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold
-                                        out</button>
-                                    }
-                        else
-                                    {
-                                        <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index"
-                                           asp-route-slug="@Model.Slug">Order this item</a>
-                                    }
-                                }
-                                @if (Model.AllowB2B)
-                                {
-                                    <a class="faed-btn faed-btn--ghost" asp-area="Merchant" asp-controller="Offers" asp-action="Create"
-                                       asp-route-listingSlug="@Model.Slug">Make a wholesale offer</a>
-                                }
+                                <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold out</button>
+                            }
+                            else
+                            {
+                                <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index"
+                                   asp-route-slug="@Model.Slug">Order this item</a>
+                            }
+                        </div>
+
+                        <div class="faed-fulfillment-grid">
+                            <div>
+                                <span class="faed-fulfillment-grid__label">Fulfillment</span>
+                                <strong>Pickup or merchant delivery</strong>
+                                <small>Choose the available option at checkout.</small>
                             </div>
-
-                            @if (Model.AllowB2B)
-                            {
-                                <p class="faed-cta-row__hint">Wholesale offers are between verified merchants. Sign in as an approved
-                                    merchant to negotiate.</p>
-                                }
-
-                                <div class="faed-fulfillment-grid">
-                                    @if (Model.AllowB2C)
-                                    {
-                                        <div>
-                                            <span class="faed-fulfillment-grid__label">Retail fulfillment</span>
-                                            <strong>Pickup or merchant delivery</strong>
-                                            <small>Choose the available option at checkout.</small>
-                                        </div>
-                                    }
-                                    @if (Model.AllowB2B)
-                                    {
-                                        <div>
-                                            <span class="faed-fulfillment-grid__label">Wholesale fulfillment</span>
-                                            <strong>Pickup or seller-arranged shipping</strong>
-                                            <small>Agreed as part of the deal.</small>
-                                        </div>
-                                    }
-                                </div>
+                        </div>
                             </div>
                         </section>
                     </div>
@@ -375,28 +334,6 @@
                                 }
                             </div>
 
-                            @if (Model.AllowB2B)
-                            {
-                                <section class="faed-listing-section faed-wholesale-section" aria-labelledby="listing-wholesale-title">
-                                    <div class="faed-listing-section__header">
-                                        <div>
-                                            <p class="faed-kicker faed-kicker--light">For verified merchants</p>
-                                            <h2 id="listing-wholesale-title">Wholesale buying route</h2>
-                                            <p>Use an offer when you want to negotiate this stock as a business purchase.</p>
-                                        </div>
-                                        <a class="faed-btn faed-btn--light" asp-area="Merchant" asp-controller="Offers" asp-action="Create"
-                                           asp-route-listingSlug="@Model.Slug">Make an offer @FaedIcon.Render("arrow-right", "faed-icon")</a>
-                                    </div>
-                                    <div class="faed-wholesale-facts">
-                                        <div><span>Minimum order</span><strong>@(Model.WholesaleMinQuantity ?? 0) units</strong></div>
-                                        <div><span>Variant rule</span><strong>@(Model.AllowMixedVariantB2B ? "Mixed variants allowed" : "Minimum applies per variant")</strong></div>
-                                        @if (Model.WholesaleIndicativeUnitPrice is { } wholesalePrice)
-                                        {
-                                            <div><span>Indicative unit price</span><strong>JOD @wholesalePrice.ToString("0.000")</strong></div>
-                                        }
-                                    </div>
-                                </section>
-                            }
                         </div>
 
                         @section Scripts {

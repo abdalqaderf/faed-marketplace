@@ -47,8 +47,7 @@ public sealed class OrdersController(IOrderService orders, IDisputeService dispu
             return NotFound();
         }
 
-        var forThisOrder = await disputes.GetDisputesForTransactionAsync(
-            userId, TrustTransactionType.B2COrder, id, cancellationToken);
+        var forThisOrder = await disputes.GetDisputesForOrderAsync(userId, id, cancellationToken);
         var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
 
         return View(new MerchantOrderDetailPageModel

@@ -56,10 +56,6 @@ public sealed record ListingCardView(
     string ConditionName,
     decimal? RetailPrice,
     decimal? ReferencePrice,
-    bool AllowB2C,
-    bool AllowB2B,
-    decimal? WholesaleIndicativeUnitPrice,
-    int? WholesaleMinQuantity,
     int AvailableUnits,
     Guid? PrimaryImageId,
     string? PrimaryImageAlt,
@@ -77,14 +73,8 @@ public sealed record ListingCardView(
         ? (int)Math.Round((1 - (RetailPrice!.Value / ReferencePrice!.Value)) * 100m)
         : null;
 
-    /// <summary>
-    /// The price to display/sort/filter on when the listing itself has no retail price — a
-    /// B2B-only listing still has an honest number to show instead of "Price on request"
-    /// </summary>
-    public decimal? EffectivePrice => RetailPrice ?? WholesaleIndicativeUnitPrice;
-
-    /// <summary>True when <see cref="EffectivePrice"/> comes from the wholesale price, not retail.</summary>
-    public bool EffectivePriceIsWholesale => RetailPrice is null && WholesaleIndicativeUnitPrice is not null;
+    /// <summary>The price to display, sort and filter on.</summary>
+    public decimal? EffectivePrice => RetailPrice;
 
     public bool IsSoldOut => AvailableUnits <= 0;
 
@@ -153,11 +143,6 @@ public sealed record PublicListingDetailView(
     string ConditionDescription,
     decimal? ReferencePrice,
     decimal? RetailPrice,
-    decimal? WholesaleIndicativeUnitPrice,
-    int? WholesaleMinQuantity,
-    bool AllowB2C,
-    bool AllowB2B,
-    bool AllowMixedVariantB2B,
     string? ReturnPolicyText,
     string? WarrantyText,
     string? IncludedItemsText,

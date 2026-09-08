@@ -50,9 +50,9 @@ public sealed class OrderService(
             return Result<CheckoutView>.NotFound("That listing is not available for ordering.");
         }
 
-        if (!listing.AllowB2C || listing.RetailPrice is not { } unitPrice)
+        if (listing.RetailPrice is not { } unitPrice)
         {
-            return Result<CheckoutView>.Validation("This listing is not sold to individual buyers.");
+            return Result<CheckoutView>.Validation("This listing is not available for purchase.");
         }
 
         var lines = listing.Variants
@@ -190,9 +190,9 @@ public sealed class OrderService(
                 return Result<Guid>.Conflict("An item in your order is no longer available.");
             }
 
-            if (!listing.AllowB2C || listing.RetailPrice is null)
+            if (listing.RetailPrice is null)
             {
-                return Result<Guid>.Validation("An item in your order is not sold to individual buyers.");
+                return Result<Guid>.Validation("An item in your order is not available for purchase.");
             }
         }
 

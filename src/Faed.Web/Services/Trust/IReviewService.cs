@@ -1,10 +1,9 @@
-﻿using Faed.Web.Models.Enums;
-using Faed.Web.Services.Common;
+﻿using Faed.Web.Services.Common;
 
 namespace Faed.Web.Services.Trust;
 
 /// <summary>
-/// Merchant reviews left after a completed transaction. A review is allowed only when the transaction is
+/// Merchant reviews left after a completed order. A review is allowed only when the order is
 /// <c>Completed</c>, the reviewer took part, and they have not already reviewed it; the
 /// duplicate rule is also a database unique constraint.
 /// </summary>
@@ -14,7 +13,7 @@ public interface IReviewService
         string userId, SubmitReviewInput input, CancellationToken cancellationToken = default);
 
     Task<ReviewEligibilityView> GetEligibilityAsync(
-        string userId, TrustTransactionType transactionType, Guid transactionId, CancellationToken cancellationToken = default);
+        string userId, Guid orderId, CancellationToken cancellationToken = default);
 
     /// <summary>Public rating summary and recent reviews for a merchant storefront.</summary>
     Task<MerchantReviewsView> GetMerchantReviewsAsync(

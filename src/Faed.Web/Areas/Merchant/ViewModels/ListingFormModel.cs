@@ -40,23 +40,6 @@ public sealed class ListingFormModel
     [Range(0, 1_000_000)]
     public decimal? RetailPrice { get; set; }
 
-    [Display(Name = "Wholesale indicative price (JOD)")]
-    [Range(0, 1_000_000)]
-    public decimal? WholesaleIndicativeUnitPrice { get; set; }
-
-    [Display(Name = "B2B minimum order quantity")]
-    [Range(1, 1_000_000)]
-    public int? WholesaleMinQuantity { get; set; }
-
-    [Display(Name = "Sell to individual buyers (B2C)")]
-    public bool AllowB2C { get; set; } = true;
-
-    [Display(Name = "Sell to other merchants (B2B)")]
-    public bool AllowB2B { get; set; }
-
-    [Display(Name = "Allow mixed variants toward the B2B minimum")]
-    public bool AllowMixedVariantB2B { get; set; }
-
     [StringLength(Listing.MaxPolicyTextLength)]
     [Display(Name = "Return policy")]
     public string? ReturnPolicyText { get; set; }
@@ -81,11 +64,6 @@ public sealed class ListingFormModel
         Description,
         ReferencePrice,
         RetailPrice,
-        WholesaleIndicativeUnitPrice,
-        WholesaleMinQuantity,
-        AllowB2C,
-        AllowB2B,
-        AllowMixedVariantB2B,
         ReturnPolicyText,
         WarrantyText,
         IncludedItemsText,
@@ -102,11 +80,6 @@ public sealed class ListingFormModel
         DiscountReasonIds = [.. listing.DiscountReasonIds],
         ReferencePrice = listing.ReferencePrice,
         RetailPrice = listing.RetailPrice,
-        WholesaleIndicativeUnitPrice = listing.WholesaleIndicativeUnitPrice,
-        WholesaleMinQuantity = listing.WholesaleMinQuantity,
-        AllowB2C = listing.AllowB2C,
-        AllowB2B = listing.AllowB2B,
-        AllowMixedVariantB2B = listing.AllowMixedVariantB2B,
         ReturnPolicyText = listing.ReturnPolicyText,
         WarrantyText = listing.WarrantyText,
         IncludedItemsText = listing.IncludedItemsText,

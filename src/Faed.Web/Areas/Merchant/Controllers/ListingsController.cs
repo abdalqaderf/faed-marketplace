@@ -31,7 +31,7 @@ public sealed class ListingsController(IMerchantListingService listings) : Contr
     {
         var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
         ViewData["ReferenceData"] = referenceData;
-        return View(new ListingFormModel { AllowB2C = true });
+        return View(new ListingFormModel());
     }
 
     [HttpPost]

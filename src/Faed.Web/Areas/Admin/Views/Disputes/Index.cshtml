@@ -57,7 +57,7 @@
                     {
                         <tr>
                             <td><a asp-action="Details" asp-route-id="@d.Id">@AmmanTime.FormatDate(d.CreatedAtUtc)</a></td>
-                            <td>@DisputeStatusDisplay.TransactionLabel(d.TransactionType) · @d.TransactionReference</td>
+                            <td>@d.TransactionReference</td>
                             <td>@d.CounterpartyName</td>
                             <td>@DisputeStatusDisplay.ReasonLabel(d.ReasonCode)</td>
                             <td><span class="@DisputeStatusDisplay.BadgeClass(d.Status)">@DisputeStatusDisplay.Label(d.Status)</span></td>

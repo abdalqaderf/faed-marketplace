@@ -1,16 +1,11 @@
 namespace Faed.Web.Services.Listings;
 
 /// <summary>
-/// Configurable listing and upload limits. The launch B2B
-/// minimum of 10 units is a policy default, not a platform constant,
-/// So it lives here rather than in the domain.
+/// Configurable listing and upload limits.
 /// </summary>
 public sealed class ListingOptions
 {
     public const string SectionName = "Listings";
-
-    /// <summary>Launch default and platform floor for a listing's B2B minimum order quantity.</summary>
-    public int DefaultB2BMinimumQuantity { get; set; } = 10;
 
     /// <summary>Maximum accepted size for a single listing image or evidence file.</summary>
     public long MaxImageBytes { get; set; } = 8 * 1024 * 1024;

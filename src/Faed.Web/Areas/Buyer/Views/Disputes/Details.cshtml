@@ -13,7 +13,7 @@
 
     <header class="faed-order-detail-hero faed-dispute-detail-hero">
         <div>
-            <p class="faed-kicker">@DisputeStatusDisplay.TransactionLabel(dispute.TransactionType) · @dispute.TransactionReference</p>
+            <p class="faed-kicker">@dispute.TransactionReference</p>
             <h1>@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode)</h1>
             <p>Raised @AmmanTime.FormatDateTime(dispute.CreatedAtUtc) · merchant: @dispute.SellingMerchantName</p>
         </div>
@@ -97,7 +97,6 @@
                 <p class="faed-kicker">Case summary</p>
                 <h2 id="case-summary-title">@dispute.TransactionReference</h2>
                 <dl class="faed-order-summary-list">
-                    <div><dt>Transaction</dt><dd>@DisputeStatusDisplay.TransactionLabel(dispute.TransactionType)</dd></div>
                     <div><dt>Merchant</dt><dd>@dispute.SellingMerchantName</dd></div>
                     <div><dt>Reason</dt><dd>@DisputeStatusDisplay.ReasonLabel(dispute.ReasonCode)</dd></div>
                     <div><dt>Raised by</dt><dd>@(dispute.RaisedByMe ? "You" : dispute.RaisedByName)</dd></div>

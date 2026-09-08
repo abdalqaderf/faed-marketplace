@@ -9,15 +9,13 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
 {
     public void Configure(EntityTypeBuilder<Dispute> builder)
     {
-        builder.ToTable("Disputes", table =>
-            table.HasCheckConstraint(
-                "CK_Disputes_ExactlyOneTransaction",
-                "(CASE WHEN [OrderId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [B2BDealId] IS NULL THEN 0 ELSE 1 END) = 1"));
+        builder.ToTable("Disputes");
 
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id).ValueGeneratedNever();
 
-        builder.Ignore(d => d.TransactionType);
+        builder.Property(d => d.OrderId).IsRequired();
+
         builder.Ignore(d => d.IsTerminal);
         builder.Ignore(d => d.AcceptsEvidence);
 
@@ -39,7 +37,7 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.Property(d => d.AdminResolution).HasMaxLength(Dispute.MaxResolutionLength);
         builder.Property(d => d.ActiveTransactionKey).HasMaxLength(Dispute.MaxActiveTransactionKeyLength);
 
-        // At most one active (Open/UnderReview) dispute per transaction, enforced by the
+        // At most one active (Open/UnderReview) dispute per order, enforced by the
         // database so two concurrent filings cannot both win. The key is null for closed disputes, so the filter keeps those out.
         builder.HasIndex(d => d.ActiveTransactionKey)
             .IsUnique()
@@ -53,18 +51,12 @@ public sealed class DisputeConfiguration : IEntityTypeConfiguration<Dispute>
         builder.HasIndex(d => new { d.Status, d.CreatedAtUtc });
         builder.HasIndex(d => d.RaisedByUserId);
         builder.HasIndex(d => d.OrderId);
-        builder.HasIndex(d => d.B2BDealId);
 
-        // Transactional history is preserved, never cascade-deleted with a transaction or the
+        // Transactional history is preserved, never cascade-deleted with the order or the
         // Identity user.
         builder.HasOne<Order>()
             .WithMany()
             .HasForeignKey(d => d.OrderId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<B2BDeal>()
-            .WithMany()
-            .HasForeignKey(d => d.B2BDealId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<ApplicationUser>()

@@ -181,29 +181,15 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
                     ColorOptionNames.Contains(ov.OptionValue.Option.Name) && ov.OptionValue.Value == color))));
         }
 
-        // A B2B-only listing has no RetailPrice at all; fall back to the wholesale indicative
-        // price so it is neither invisible to a price filter nor mis-sorted as free/priceless
         if (query.MinPrice is { } min)
         {
-            baseQuery = baseQuery.Where(l => (l.RetailPrice ?? l.WholesaleIndicativeUnitPrice) >= min);
+            baseQuery = baseQuery.Where(l => l.RetailPrice >= min);
         }
 
         if (query.MaxPrice is { } max)
         {
-            baseQuery = baseQuery.Where(l => (l.RetailPrice ?? l.WholesaleIndicativeUnitPrice) <= max);
+            baseQuery = baseQuery.Where(l => l.RetailPrice <= max);
         }
-
-        // Inclusive by design: a buyer filtering for "retail available" wants everything they
-        // can buy at retail, including a listing that also happens to support wholesale — the
-        // filter is not "retail exclusively" (faed-commerce-ux "B2C/B2B availability" is
-        // informational, not mutually exclusive). The UI labels this accurately rather than
-        // implying exclusivity.
-        baseQuery = query.Channel switch
-        {
-            MarketplaceChannel.RetailOnly => baseQuery.Where(l => l.AllowB2C),
-            MarketplaceChannel.WholesaleOnly => baseQuery.Where(l => l.AllowB2B),
-            _ => baseQuery,
-        };
 
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
@@ -228,11 +214,11 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
         baseQuery = query.Sort switch
         {
             ShopSort.PriceLowToHigh => baseQuery
-                .OrderBy(l => l.RetailPrice ?? l.WholesaleIndicativeUnitPrice ?? decimal.MaxValue)
+                .OrderBy(l => l.RetailPrice ?? decimal.MaxValue)
                 .ThenByDescending(l => l.PublishedAtUtc)
                 .ThenBy(l => l.Id),
             ShopSort.PriceHighToLow => baseQuery
-                .OrderByDescending(l => l.RetailPrice ?? l.WholesaleIndicativeUnitPrice ?? decimal.MinValue)
+                .OrderByDescending(l => l.RetailPrice ?? decimal.MinValue)
                 .ThenByDescending(l => l.PublishedAtUtc)
                 .ThenBy(l => l.Id),
             _ => baseQuery
@@ -327,11 +313,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             grade.Description,
             listing.ReferencePrice,
             listing.RetailPrice,
-            listing.WholesaleIndicativeUnitPrice,
-            listing.WholesaleMinQuantity,
-            listing.AllowB2C,
-            listing.AllowB2B,
-            listing.AllowMixedVariantB2B,
             listing.ReturnPolicyText,
             listing.WarrantyText,
             listing.IncludedItemsText,
@@ -628,10 +609,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             grade.Name,
             listing.RetailPrice,
             listing.ReferencePrice,
-            listing.AllowB2C,
-            listing.AllowB2B,
-            listing.WholesaleIndicativeUnitPrice,
-            listing.WholesaleMinQuantity,
             listing.Variants.Where(v => v.IsActive).Sum(v => v.AvailableQuantity),
             primaryImage?.Id,
             primaryImage?.AltText,

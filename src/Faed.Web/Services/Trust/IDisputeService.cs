@@ -4,9 +4,9 @@ using Faed.Web.Services.Merchants;
 namespace Faed.Web.Services.Trust;
 
 /// <summary>
-/// Post-transaction disputes. Only a participant in the referenced order or
-/// deal can open one; only an administrator can move it past <c>Open</c>, and every such
-/// move is audited. Evidence files are private — streamed only to participants and admins.
+/// Post-transaction disputes. Only a participant in the referenced order can open one; only
+/// an administrator can move it past <c>Open</c>, and every such move is audited. Evidence
+/// files are private — streamed only to participants and admins.
 /// </summary>
 public interface IDisputeService
 {
@@ -22,12 +22,11 @@ public interface IDisputeService
         string userId, int page = 1, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The caller's disputes for one specific transaction (order or deal) — the bounded set a
-    /// transaction detail page needs, without paging the caller's whole dispute history.
+    /// The caller's disputes for one specific order — the bounded set an order detail page
+    /// needs, without paging the caller's whole dispute history.
     /// </summary>
-    Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForTransactionAsync(
-        string userId, Models.Enums.TrustTransactionType transactionType, Guid transactionId,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DisputeSummaryView>> GetDisputesForOrderAsync(
+        string userId, Guid orderId, CancellationToken cancellationToken = default);
 
     Task<DisputeDetailView?> GetMyDisputeAsync(
         string userId, Guid disputeId, CancellationToken cancellationToken = default);

@@ -13,12 +13,11 @@ public sealed record DisputeEvidenceUpload(
     long LengthBytes);
 
 /// <summary>
-/// A participant's request to open a dispute. The transaction and the raiser's participation
+/// A participant's request to open a dispute. The order and the raiser's participation
 /// are resolved and re-checked server-side; nothing here is trusted straight from the request
 /// </summary>
 public sealed record FileDisputeInput(
-    TrustTransactionType TransactionType,
-    Guid TransactionId,
+    Guid OrderId,
     DisputeReasonCode ReasonCode,
     string Description,
     IReadOnlyList<DisputeEvidenceUpload> Evidence);
@@ -51,7 +50,6 @@ public sealed record DisputeSummaryView(
     Guid Id,
     DisputeStatus Status,
     DisputeReasonCode ReasonCode,
-    TrustTransactionType TransactionType,
     Guid TransactionId,
     string TransactionReference,
     string CounterpartyName,
@@ -68,7 +66,6 @@ public sealed record DisputeDetailView(
     DisputeReasonCode ReasonCode,
     string Description,
     string? AdminResolution,
-    TrustTransactionType TransactionType,
     Guid TransactionId,
     string TransactionReference,
     string? TransactionSlug,
@@ -89,7 +86,6 @@ public sealed record AdminDisputeDetailView(
     string Description,
     string? AdminResolution,
     string? ResolvedByAdminId,
-    TrustTransactionType TransactionType,
     Guid TransactionId,
     string TransactionReference,
     string RaisedByName,
@@ -111,13 +107,12 @@ public sealed record AdminDisputeDetailView(
 // ---- Review inputs --------------------------------------------------------------
 
 /// <summary>
-/// A buyer's request to review a merchant after a completed transaction. Eligibility (the
-/// transaction is <c>Completed</c>, the reviewer took part, and has not already reviewed it)
-/// is enforced server-side.
+/// A buyer's request to review a merchant after a completed order. Eligibility (the order
+/// is <c>Completed</c>, the reviewer took part, and has not already reviewed it) is enforced
+/// server-side.
 /// </summary>
 public sealed record SubmitReviewInput(
-    TrustTransactionType TransactionType,
-    Guid TransactionId,
+    Guid OrderId,
     int Rating,
     string? Comment);
 
@@ -136,7 +131,6 @@ public sealed record ExistingReviewView(int Rating, string? Comment, DateTime Cr
 public sealed record MerchantReviewView(
     int Rating,
     string? Comment,
-    TrustTransactionType TransactionType,
     string ReviewerLabel,
     DateTime CreatedAtUtc);
 

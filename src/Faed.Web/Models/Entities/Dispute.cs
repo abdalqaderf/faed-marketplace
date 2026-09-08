@@ -4,22 +4,20 @@ using Faed.Web.Models.Enums;
 namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// A post-transaction complaint raised by a participant against exactly one transaction
-/// context — a B2C <see cref="Order"/> or a B2B <see cref="B2BDeal"/>, never both.
-/// A database check constraint enforces the
-/// exactly-one rule; the raiser's participation is checked by the dispute service before this
-/// aggregate is created.
+/// A post-transaction complaint raised by a participant against one B2C <see cref="Order"/>.
+/// The raiser's participation is checked by the dispute service before this aggregate is
+/// created.
 /// The dispute has its own lifecycle
-/// and never touches the order/deal status or
+/// and never touches the order status or
 /// its stock — resolution is an administrative record, not a fulfilment transition. An
 /// <see cref="DisputeStatus.Open"/> dispute is never closed directly: an administrator must
 /// first <see cref="StartReview"/> it, and every such move is written to the admin audit log
 /// by the service.
-/// <see cref="ActiveTransactionKey"/> is a filtered-unique key: it holds a per-transaction
+/// <see cref="ActiveTransactionKey"/> is a filtered-unique key: it holds a per-order
 /// value while the dispute is active (<see cref="DisputeStatus.Open"/> /
 /// <see cref="DisputeStatus.UnderReview"/>) and is cleared when the dispute closes. A unique
 /// index on it lets the database — not just an application read — enforce the rule that
-/// at most one active dispute may exist per transaction, even when two filings race.
+/// at most one active dispute may exist per order, even when two filings race.
 /// </summary>
 public class Dispute
 {
@@ -33,21 +31,17 @@ public class Dispute
     {
     }
 
-    /// <summary>
-    /// Opens a dispute against one transaction. Pass exactly one of <paramref name="orderId"/>
-    /// or <paramref name="b2bDealId"/>; the other must be <c>null</c>.
-    /// </summary>
+    /// <summary>Opens a dispute against one order.</summary>
     public Dispute(
-        Guid? orderId,
-        Guid? b2bDealId,
+        Guid orderId,
         string raisedByUserId,
         DisputeReasonCode reasonCode,
         string description,
         DateTime nowUtc)
     {
-        if ((orderId is null) == (b2bDealId is null))
+        if (orderId == Guid.Empty)
         {
-            throw new DomainException("A dispute must reference exactly one transaction — an order or a deal.");
+            throw new DomainException("A dispute must reference the order it is about.");
         }
 
         if (string.IsNullOrWhiteSpace(raisedByUserId))
@@ -62,30 +56,23 @@ public class Dispute
 
         Id = Guid.CreateVersion7();
         OrderId = orderId;
-        B2BDealId = b2bDealId;
         RaisedByUserId = raisedByUserId;
         ReasonCode = reasonCode;
         Description = RequireText(description, "description", MaxDescriptionLength);
         Status = DisputeStatus.Open;
-        ActiveTransactionKey = orderId is { } o
-            ? ActiveKeyFor(TrustTransactionType.B2COrder, o)
-            : ActiveKeyFor(TrustTransactionType.B2BDeal, b2bDealId!.Value);
+        ActiveTransactionKey = ActiveKeyFor(orderId);
         CreatedAtUtc = nowUtc;
         UpdatedAtUtc = nowUtc;
     }
 
     /// <summary>
-    /// The value <see cref="ActiveTransactionKey"/> takes for a live dispute on a given
-    /// transaction. Disjoint across the two transaction kinds.
+    /// The value <see cref="ActiveTransactionKey"/> takes for a live dispute on a given order.
     /// </summary>
-    public static string ActiveKeyFor(TrustTransactionType type, Guid transactionId) =>
-        type == TrustTransactionType.B2COrder ? $"O:{transactionId:N}" : $"D:{transactionId:N}";
+    public static string ActiveKeyFor(Guid orderId) => $"O:{orderId:N}";
 
     public Guid Id { get; private set; }
 
-    public Guid? OrderId { get; private set; }
-
-    public Guid? B2BDealId { get; private set; }
+    public Guid OrderId { get; private set; }
 
     /// <summary>The Identity user id of the participant who raised the dispute.</summary>
     public string RaisedByUserId { get; private set; } = null!;
@@ -97,9 +84,9 @@ public class Dispute
     public DisputeStatus Status { get; private set; }
 
     /// <summary>
-    /// A per-transaction token while the dispute is active, <c>null</c> once it closes. Backed
+    /// A per-order token while the dispute is active, <c>null</c> once it closes. Backed
     /// by a filtered unique index so the database rejects a second concurrent filing for the
-    /// same transaction.
+    /// same order.
     /// </summary>
     public string? ActiveTransactionKey { get; private set; }
 
@@ -118,9 +105,6 @@ public class Dispute
     public byte[] RowVersion { get; private set; } = [];
 
     public IReadOnlyCollection<DisputeEvidence> Evidence => _evidence.AsReadOnly();
-
-    public TrustTransactionType TransactionType =>
-        OrderId is not null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal;
 
     public bool IsTerminal => Status is DisputeStatus.Resolved or DisputeStatus.Rejected;
 
@@ -194,8 +178,8 @@ public class Dispute
         AdminResolution = RequireText(resolution, "resolution", MaxResolutionLength);
         ResolvedByAdminId = adminUserId;
         ResolvedAtUtc = nowUtc;
-        // The dispute is closed: it no longer counts against the one-active-dispute-per-
-        // transaction rule, so release the filtered-unique key.
+        // The dispute is closed: it no longer counts against the one-active-dispute-per-order
+        // rule, so release the filtered-unique key.
         ActiveTransactionKey = null;
         Touch(nowUtc);
     }

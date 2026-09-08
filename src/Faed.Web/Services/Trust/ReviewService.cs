@@ -1,4 +1,4 @@
-﻿using Faed.Web.Authorization;
+using Faed.Web.Authorization;
 using Faed.Web.Models;
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
@@ -42,33 +42,27 @@ public sealed class ReviewService(
             return Result<Guid>.Validation($"A comment must be {Review.MaxCommentLength} characters or fewer.");
         }
 
-        var eligibility = await ResolveEligibilityAsync(userId, input.TransactionType, input.TransactionId, cancellationToken);
-        if (eligibility.Merchant is null)
-        {
-            return Result<Guid>.NotFound("That transaction was not found.");
-        }
-
-        if (!eligibility.IsParticipant)
+        var eligibility = await ResolveEligibilityAsync(userId, input.OrderId, cancellationToken);
+        if (eligibility.Merchant is null || !eligibility.IsParticipant)
         {
             // A non-participant learns nothing.
-            return Result<Guid>.NotFound("That transaction was not found.");
+            return Result<Guid>.NotFound("That order was not found.");
         }
 
         if (!eligibility.IsCompleted)
         {
-            return Result<Guid>.Validation("You can review a merchant only after the transaction is completed.");
+            return Result<Guid>.Validation("You can review a merchant only after the order is completed.");
         }
 
         if (eligibility.AlreadyReviewed)
         {
-            return Result<Guid>.Conflict("You have already reviewed this transaction.");
+            return Result<Guid>.Conflict("You have already reviewed this order.");
         }
 
         var review = new Review(
             eligibility.Merchant.Value,
             userId,
-            input.TransactionType == TrustTransactionType.B2COrder ? input.TransactionId : null,
-            input.TransactionType == TrustTransactionType.B2BDeal ? input.TransactionId : null,
+            input.OrderId,
             input.Rating,
             comment,
             clock.UtcNow);
@@ -81,23 +75,22 @@ public sealed class ReviewService(
         }
         catch (DbUpdateException ex)
         {
-            // The filtered unique index on the transaction FK is the backstop for the
-            // duplicate-review rule. Two submissions racing
-            // each other both pass the pre-check; the loser lands here.
-            logger.LogInformation(ex, "Duplicate review rejected for user {UserId} on {Type} {TransactionId}",
-                userId, input.TransactionType, input.TransactionId);
-            return Result<Guid>.Conflict("You have already reviewed this transaction.");
+            // The unique index on OrderId is the backstop for the duplicate-review rule. Two
+            // submissions racing each other both pass the pre-check; the loser lands here.
+            logger.LogInformation(ex, "Duplicate review rejected for user {UserId} on order {OrderId}",
+                userId, input.OrderId);
+            return Result<Guid>.Conflict("You have already reviewed this order.");
         }
 
-        logger.LogInformation("User {UserId} reviewed merchant {MerchantId} ({Rating}/5) for {Type} {TransactionId}",
-            userId, review.ReviewedMerchantProfileId, review.Rating, input.TransactionType, input.TransactionId);
+        logger.LogInformation("User {UserId} reviewed merchant {MerchantId} ({Rating}/5) for order {OrderId}",
+            userId, review.ReviewedMerchantProfileId, review.Rating, input.OrderId);
         return Result<Guid>.Success(review.Id);
     }
 
     public async Task<ReviewEligibilityView> GetEligibilityAsync(
-        string userId, TrustTransactionType transactionType, Guid transactionId, CancellationToken cancellationToken = default)
+        string userId, Guid orderId, CancellationToken cancellationToken = default)
     {
-        var eligibility = await ResolveEligibilityAsync(userId, transactionType, transactionId, cancellationToken);
+        var eligibility = await ResolveEligibilityAsync(userId, orderId, cancellationToken);
 
         if (eligibility.Merchant is null || !eligibility.IsParticipant)
         {
@@ -116,7 +109,7 @@ public sealed class ReviewService(
         {
             return new ReviewEligibilityView(
                 false, false, null,
-                "You can review this merchant once the transaction is completed.");
+                "You can review this merchant once the order is completed.");
         }
 
         return new ReviewEligibilityView(true, false, null, null);
@@ -136,8 +129,7 @@ public sealed class ReviewService(
             .Select(r => new MerchantReviewView(
                 r.Rating,
                 r.Comment,
-                r.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
-                r.OrderId != null ? "Individual buyer" : "Wholesale buyer",
+                "Buyer",
                 r.CreatedAtUtc))
             .ToListAsync(cancellationToken);
 
@@ -169,8 +161,7 @@ public sealed class ReviewService(
             .Select(r => new MerchantReviewView(
                 r.Rating,
                 r.Comment,
-                r.OrderId != null ? TrustTransactionType.B2COrder : TrustTransactionType.B2BDeal,
-                r.OrderId != null ? "Individual buyer" : "Wholesale buyer",
+                "Buyer",
                 r.CreatedAtUtc))
             .ToPagedResultAsync(page, Paging.DefaultPageSize, cancellationToken);
 
@@ -195,58 +186,27 @@ public sealed class ReviewService(
     // ---- Internals ---------------------------------------------------------
 
     private async Task<EligibilitySnapshot> ResolveEligibilityAsync(
-        string userId, TrustTransactionType type, Guid transactionId, CancellationToken cancellationToken)
+        string userId, Guid orderId, CancellationToken cancellationToken)
     {
-        if (type == TrustTransactionType.B2COrder)
-        {
-            var order = await db.Orders
-                .AsNoTracking()
-                .Where(o => o.Id == transactionId)
-                .Select(o => new { o.MerchantProfileId, o.BuyerUserId, o.Status })
-                .SingleOrDefaultAsync(cancellationToken);
-            if (order is null)
-            {
-                return EligibilitySnapshot.None;
-            }
-
-            var existing = await db.Reviews.AsNoTracking()
-                .SingleOrDefaultAsync(r => r.OrderId == transactionId, cancellationToken);
-
-            return new EligibilitySnapshot
-            {
-                Merchant = order.MerchantProfileId,
-                IsParticipant = order.BuyerUserId == userId,
-                IsCompleted = order.Status == OrderStatus.Completed,
-                ExistingReview = existing,
-            };
-        }
-
-        var deal = await db.B2BDeals
+        var order = await db.Orders
             .AsNoTracking()
-            .Where(d => d.Id == transactionId)
-            .Select(d => new { d.SellingMerchantProfileId, d.BuyingMerchantProfileId, d.Status })
+            .Where(o => o.Id == orderId)
+            .Select(o => new { o.MerchantProfileId, o.BuyerUserId, o.Status })
             .SingleOrDefaultAsync(cancellationToken);
-        if (deal is null)
+        if (order is null)
         {
             return EligibilitySnapshot.None;
         }
 
-        // Only the buying merchant reviews the selling merchant for a wholesale deal
-        var buyingMerchantUserId = await db.MerchantProfiles
-            .AsNoTracking()
-            .Where(m => m.Id == deal.BuyingMerchantProfileId)
-            .Select(m => m.UserId)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        var existingDealReview = await db.Reviews.AsNoTracking()
-            .SingleOrDefaultAsync(r => r.B2BDealId == transactionId, cancellationToken);
+        var existing = await db.Reviews.AsNoTracking()
+            .SingleOrDefaultAsync(r => r.OrderId == orderId, cancellationToken);
 
         return new EligibilitySnapshot
         {
-            Merchant = deal.SellingMerchantProfileId,
-            IsParticipant = buyingMerchantUserId == userId,
-            IsCompleted = deal.Status == B2BDealStatus.Completed,
-            ExistingReview = existingDealReview,
+            Merchant = order.MerchantProfileId,
+            IsParticipant = order.BuyerUserId == userId,
+            IsCompleted = order.Status == OrderStatus.Completed,
+            ExistingReview = existing,
         };
     }
 

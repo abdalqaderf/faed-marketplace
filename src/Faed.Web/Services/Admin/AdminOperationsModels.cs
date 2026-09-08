@@ -16,24 +16,13 @@ public sealed record AdminDashboardView(
     int ListingsAwaitingReview,
     int OpenDisputes,
     int OrdersInProgress,
-    int DealsAwaitingFulfillment,
-    int OpenNegotiations,
     int InactiveCatalogItems);
 
-// ---- Order / deal monitoring ---------------------------------------------------
+// ---- Order monitoring --------------------------------------------------------
 
 public enum AdminOrderFilter
 {
     /// <summary>Placed or in fulfilment — not yet in a terminal state.</summary>
-    InProgress = 0,
-    Completed = 1,
-    Cancelled = 2,
-    All = 3,
-}
-
-public enum AdminDealFilter
-{
-    /// <summary>Reserved stock, not yet completed or cancelled.</summary>
     InProgress = 0,
     Completed = 1,
     Cancelled = 2,
@@ -83,45 +72,7 @@ public sealed record AdminOrderDetailView(
     IReadOnlyList<AdminOrderLineView> Items,
     IReadOnlyList<AdminLinkedDisputeView> Disputes);
 
-public sealed record AdminDealRow(
-    Guid Id,
-    DateTime CreatedAtUtc,
-    B2BDealStatus Status,
-    B2BFulfillmentType FulfillmentType,
-    string SellingMerchantBusinessName,
-    string BuyingMerchantBusinessName,
-    int TotalUnits,
-    decimal Total);
-
-public sealed record AdminDealLineView(
-    string VariantSnapshot,
-    int Quantity,
-    decimal UnitPrice,
-    decimal LineTotal);
-
-public sealed record AdminDealDetailView(
-    Guid Id,
-    B2BDealStatus Status,
-    string? StatusReason,
-    B2BFulfillmentType FulfillmentType,
-    string? ShipmentReference,
-    decimal Subtotal,
-    decimal? ShippingCostSnapshot,
-    decimal Total,
-    string SellingMerchantBusinessName,
-    string SellingMerchantSlug,
-    string BuyingMerchantBusinessName,
-    string BuyingMerchantSlug,
-    string ListingTitle,
-    string ListingSlug,
-    DateTime CreatedAtUtc,
-    DateTime? CompletedAtUtc,
-    DateTime? CancelledAtUtc,
-    DateTime? ReservationExpiresAtUtc,
-    IReadOnlyList<AdminDealLineView> Lines,
-    IReadOnlyList<AdminLinkedDisputeView> Disputes);
-
-/// <summary>A dispute attached to the order or deal being viewed, shown for context.</summary>
+/// <summary>A dispute attached to the order being viewed, shown for context.</summary>
 public sealed record AdminLinkedDisputeView(
     Guid Id,
     DisputeStatus Status,
@@ -138,8 +89,7 @@ public sealed record AdminReviewRow(
     string? Comment,
     string ReviewedMerchantBusinessName,
     string ReviewedMerchantSlug,
-    TrustTransactionType TransactionType,
-    Guid TransactionId);
+    Guid OrderId);
 
 // ---- Audit log ---------------------------------------------------------------
 

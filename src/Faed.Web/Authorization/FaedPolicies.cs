@@ -17,12 +17,6 @@ public static class FaedPolicies
     public const string ApprovedMerchant = "ApprovedMerchant";
 
     /// <summary>
-    /// Requires an approved merchant who is not an administrator. Administrators may monitor
-    /// B2B activity, but cannot participate in negotiations.
-    /// </summary>
-    public const string CanNegotiateB2B = "CanNegotiateB2B";
-
-    /// <summary>
     /// Requires a Buyer or Merchant role and excludes administrators. Merchant remains an
     /// additive role, so an approved merchant can still act as a consumer
     /// </summary>

@@ -55,17 +55,9 @@
 
         <div class="faed-admin-activity-grid">
             <a class="faed-admin-activity-card" asp-controller="Transactions" asp-action="Orders">
-                <span>B2C orders in progress</span>
+                <span>Orders in progress</span>
                 <strong>@d.OrdersInProgress</strong>
             </a>
-            <a class="faed-admin-activity-card" asp-controller="Transactions" asp-action="Deals">
-                <span>B2B deals awaiting fulfilment</span>
-                <strong>@d.DealsAwaitingFulfillment</strong>
-            </a>
-            <div class="faed-admin-activity-card faed-admin-activity-card--static">
-                <span>Open B2B negotiations</span>
-                <strong>@d.OpenNegotiations</strong>
-            </div>
             <a class="faed-admin-activity-card" asp-controller="Catalog" asp-action="Index">
                 <span>Deactivated catalog items</span>
                 <strong>@d.InactiveCatalogItems</strong>

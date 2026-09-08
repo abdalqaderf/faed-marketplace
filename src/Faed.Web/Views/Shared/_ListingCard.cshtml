@@ -52,10 +52,6 @@
                     @if (Model.EffectivePrice is { } price)
                     {
                         @($"JOD {price:0.000}")
-                        if (Model.EffectivePriceIsWholesale)
-                        {
-                            <span class="faed-price__qualifier">/unit · wholesale</span>
-                        }
                     }
                     else
                     {
@@ -77,18 +73,5 @@
             </p>
         }
 
-        @if (Model.AllowB2C || Model.AllowB2B)
-        {
-            <div class="faed-chip-list faed-product-card__channels" aria-label="Available buying routes">
-                @if (Model.AllowB2C)
-                {
-                    <span class="faed-chip faed-chip--sm">Retail</span>
-                }
-                @if (Model.AllowB2B)
-                {
-                    <span class="faed-chip faed-chip--sm">Wholesale</span>
-                }
-            </div>
-        }
     </div>
 </article>

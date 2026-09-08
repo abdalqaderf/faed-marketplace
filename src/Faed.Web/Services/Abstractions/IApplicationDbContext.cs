@@ -55,20 +55,7 @@ public interface IApplicationDbContext
 
     DbSet<OrderItem> OrderItems { get; }
 
-    /// <summary>B2B merchant-to-merchant negotiations. Not a fulfillment record.</summary>
-    DbSet<B2BNegotiation> B2BNegotiations { get; }
-
-    /// <summary>Immutable offer/counter-offer revisions.</summary>
-    DbSet<B2BOfferRevision> B2BOfferRevisions { get; }
-
-    DbSet<B2BOfferLine> B2BOfferLines { get; }
-
-    /// <summary>Accepted B2B deals: the fulfillment record with its own reservation and stock.</summary>
-    DbSet<B2BDeal> B2BDeals { get; }
-
-    DbSet<B2BDealLine> B2BDealLines { get; }
-
-    /// <summary>Post-transaction disputes against exactly one order or deal.</summary>
+    /// <summary>Post-transaction disputes against one order.</summary>
     DbSet<Dispute> Disputes { get; }
 
     /// <summary>Private evidence files attached to a dispute.</summary>

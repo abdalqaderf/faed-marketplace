@@ -41,7 +41,6 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
         // JOD is stored with three decimal places everywhere.
         builder.Property(l => l.ReferencePrice).HasColumnType("decimal(18,3)");
         builder.Property(l => l.RetailPrice).HasColumnType("decimal(18,3)");
-        builder.Property(l => l.WholesaleIndicativeUnitPrice).HasColumnType("decimal(18,3)");
 
         // Persist the workflow enum as text so moderation queues and ad-hoc DB reads stay
         // legible.

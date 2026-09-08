@@ -109,17 +109,6 @@ builder.Services.AddAuthorization(options =>
                 .AddRequirements(
                     new ApprovedMerchantRequirement()));
 
-    // B2B participation is restricted to approved merchants.
-    options.AddPolicy(
-        FaedPolicies.CanNegotiateB2B,
-        policy =>
-            policy.RequireAuthenticatedUser()
-                .RequireAssertion(
-                    context =>
-                        !context.User.IsInRole(FaedRoles.Admin))
-                .AddRequirements(
-                    new ApprovedMerchantRequirement()));
-
     // B2C ordering belongs to Buyer accounts and merchants
     // acting as buyers. Administrators are excluded.
     options.AddPolicy(

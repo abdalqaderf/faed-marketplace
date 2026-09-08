@@ -19,31 +19,22 @@ public sealed record StaleListingView(
 /// listing data — never from a merchant-editable total. All money is <c>JOD</c> with three decimals.
 /// </summary>
 public sealed record MerchantAnalyticsView(
-    decimal RecoveredValueB2C,
-    decimal RecoveredValueB2B,
+    decimal RecoveredValue,
     int UnitsListed,
-    int UnitsSoldB2C,
-    int UnitsSoldB2B,
+    int UnitsSold,
     int CompletedOrders,
-    int CompletedDeals,
     double? AverageDaysToSale,
     int CancelledOrders,
     int NoShowOrders,
-    int CancelledDeals,
-    int ActiveNegotiations,
     IReadOnlyList<StaleListingView> StaleListings,
     TimeSpan StaleListingThreshold)
 {
-    public decimal RecoveredValueTotal => RecoveredValueB2C + RecoveredValueB2B;
-
-    public int UnitsSoldTotal => UnitsSoldB2C + UnitsSoldB2B;
-
     /// <summary>Units sold ÷ units listed, as a fraction in [0, 1]. Zero when nothing is listed.</summary>
-    public double SellThroughRate => UnitsListed == 0 ? 0d : (double)UnitsSoldTotal / UnitsListed;
+    public double SellThroughRate => UnitsListed == 0 ? 0d : (double)UnitsSold / UnitsListed;
 
     public bool HasAnyActivity =>
-        UnitsListed > 0 || CompletedOrders > 0 || CompletedDeals > 0
-        || CancelledOrders > 0 || CancelledDeals > 0 || ActiveNegotiations > 0;
+        UnitsListed > 0 || CompletedOrders > 0
+        || CancelledOrders > 0 || NoShowOrders > 0;
 
     /// <summary>The exact configured duration in concise, user-facing English.</summary>
     public string StaleListingThresholdLabel => FormatDuration(StaleListingThreshold);

@@ -22,7 +22,6 @@ public sealed class MerchantListingService(
     private const string MediaContainer = "listing-media";
     private const string EvidenceContainer = "listing-evidence";
     private const string ListingSlugIndex = "IX_Listings_Slug";
-    private const string B2BOfferLineVariantForeignKey = "FK_B2BOfferLines_ListingVariants_ListingVariantId";
     private const int MaxSlugAttempts = 5;
 
     private readonly ListingOptions _options = options.Value;
@@ -273,13 +272,6 @@ public sealed class MerchantListingService(
                     "This variant has a stock adjustment history. Deactivate it instead of removing it.");
             }
 
-            if (listing.Variants.Any(v => v.Id == variantId)
-                && await db.B2BOfferLines.AnyAsync(l => l.ListingVariantId == variantId, cancellationToken))
-            {
-                return Result.Validation(
-                    "This variant is part of wholesale offer history. Deactivate it instead of removing it.");
-            }
-
             listing.RemoveVariant(variantId, now);
             return Result.Success();
         }, cancellationToken);
@@ -526,21 +518,12 @@ public sealed class MerchantListingService(
             // concurrent requests adding the same combination.
             return Result.Conflict("A variant with this combination already exists on this listing.");
         }
-        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex, B2BOfferLineVariantForeignKey))
-        {
-            return Result.Validation(
-                "This variant is part of wholesale offer history. Deactivate it instead of removing it.");
-        }
 
         return Result.Success();
     }
 
     private void ApplyDetails(Listing listing, ListingDetailsInput input, DateTime now)
     {
-        var minimumQuantity = input.AllowB2B
-            ? input.WholesaleMinQuantity ?? _options.DefaultB2BMinimumQuantity
-            : input.WholesaleMinQuantity;
-
         listing.UpdateDetails(
             input.CategoryId,
             input.BrandId,
@@ -549,11 +532,6 @@ public sealed class MerchantListingService(
             input.Description,
             input.ReferencePrice,
             input.RetailPrice,
-            input.WholesaleIndicativeUnitPrice,
-            minimumQuantity,
-            input.AllowB2C,
-            input.AllowB2B,
-            input.AllowMixedVariantB2B,
             input.ReturnPolicyText,
             input.WarrantyText,
             input.IncludedItemsText,
@@ -564,11 +542,11 @@ public sealed class MerchantListingService(
 
     /// <summary>
     /// Checks everything the aggregate cannot see for itself: that the referenced catalog rows
-    /// exist and are active, and that the B2B minimum respects the configured launch floor
+    /// exist and are active.
     /// </summary>
     private async Task<Result> ValidateDetailsAsync(ListingDetailsInput input, CancellationToken cancellationToken)
     {
-        // A listing attaches to a leaf category, never a sector root: "Fashion Overstock"
+        // A listing attaches to a leaf category, never a sector root: the root
         // itself is not a shoppable category, and the reference
         // data offered to the form already excludes it — this rejects a crafted request that
         // posts the root id directly.
@@ -599,14 +577,6 @@ public sealed class MerchantListingService(
             {
                 return Result.Validation("One of the selected discount reasons is no longer available.");
             }
-        }
-
-        if (input.AllowB2B
-            && input.WholesaleMinQuantity is { } requested
-            && requested < _options.DefaultB2BMinimumQuantity)
-        {
-            return Result.Validation(
-                $"The B2B minimum order quantity cannot be below {_options.DefaultB2BMinimumQuantity} units.");
         }
 
         return Result.Success();

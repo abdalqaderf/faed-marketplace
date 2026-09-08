@@ -36,13 +36,6 @@ public static class DisputeStatusDisplay
         _ => reason.ToString(),
     };
 
-    public static string TransactionLabel(TrustTransactionType type) => type switch
-    {
-        TrustTransactionType.B2COrder => "B2C order",
-        TrustTransactionType.B2BDeal => "B2B deal",
-        _ => type.ToString(),
-    };
-
     public static string Stars(int rating) => new string('★', Math.Clamp(rating, 0, 5))
         + new string('☆', 5 - Math.Clamp(rating, 0, 5));
 }
