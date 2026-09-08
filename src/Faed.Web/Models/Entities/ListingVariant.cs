@@ -90,32 +90,6 @@ public class ListingVariant
     public bool IsSellable => IsActive && AvailableQuantity > 0;
 
     /// <summary>
-    /// Applies a manual stock correction and returns the new available quantity. Callers
-    /// record the movement as an <see cref="InventoryAdjustment"/> in the same transaction —
-    /// stock is never silently overwritten.
-    /// </summary>
-    public int AdjustAvailable(int quantityDelta, DateTime nowUtc)
-    {
-        if (quantityDelta == 0)
-        {
-            throw new DomainException("A stock adjustment must change the quantity.");
-        }
-
-        var target = (long)AvailableQuantity + quantityDelta;
-        if (target < 0)
-        {
-            throw new DomainException(
-                $"The adjustment would leave {target} units. Available stock cannot go below zero.");
-        }
-
-        // InitialQuantity is deliberately not moved: it is the opening balance of the
-        // stock-accounting invariant, and the adjustment totals live in InventoryAdjustment rows.
-        AvailableQuantity = (int)target;
-        UpdatedAtUtc = nowUtc;
-        return AvailableQuantity;
-    }
-
-    /// <summary>
     /// Moves <paramref name="quantity"/> units from available to reserved for a B2C order.
     /// The caller runs this inside a transaction whose write
     /// is protected by <see cref="RowVersion"/>, so two orders racing for the last unit

@@ -69,11 +69,6 @@
                 <div class="faed-listing-info__meta">
                     <a asp-controller="Shop" asp-action="Index"
                        asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a>
-                    @if (!string.IsNullOrWhiteSpace(Model.BrandName))
-                    {
-                        <span aria-hidden="true">·</span>
-                        <span>@Model.BrandName</span>
-                    }
                     <span aria-hidden="true">·</span>
                     <span>Reviewed listing</span>
                 </div>

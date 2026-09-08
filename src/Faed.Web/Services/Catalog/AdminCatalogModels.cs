@@ -18,11 +18,8 @@ public sealed record ConditionGradeView(
 public sealed record DiscountReasonView(
     Guid Id, string Code, string Name, string? Description, bool IsActive, int ListingCount);
 
-public sealed record BrandView(Guid Id, string Name, string Slug, bool IsActive, int ListingCount);
-
 /// <summary>Everything the admin catalog screen needs in one round trip.</summary>
 public sealed record AdminCatalogOverview(
     IReadOnlyList<CategoryNodeView> Categories,
     IReadOnlyList<ConditionGradeView> ConditionGrades,
-    IReadOnlyList<DiscountReasonView> DiscountReasons,
-    IReadOnlyList<BrandView> Brands);
+    IReadOnlyList<DiscountReasonView> DiscountReasons);

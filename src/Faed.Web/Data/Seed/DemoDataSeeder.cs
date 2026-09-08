@@ -2,7 +2,6 @@
 using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
-using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
@@ -20,7 +19,7 @@ namespace Faed.Web.Data.Seed;
 /// <summary>
 /// Deterministic development/demo data set for field validation and portfolio demonstration
 /// <para>
-/// Every merchant, listing, order, dispute and review it creates goes
+/// Every merchant, listing, order and review it creates goes
 /// through the <em>same</em> application services and the <em>same</em> production rules a
 /// real request would. It never writes aggregates directly, never bypasses moderation,
 /// authorization, price integrity or stock concurrency, and never relaxes a validation rule.
@@ -40,9 +39,7 @@ namespace Faed.Web.Data.Seed;
 /// run was interrupted (some demo accounts exist but the review does not),
 /// <see cref="SeedCoreAsync"/> first <em>purges</em> the partial demo data — in
 /// foreign-key-safe order — and then rebuilds it from scratch. Restarting the app is enough
-/// to recover; a manual <c>ef database drop</c> is not required. Reference data the run
-/// creates but does not own outright (the two demo brands) is looked up by name before
-/// creation, so a purge-and-rebuild cycle never leaves duplicate brand rows behind.
+/// to recover; a manual <c>ef database drop</c> is not required.
 /// </para>
 /// </summary>
 public static class DemoDataSeeder
@@ -173,28 +170,14 @@ public static class DemoDataSeeder
             .Where(p => userIds.Contains(p.UserId)).Select(p => p.Id).ToListAsync(cancellationToken);
         var listingIds = await db.Listings
             .Where(l => merchantIds.Contains(l.MerchantProfileId)).Select(l => l.Id).ToListAsync(cancellationToken);
-        var variantIds = await db.ListingVariants
-            .Where(v => listingIds.Contains(v.ListingId)).Select(v => v.Id).ToListAsync(cancellationToken);
         var orderIds = await db.Orders
             .Where(o => merchantIds.Contains(o.MerchantProfileId)).Select(o => o.Id).ToListAsync(cancellationToken);
-        var disputeIds = await db.Disputes
-            .Where(d => orderIds.Contains(d.OrderId))
-            .Select(d => d.Id).ToListAsync(cancellationToken);
 
-        await DeleteAsync(db, db.DisputeEvidence.Where(e => disputeIds.Contains(e.DisputeId)), cancellationToken);
-        await DeleteAsync(db, db.Disputes.Where(d => disputeIds.Contains(d.Id)), cancellationToken);
         await DeleteAsync(db, db.Reviews.Where(r => merchantIds.Contains(r.ReviewedMerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.Orders.Where(o => orderIds.Contains(o.Id)), cancellationToken);
-        await DeleteAsync(db, db.InventoryAdjustments.Where(a => variantIds.Contains(a.ListingVariantId)), cancellationToken);
         await DeleteAsync(db, db.MerchantLocations.Where(l => merchantIds.Contains(l.MerchantProfileId)), cancellationToken);
-        await DeleteAsync(db, db.MerchantDeliveryZones.Where(z => merchantIds.Contains(z.MerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.Listings.Where(l => listingIds.Contains(l.Id)), cancellationToken);
         await DeleteAsync(db, db.MerchantProfiles.Where(p => merchantIds.Contains(p.Id)), cancellationToken);
-        await DeleteAsync(db, db.AdminActionLogs.Where(a => userIds.Contains(a.AdminUserId)), cancellationToken);
-
-        // Demo brands are reference data, not merchant-owned rows, so they are intentionally
-        // not purged here: RunAsync looks an existing brand up by name before creating one
-        // (see GetOrCreateBrandAsync), so leaving them in place cannot produce a duplicate.
 
         foreach (var id in userIds)
         {
@@ -229,10 +212,7 @@ public static class DemoDataSeeder
         private readonly IListingModerationService _moderation;
         private readonly IMerchantStoreService _store;
         private readonly IOrderService _orders;
-        private readonly IDisputeService _disputes;
         private readonly IReviewService _reviews;
-        private readonly IInventoryService _inventory;
-        private readonly IAdminCatalogService _catalog;
         private readonly string _password;
         private readonly CancellationToken _ct;
 
@@ -247,10 +227,7 @@ public static class DemoDataSeeder
             _moderation = sp.GetRequiredService<IListingModerationService>();
             _store = sp.GetRequiredService<IMerchantStoreService>();
             _orders = sp.GetRequiredService<IOrderService>();
-            _disputes = sp.GetRequiredService<IDisputeService>();
             _reviews = sp.GetRequiredService<IReviewService>();
-            _inventory = sp.GetRequiredService<IInventoryService>();
-            _catalog = sp.GetRequiredService<IAdminCatalogService>();
 
             // A generous command timeout. The seed does not race anything in a real
             // Development database, but a CI box or a workstation running the whole test
@@ -275,21 +252,16 @@ public static class DemoDataSeeder
             await ConfigureFulfillmentAsync(merchantA, "Amman Threads — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
             await ConfigureFulfillmentAsync(merchantB, "Petra Footwear — Sweifieh", "8 Wakalat St", "Sweifieh");
 
-            // Admin-controlled brands: looked up by name
-            // before creation, so a purge-and-rebuild cycle never duplicates them.
-            var novaBasicsId = await GetOrCreateBrandAsync(adminId, "Nova Basics");
-            var trailHeadId = await GetOrCreateBrandAsync(adminId, "TrailHead");
-
             var tshirt = await CreateTshirtListingAsync(merchantA, adminId);
             var handbag = await CreateHandbagListingAsync(merchantA, adminId);
-            await CreateDenimJacketListingAsync(merchantA, adminId, novaBasicsId);
+            await CreateDenimJacketListingAsync(merchantA, adminId);
             await CreateWoolScarfListingAsync(merchantA, adminId);
             await CreateLeatherBeltListingAsync(merchantA, adminId);
             await CreateCanvasBackpackListingAsync(merchantA, adminId);
 
             await CreateSneakersListingAsync(merchantB, adminId);
             var clearance = await CreateClearanceListingAsync(merchantB, adminId);
-            var runningShoes = await CreateRunningShoesListingAsync(merchantB, adminId, trailHeadId);
+            var runningShoes = await CreateRunningShoesListingAsync(merchantB, adminId);
             await CreateLeatherSandalsListingAsync(merchantB, adminId);
             await CreateSportsSocksListingAsync(merchantB, adminId);
             await CreateShoeBagSetListingAsync(merchantB, adminId);
@@ -320,27 +292,10 @@ public static class DemoDataSeeder
             // One dispatched delivery order: demonstrates merchant-delivery fulfilment and the
             // OutForDelivery lifecycle state, left short of completion.
             var deliveryOrderId = await PlaceDeliveryOrderAsync(
-                buyerBId, merchantB, [(runningShoes.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
+                buyerBId, [(runningShoes.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
                 "14 Al Yarmouk St, Sweifieh, Amman");
             Ok(await _orders.ConfirmAsync(merchantB.UserId, deliveryOrderId, _ct), "confirm delivery demo order");
             Ok(await _orders.MarkOutForDeliveryAsync(merchantB.UserId, deliveryOrderId, _ct), "dispatch delivery demo order");
-
-            // One manual inventory adjustment: an extra carton found during a stockroom count.
-            OkValue(
-                await _inventory.AdjustStockAsync(merchantA.UserId, new StockAdjustmentInput(
-                    tshirt.VariantIds[0], InventoryAdjustmentType.StockFound, 5,
-                    "Found an extra carton of black medium tees during the seasonal stockroom count."), _ct),
-                "adjust demo tee inventory");
-
-            // One dispute: the buyer raises an issue on the dispatched delivery order; an admin
-            // takes it under review (a full audited lifecycle example, still visible in the queue).
-            var disputeId = OkValue(
-                await _disputes.FileDisputeAsync(buyerBId, new FileDisputeInput(
-                    deliveryOrderId, DisputeReasonCode.MissingItems,
-                    "One item was missing from the delivered order. Requesting a partial refund or replacement.",
-                    []), _ct),
-                "file demo dispute");
-            Ok(await _disputes.StartReviewAsync(adminId, disputeId, _ct), "start review of demo dispute");
 
             // One review: the buyer leaves a positive review on the completed B2C order.
             Ok(
@@ -446,22 +401,6 @@ public static class DemoDataSeeder
                 await _store.AddLocationAsync(merchant.UserId, new MerchantLocationInput(
                     locationName, address, area, "Amman", "Ask for the trade counter.", "Sun–Thu 10:00–18:00"), _ct),
                 $"add pickup location for {merchant.BusinessName}");
-            Ok(
-                await _store.AddDeliveryZoneAsync(merchant.UserId, new MerchantDeliveryZoneInput(
-                    "Amman — inside the ring road", 2.500m, 10.000m, "1–3 working days"), _ct),
-                $"add delivery zone for {merchant.BusinessName}");
-        }
-
-        private async Task<Guid> GetOrCreateBrandAsync(string adminId, string name)
-        {
-            var existing = await _db.Brands.AsNoTracking()
-                .Where(b => b.Name == name).Select(b => (Guid?)b.Id).FirstOrDefaultAsync(_ct);
-            if (existing is { } id)
-            {
-                return id;
-            }
-
-            return OkValue(await _catalog.CreateBrandAsync(adminId, name, _ct), $"create brand {name}");
         }
 
         // ---- Listings — Amman Threads (clothing / bags & accessories) ----------------
@@ -470,7 +409,7 @@ public static class DemoDataSeeder
         {
             // Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL × Colour Black/White.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), null, await GradeIdAsync("A"),
+                await CategoryIdAsync("clothing"), await GradeIdAsync("A"),
                 "Everyday Cotton Crew Tee (Overstock)",
                 "End-of-run stock of our best-selling 180gsm combed-cotton crew tee. Brand-new with tags; " +
                 "the only reason for the discount is that we over-ordered for the season.",
@@ -496,7 +435,7 @@ public static class DemoDataSeeder
         {
             // Listing 3 — Handbag, Condition D, Display Item, visible cosmetic-defect photo.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("D"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("D"),
                 "Structured Leather Tote — Display Unit",
                 "Former window-display tote in full-grain leather. Structurally perfect; there is light " +
                 "surface scuffing to one bottom corner from the display stand, shown in the defect photo.",
@@ -516,10 +455,10 @@ public static class DemoDataSeeder
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateDenimJacketListingAsync(DemoMerchant merchant, string adminId, Guid brandId)
+        private async Task<DemoListing> CreateDenimJacketListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), brandId, await GradeIdAsync("B"),
+                await CategoryIdAsync("clothing"), await GradeIdAsync("B"),
                 "Classic Indigo Denim Jacket (Past Season)",
                 "Last winter's colourway of our best-selling trucker jacket. Brand-new and unworn; the " +
                 "swing tags are present but the retail box was opened for a photo shoot, which is why it " +
@@ -547,7 +486,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateWoolScarfListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("A"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("A"),
                 "Charcoal Wool-Blend Scarf — Final Units",
                 "Soft brushed wool-blend scarf from our overstock run. New with tags; only a handful of " +
                 "units are left after our winter promotion.",
@@ -569,7 +508,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateLeatherBeltListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("C"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("C"),
                 "Genuine Leather Belt — Customer Return",
                 "Full-grain leather belt returned unused within our exchange window. Inspected, re-boxed " +
                 "and in full working order; sold at a discount because it can no longer be sold as new.",
@@ -591,7 +530,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateCanvasBackpackListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("B"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("B"),
                 "Heavyweight Canvas Backpack (Packaging Damage)",
                 "Durable waxed-canvas backpack with a padded laptop sleeve. Brand-new and unused; some " +
                 "retail boxes arrived crushed from the freight pallet, which is why these are discounted.",
@@ -620,7 +559,7 @@ public static class DemoDataSeeder
             // Listing 1 — Sneakers, Condition B, Past Season + Packaging Damage,
             // Size 41/42/43 × Colour Black.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), null, await GradeIdAsync("B"),
+                await CategoryIdAsync("shoes"), await GradeIdAsync("B"),
                 "Court Low Sneakers (Past Season)",
                 "Last season's colourway of our court low. The shoes are brand-new and unworn; some boxes " +
                 "are crushed or missing lids from warehouse handling, which is why they are discounted.",
@@ -649,7 +588,7 @@ public static class DemoDataSeeder
             // Listing 4 — a listing that ends up sold out, for public
             // sold-out behaviour. Opens with a small stock a demo buyer then clears.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), null, await GradeIdAsync("C"),
+                await CategoryIdAsync("clothing"), await GradeIdAsync("C"),
                 "Merino Half-Zip — Final Units",
                 "Customer-returned but unworn merino half-zips from our winter range. Inspected and " +
                 "re-tagged. Only a handful of units left.",
@@ -668,10 +607,10 @@ public static class DemoDataSeeder
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateRunningShoesListingAsync(DemoMerchant merchant, string adminId, Guid brandId)
+        private async Task<DemoListing> CreateRunningShoesListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), brandId, await GradeIdAsync("A"),
+                await CategoryIdAsync("shoes"), await GradeIdAsync("A"),
                 "TrailHead Runner — Overstock Colourway",
                 "A colourway we simply over-ordered for the season. New, unworn and boxed; nothing wrong " +
                 "with the pair, just more stock than we can sell at full price.",
@@ -696,7 +635,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateLeatherSandalsListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), null, await GradeIdAsync("D"),
+                await CategoryIdAsync("shoes"), await GradeIdAsync("D"),
                 "Leather Sandals — Display Unit",
                 "Former window-display sandals in tan leather. Structurally sound; there is a light mark " +
                 "on the strap from the display stand, shown in the defect photo.",
@@ -719,7 +658,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateSportsSocksListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("A"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("A"),
                 "Sports Socks 3-Pack — Final Units",
                 "Cushioned sports socks from our overstock run. New with tags; only a few packs are left.",
                 null, 6.500m,
@@ -740,7 +679,7 @@ public static class DemoDataSeeder
         private async Task<DemoListing> CreateShoeBagSetListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), null, await GradeIdAsync("C"),
+                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("C"),
                 "Travel Shoe Bag Set (3-Pack) — Cosmetic Defect",
                 "Drawstring travel bags for keeping shoes separate in a suitcase. New and unused; the " +
                 "printed logo is slightly off-centre on one bag in the set, which does not affect use.",
@@ -822,22 +761,19 @@ public static class DemoDataSeeder
             return OkValue(
                 await _orders.PlaceOrderAsync(buyerId, new PlaceOrderInput(
                     [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
-                    OrderFulfillmentType.Pickup, locationId, null, null, contactName, contactPhone, null), _ct),
+                    OrderFulfillmentType.Pickup, locationId, null, contactName, contactPhone, null), _ct),
                 "place demo order");
         }
 
         private async Task<Guid> PlaceDeliveryOrderAsync(
-            string buyerId, DemoMerchant merchant,
+            string buyerId,
             IReadOnlyList<(Guid VariantId, int Quantity)> lines, string contactName, string contactPhone,
             string deliveryAddress)
         {
-            var settings = await _store.GetSettingsAsync(merchant.UserId, _ct);
-            var zoneId = settings.DeliveryZones.First(z => z.IsActive).Id;
-
             return OkValue(
                 await _orders.PlaceOrderAsync(buyerId, new PlaceOrderInput(
                     [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
-                    OrderFulfillmentType.MerchantDelivery, null, zoneId, deliveryAddress, contactName, contactPhone, null), _ct),
+                    OrderFulfillmentType.MerchantDelivery, null, deliveryAddress, contactName, contactPhone, null), _ct),
                 "place demo delivery order");
         }
 

@@ -26,13 +26,6 @@ public sealed class AdminReviewMonitorPageModel
     public required PagedResult<AdminReviewRow> Reviews { get; init; }
 }
 
-public sealed class AdminAuditLogPageModel
-{
-    public required AdminAuditLogFilter Filter { get; init; }
-
-    public required PagedResult<AdminAuditLogRow> Entries { get; init; }
-}
-
 public sealed class AdminCatalogPageModel
 {
     public required AdminCatalogOverview Catalog { get; init; }

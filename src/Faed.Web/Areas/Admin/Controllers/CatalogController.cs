@@ -8,10 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Admin catalog management: the taxonomy, condition grades, discount reasons and controlled
-/// brands.
+/// Admin catalog management: the taxonomy, condition grades and discount reasons.
 /// Every write goes through <see cref="IAdminCatalogService"/>, which re-checks the admin
-/// role and records an audit entry.
+/// role.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = FaedPolicies.AdminOnly)]
@@ -74,21 +73,6 @@ public sealed class CatalogController(IAdminCatalogService catalog) : Controller
     public Task<IActionResult> SetDiscountReasonActive(Guid id, bool isActive, CancellationToken cancellationToken) =>
         After(catalog.SetDiscountReasonActiveAsync(User.RequireUserId(), id, isActive, cancellationToken),
             isActive ? "Discount reason activated." : "Discount reason deactivated.");
-
-    // ---- Brands ----
-
-    [HttpPost]
-    public Task<IActionResult> CreateBrand(string name, CancellationToken cancellationToken) =>
-        After(catalog.CreateBrandAsync(User.RequireUserId(), name ?? "", cancellationToken), "Brand created.");
-
-    [HttpPost]
-    public Task<IActionResult> RenameBrand(Guid id, string name, CancellationToken cancellationToken) =>
-        After(catalog.RenameBrandAsync(User.RequireUserId(), id, name ?? "", cancellationToken), "Brand renamed.");
-
-    [HttpPost]
-    public Task<IActionResult> SetBrandActive(Guid id, bool isActive, CancellationToken cancellationToken) =>
-        After(catalog.SetBrandActiveAsync(User.RequireUserId(), id, isActive, cancellationToken),
-            isActive ? "Brand activated." : "Brand deactivated.");
 
     private async Task<IActionResult> After(Task<Result> action, string successMessage)
     {

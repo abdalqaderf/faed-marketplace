@@ -20,7 +20,4 @@ public interface IAdminOperationsService
 
     Task<PagedResult<AdminReviewRow>> GetReviewsAsync(
         int page = 1, CancellationToken cancellationToken = default);
-
-    Task<PagedResult<AdminAuditLogRow>> GetAuditLogAsync(
-        AdminAuditLogFilter filter, int page = 1, CancellationToken cancellationToken = default);
 }

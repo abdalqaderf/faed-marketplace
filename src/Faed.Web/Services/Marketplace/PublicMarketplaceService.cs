@@ -116,17 +116,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             unresolved |= reasonId is null;
         }
 
-        Guid? brandId = null;
-        if (!string.IsNullOrWhiteSpace(query.BrandSlug))
-        {
-            brandId = await db.Brands
-                .AsNoTracking()
-                .Where(b => b.Slug == query.BrandSlug && b.IsActive)
-                .Select(b => (Guid?)b.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            unresolved |= brandId is null;
-        }
-
         var facets = await GetFacetsAsync(merchantId, launchCategoryIds, cancellationToken);
         var pageSize = Math.Clamp(query.PageSize <= 0 ? ShopQuery.DefaultPageSize : query.PageSize, 1, ShopQuery.MaxPageSize);
         var page = Math.Max(query.Page, 1);
@@ -156,11 +145,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
         if (reasonId is { } rid)
         {
             baseQuery = baseQuery.Where(l => l.DiscountReasons.Any(dr => dr.DiscountReasonId == rid));
-        }
-
-        if (brandId is { } bid)
-        {
-            baseQuery = baseQuery.Where(l => l.BrandId == bid);
         }
 
         // Variant-aware, not listing-aware: a size/colour filter must be satisfied by a single
@@ -278,16 +262,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             .Select(g => new { g.Code, g.Name, g.Description })
             .SingleAsync(cancellationToken);
 
-        string? brandName = null;
-        if (listing.BrandId is { } brandId)
-        {
-            brandName = await db.Brands
-                .AsNoTracking()
-                .Where(b => b.Id == brandId)
-                .Select(b => b.Name)
-                .SingleOrDefaultAsync(cancellationToken);
-        }
-
         var reasonIds = listing.DiscountReasons.Select(r => r.DiscountReasonId).ToList();
         var reasonNames = await db.DiscountReasons
             .AsNoTracking()
@@ -307,7 +281,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             listing.Description,
             category.Name,
             category.Slug,
-            brandName,
             grade.Code,
             grade.Name,
             grade.Description,
@@ -461,23 +434,9 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             scopedListings = scopedListings.Where(l => l.MerchantProfileId == mid);
         }
 
-        var brandIds = await scopedListings
-            .Where(l => l.BrandId != null)
-            .Select(l => l.BrandId!.Value)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        var brands = brandIds.Count == 0
-            ? []
-            : await db.Brands
-                .AsNoTracking()
-                .Where(b => brandIds.Contains(b.Id) && b.IsActive)
-                .OrderBy(b => b.Name)
-                .Select(b => new FacetOption(b.Slug, b.Name))
-                .ToListAsync(cancellationToken);
-
         var (sizes, colors) = await GetSizeAndColorFacetsAsync(scopedListings, cancellationToken);
 
-        return new ShopFacets(categories, conditions, reasons, brands, sizes, colors);
+        return new ShopFacets(categories, conditions, reasons, sizes, colors);
     }
 
     private static async Task<(IReadOnlyList<FacetOption> Sizes, IReadOnlyList<FacetOption> Colors)> GetSizeAndColorFacetsAsync(

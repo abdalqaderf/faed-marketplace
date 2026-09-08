@@ -1,6 +1,5 @@
 using Faed.Web.Models;
 using Faed.Web.Models.Entities;
-using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Common;
@@ -14,7 +13,6 @@ namespace Faed.Web.Services.Catalog;
 public sealed class AdminCatalogService(
     IApplicationDbContext db,
     IUserRoleService userRoles,
-    IClock clock,
     ILogger<AdminCatalogService> logger) : IAdminCatalogService
 {
     public async Task<AdminCatalogOverview> GetOverviewAsync(CancellationToken cancellationToken = default)
@@ -78,15 +76,7 @@ public sealed class AdminCatalogService(
                 db.Listings.Count(l => l.DiscountReasons.Any(x => x.DiscountReasonId == r.Id))))
             .ToListAsync(cancellationToken);
 
-        var brands = await db.Brands
-            .AsNoTracking()
-            .OrderBy(b => b.Name)
-            .Select(b => new BrandView(
-                b.Id, b.Name, b.Slug, b.IsActive,
-                db.Listings.Count(l => l.BrandId == b.Id)))
-            .ToListAsync(cancellationToken);
-
-        return new AdminCatalogOverview(orderedCategories, grades, reasons, brands);
+        return new AdminCatalogOverview(orderedCategories, grades, reasons);
     }
 
     // ---- Categories ---------------------------------------------------------
@@ -117,8 +107,6 @@ public sealed class AdminCatalogService(
             var slug = await UniqueCategorySlugAsync(cleanName, cancellationToken);
             var category = new Category(cleanName, slug, parentCategoryId, sortOrder);
             db.Categories.Add(category);
-            Audit(adminUserId, AdminActionType.CatalogItemCreated, nameof(Category), category.Id,
-                $"Created category \"{cleanName}\" ({slug}).");
             return Result<Guid>.Success(category.Id);
         }, cancellationToken);
 
@@ -148,8 +136,6 @@ public sealed class AdminCatalogService(
                 return Result.Validation(ex.Message);
             }
 
-            Audit(adminUserId, AdminActionType.CatalogItemUpdated, nameof(Category), category.Id,
-                $"Renamed category to \"{category.Name}\" (sort {sortOrder}).");
             return Result.Success();
         }, cancellationToken);
 
@@ -176,8 +162,6 @@ public sealed class AdminCatalogService(
             }
 
             category.SetActive(isActive);
-            Audit(adminUserId, AdminActionType.CatalogItemAvailabilityChanged, nameof(Category), category.Id,
-                $"{(isActive ? "Activated" : "Deactivated")} category \"{category.Name}\".");
             return Result.Success();
         }, cancellationToken);
 
@@ -203,8 +187,6 @@ public sealed class AdminCatalogService(
                 return Result.Validation(ex.Message);
             }
 
-            Audit(adminUserId, AdminActionType.CatalogItemUpdated, nameof(ConditionGrade), grade.Id,
-                $"Edited condition grade {grade.Code} copy.");
             return Result.Success();
         }, cancellationToken);
 
@@ -219,8 +201,6 @@ public sealed class AdminCatalogService(
             }
 
             grade.SetActive(isActive);
-            Audit(adminUserId, AdminActionType.CatalogItemAvailabilityChanged, nameof(ConditionGrade), grade.Id,
-                $"{(isActive ? "Activated" : "Deactivated")} condition grade {grade.Code}.");
             return Result.Success();
         }, cancellationToken);
 
@@ -253,8 +233,6 @@ public sealed class AdminCatalogService(
             }
 
             db.DiscountReasons.Add(reason);
-            Audit(adminUserId, AdminActionType.CatalogItemCreated, nameof(DiscountReason), reason.Id,
-                $"Created discount reason \"{reason.Name}\" ({cleanCode}).");
             return Result<Guid>.Success(reason.Id);
         }, cancellationToken);
 
@@ -277,8 +255,6 @@ public sealed class AdminCatalogService(
                 return Result.Validation(ex.Message);
             }
 
-            Audit(adminUserId, AdminActionType.CatalogItemUpdated, nameof(DiscountReason), reason.Id,
-                $"Edited discount reason {reason.Code} copy.");
             return Result.Success();
         }, cancellationToken);
 
@@ -293,76 +269,10 @@ public sealed class AdminCatalogService(
             }
 
             reason.SetActive(isActive);
-            Audit(adminUserId, AdminActionType.CatalogItemAvailabilityChanged, nameof(DiscountReason), reason.Id,
-                $"{(isActive ? "Activated" : "Deactivated")} discount reason {reason.Code}.");
-            return Result.Success();
-        }, cancellationToken);
-
-    // ---- Brands --------------------------------------------------------
-
-    public Task<Result<Guid>> CreateBrandAsync(
-        string adminUserId, string name, CancellationToken cancellationToken = default) =>
-        MutateAsync<Guid>(adminUserId, async () =>
-        {
-            var cleanName = (name ?? string.Empty).Trim();
-            if (cleanName.Length is 0 or > Brand.MaxNameLength)
-            {
-                return Result<Guid>.Validation($"A brand name of 1–{Brand.MaxNameLength} characters is required.");
-            }
-
-            var slug = await UniqueBrandSlugAsync(cleanName, cancellationToken);
-            var brand = new Brand(cleanName, slug);
-            db.Brands.Add(brand);
-            Audit(adminUserId, AdminActionType.CatalogItemCreated, nameof(Brand), brand.Id,
-                $"Created brand \"{cleanName}\" ({slug}).");
-            return Result<Guid>.Success(brand.Id);
-        }, cancellationToken);
-
-    public Task<Result> RenameBrandAsync(
-        string adminUserId, Guid brandId, string name, CancellationToken cancellationToken = default) =>
-        MutateAsync(adminUserId, async () =>
-        {
-            var brand = await db.Brands.SingleOrDefaultAsync(b => b.Id == brandId, cancellationToken);
-            if (brand is null)
-            {
-                return Result.NotFound("That brand was not found.");
-            }
-
-            try
-            {
-                brand.Rename(name);
-            }
-            catch (DomainException ex)
-            {
-                return Result.Validation(ex.Message);
-            }
-
-            Audit(adminUserId, AdminActionType.CatalogItemUpdated, nameof(Brand), brand.Id,
-                $"Renamed brand to \"{brand.Name}\".");
-            return Result.Success();
-        }, cancellationToken);
-
-    public Task<Result> SetBrandActiveAsync(
-        string adminUserId, Guid brandId, bool isActive, CancellationToken cancellationToken = default) =>
-        MutateAsync(adminUserId, async () =>
-        {
-            var brand = await db.Brands.SingleOrDefaultAsync(b => b.Id == brandId, cancellationToken);
-            if (brand is null)
-            {
-                return Result.NotFound("That brand was not found.");
-            }
-
-            brand.SetActive(isActive);
-            Audit(adminUserId, AdminActionType.CatalogItemAvailabilityChanged, nameof(Brand), brand.Id,
-                $"{(isActive ? "Activated" : "Deactivated")} brand \"{brand.Name}\".");
             return Result.Success();
         }, cancellationToken);
 
     // ---- Internals ----------------------------------------------------
-
-    private void Audit(string adminUserId, AdminActionType actionType, string targetType, Guid targetId, string notes) =>
-        db.AdminActionLogs.Add(new AdminActionLog(
-            adminUserId, actionType, targetType, targetId.ToString(), notes, clock.UtcNow));
 
     private async Task<Result> MutateAsync(
         string adminUserId, Func<Task<Result>> body, CancellationToken cancellationToken)
@@ -434,19 +344,6 @@ public sealed class AdminCatalogService(
         var slug = baseSlug;
         var counter = 2;
         while (await db.Categories.AsNoTracking().AnyAsync(c => c.Slug == slug, cancellationToken))
-        {
-            slug = $"{baseSlug}-{counter++}";
-        }
-
-        return slug;
-    }
-
-    private async Task<string> UniqueBrandSlugAsync(string name, CancellationToken cancellationToken)
-    {
-        var baseSlug = Slug.Truncate(Slug.Create(name, "brand"), Brand.MaxSlugLength - 6);
-        var slug = baseSlug;
-        var counter = 2;
-        while (await db.Brands.AsNoTracking().AnyAsync(b => b.Slug == slug, cancellationToken))
         {
             slug = $"{baseSlug}-{counter++}";
         }

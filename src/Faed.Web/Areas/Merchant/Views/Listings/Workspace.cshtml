@@ -134,17 +134,6 @@
                     </div>
 
                     <div class="faed-field">
-                        <label class="faed-field__label" asp-for="Form.BrandId">Brand (optional)</label>
-                        <select class="faed-select" asp-for="Form.BrandId" disabled="@(!canEdit)">
-                            <option value="">No brand</option>
-                            @foreach (var brand in referenceData.Brands)
-                            {
-                                <option value="@brand.Id">@brand.Label</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="faed-field">
                         <label class="faed-field__label" asp-for="Form.ConditionGradeId">Condition grade</label>
                         <select class="faed-select" asp-for="Form.ConditionGradeId" disabled="@(!canEdit)">
                             @foreach (var grade in referenceData.ConditionGrades)

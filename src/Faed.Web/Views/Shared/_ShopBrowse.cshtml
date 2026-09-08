@@ -194,10 +194,6 @@
                 {
                     <a class="faed-filter-chip" href="@FilterHrefWithout("Reason")" aria-label="Remove discount reason filter"><span>@FacetLabel(facets.DiscountReasons, filters.Reason, filters.Reason!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
-                @if (!string.IsNullOrWhiteSpace(filters.Brand))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Brand")" aria-label="Remove brand filter"><span>@FacetLabel(facets.Brands, filters.Brand, filters.Brand!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
                 @if (!string.IsNullOrWhiteSpace(filters.Size))
                 {
                     <a class="faed-filter-chip" href="@FilterHrefWithout("Size")" aria-label="Remove size filter"><span>Size @FacetLabel(facets.Sizes, filters.Size, filters.Size!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
@@ -288,23 +284,6 @@
                         </div>
                     </fieldset>
                 </details>
-
-                @if (facets.Brands.Count > 0)
-                {
-                    <details class="faed-filter-section">
-                        <summary><span>Brand</span><span class="faed-filter-section__summary-value">@(string.IsNullOrWhiteSpace(filters.Brand) ? "Any" : FacetLabel(facets.Brands, filters.Brand, filters.Brand!))</span></summary>
-                        <fieldset>
-                            <legend class="visually-hidden">Brand</legend>
-                            <div class="faed-filter-options">
-                                <label class="faed-filter-option"><input type="radio" name="Brand" value="" checked="@string.IsNullOrEmpty(filters.Brand)" /><span>Any brand</span></label>
-                                @foreach (var option in facets.Brands)
-                                {
-                                    <label class="faed-filter-option"><input type="radio" name="Brand" value="@option.Value" checked="@(filters.Brand == option.Value)" /><span>@option.Label</span></label>
-                                }
-                            </div>
-                        </fieldset>
-                    </details>
-                }
 
                 @if (facets.Sizes.Count > 0)
                 {

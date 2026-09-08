@@ -8,9 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
-/// Merchant fulfilment configuration: pickup locations and delivery zones a B2C order can
-/// use. Without
-/// at least one active option a merchant cannot receive orders.
+/// Merchant fulfilment configuration: the pickup locations a B2C order can use. Without at
+/// least one active location a merchant cannot receive orders.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.ApprovedMerchant)]
@@ -47,32 +46,6 @@ public sealed class StoreSettingsController(IMerchantStoreService store) : Contr
         var result = await store.SetLocationActiveAsync(User.RequireUserId(), id, isActive, cancellationToken);
         return await AfterMutationAsync(result, cancellationToken,
             isActive ? "Pickup location re-enabled." : "Pickup location disabled.", _ => { });
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> SaveZone(DeliveryZoneFormModel zoneForm, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayAsync(cancellationToken, m => m.ZoneForm = zoneForm);
-        }
-
-        var userId = User.RequireUserId();
-        var result = zoneForm.Id is { } id
-            ? await store.UpdateDeliveryZoneAsync(userId, id, zoneForm.ToInput(), cancellationToken)
-            : (await store.AddDeliveryZoneAsync(userId, zoneForm.ToInput(), cancellationToken));
-
-        return await AfterMutationAsync(result, cancellationToken,
-            zoneForm.Id is null ? "Delivery zone added." : "Delivery zone updated.",
-            m => m.ZoneForm = zoneForm);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> SetZoneActive(Guid id, bool isActive, CancellationToken cancellationToken)
-    {
-        var result = await store.SetDeliveryZoneActiveAsync(User.RequireUserId(), id, isActive, cancellationToken);
-        return await AfterMutationAsync(result, cancellationToken,
-            isActive ? "Delivery zone re-enabled." : "Delivery zone disabled.", _ => { });
     }
 
     private async Task<IActionResult> AfterMutationAsync(

@@ -108,74 +108,11 @@
 
     <div class="faed-panel faed-merchant-settings-section">
         <div>
-            <h2 class="faed-panel__title">Delivery zones</h2>
-            <p class="faed-panel__hint">Define the delivery areas, fees, minimums, and estimates you currently support.</p>
-        </div>
-        @if (settings.DeliveryZones.Count == 0)
-        {
-            <p class="faed-panel__hint">No delivery zones yet.</p>
-        }
-        else
-        {
-            <div class="faed-table-wrap">
-                <table class="faed-table">
-                    <thead>
-                        <tr><th scope="col">Name</th><th scope="col">Fee</th><th scope="col">Minimum order</th><th scope="col">Estimate</th><th scope="col">Status</th><th scope="col">Action</th></tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var zone in settings.DeliveryZones)
-                        {
-                            <tr>
-                                <td>@zone.Name</td>
-                                <td>JOD @zone.DeliveryFee.ToString("0.000")</td>
-                                <td>@(zone.MinimumOrderValue is { } min ? $"JOD {min:0.000}" : "—")</td>
-                                <td>@(zone.EstimatedDeliveryText ?? "—")</td>
-                                <td>
-                                    <span class="faed-badge @(zone.IsActive ? "faed-badge--approved" : "faed-badge--draft")">
-                                        @(zone.IsActive ? "Active" : "Disabled")
-                                    </span>
-                                </td>
-                                <td>
-                                    <form asp-action="SetZoneActive" asp-route-id="@zone.Id" asp-route-isActive="@(!zone.IsActive)" method="post">
-                                        <button type="submit" class="faed-btn faed-btn--ghost faed-btn--sm">
-                                            @(zone.IsActive ? "Disable" : "Enable")
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-
-        <div class="faed-merchant-settings-form">
-            <h3 class="faed-panel__title faed-panel__title--sm">Add a delivery zone</h3>
-            <p class="faed-panel__hint">The values below are shown to buyers during fulfilment selection.</p>
-            <form asp-action="SaveZone" method="post" class="faed-merchant-form-grid">
-                <div class="faed-field">
-                    <label class="faed-field__label" for="ZoneForm_Name">Name</label>
-                    <input class="faed-input" asp-for="ZoneForm.Name" placeholder="e.g. West Amman" />
-                    <span asp-validation-for="ZoneForm.Name" class="faed-field__error"></span>
-                </div>
-                <div class="faed-field">
-                    <label class="faed-field__label" for="ZoneForm_DeliveryFee">Delivery fee (JOD)</label>
-                    <input class="faed-input" asp-for="ZoneForm.DeliveryFee" type="number" step="0.001" min="0" />
-                    <span asp-validation-for="ZoneForm.DeliveryFee" class="faed-field__error"></span>
-                </div>
-                <div class="faed-field">
-                    <label class="faed-field__label" for="ZoneForm_MinimumOrderValue">Minimum order value (JOD, optional)</label>
-                    <input class="faed-input" asp-for="ZoneForm.MinimumOrderValue" type="number" step="0.001" min="0" />
-                    <span asp-validation-for="ZoneForm.MinimumOrderValue" class="faed-field__error"></span>
-                </div>
-                <div class="faed-field">
-                    <label class="faed-field__label" for="ZoneForm_EstimatedDeliveryText">Delivery estimate (optional)</label>
-                    <input class="faed-input" asp-for="ZoneForm.EstimatedDeliveryText" placeholder="e.g. 1–2 days" />
-                </div>
-                <div class="faed-merchant-form-actions faed-field--full">
-                    <button type="submit" class="faed-btn faed-btn--primary">Add zone</button>
-                </div>
-            </form>
+            <h2 class="faed-panel__title">Delivery</h2>
+            <p class="faed-panel__hint">
+                Faed does not model delivery areas or fees. A buyer who chooses delivery gives an
+                address at checkout, and you arrange the details and any charge with them directly.
+            </p>
         </div>
     </div>
 </div>

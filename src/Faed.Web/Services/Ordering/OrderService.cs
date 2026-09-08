@@ -69,14 +69,6 @@ public sealed class OrderService(
                 l.Id, l.Name, l.AddressLine + ", " + l.Area + ", " + l.City, l.PickupInstructions, l.PickupHoursText))
             .ToListAsync(cancellationToken);
 
-        var zones = await db.MerchantDeliveryZones
-            .AsNoTracking()
-            .Where(z => z.MerchantProfileId == listing.MerchantProfileId && z.IsActive)
-            .OrderBy(z => z.Name)
-            .Select(z => new DeliveryZoneOption(
-                z.Id, z.Name, z.DeliveryFee, z.MinimumOrderValue, z.EstimatedDeliveryText))
-            .ToListAsync(cancellationToken);
-
         return Result<CheckoutView>.Success(new CheckoutView(
             listing.Id,
             listing.Title,
@@ -87,8 +79,7 @@ public sealed class OrderService(
             $"Grade {listing.ConditionCode} — {listing.ConditionName}",
             listing.DiscountReasonNames,
             lines,
-            pickups,
-            zones));
+            pickups));
     }
 
     // ---- Place order -------------------------------------------------------------
@@ -196,14 +187,12 @@ public sealed class OrderService(
             }
         }
 
-        // Fulfilment: pickup at a merchant location, or delivery within a merchant zone. The
-        // fee and address text in force now are snapshotted onto the order
-        decimal deliveryFee;
+        // Fulfilment: pickup at a merchant location, or the merchant's own delivery to an
+        // address. Faed does not model a delivery fee — the parties settle that directly. The
+        // human-readable description in force now is snapshotted onto the order.
         string fulfillmentSnapshot;
         string? deliveryAddress = null;
         Guid? locationId = null;
-        Guid? zoneId = null;
-        MerchantDeliveryZone? zone = null;
 
         if (input.FulfillmentType == OrderFulfillmentType.Pickup)
         {
@@ -217,32 +206,19 @@ public sealed class OrderService(
             }
 
             locationId = location.Id;
-            deliveryFee = 0m;
             fulfillmentSnapshot = location.DescribeAddress()
                 + (location.PickupHoursText is { } hours ? $" · Hours: {hours}" : string.Empty)
                 + (location.PickupInstructions is { } note ? $" · {note}" : string.Empty);
         }
         else
         {
-            zone = input.DeliveryZoneId is { } zid
-                ? await db.MerchantDeliveryZones.AsNoTracking().SingleOrDefaultAsync(
-                    z => z.Id == zid && z.MerchantProfileId == merchantProfileId && z.IsActive, cancellationToken)
-                : null;
-            if (zone is null)
-            {
-                return Result<Guid>.Validation("Choose a delivery zone.");
-            }
-
             deliveryAddress = (input.DeliveryAddressText ?? string.Empty).Trim();
             if (deliveryAddress.Length == 0)
             {
                 return Result<Guid>.Validation("Enter the delivery address.");
             }
 
-            zoneId = zone.Id;
-            deliveryFee = zone.DeliveryFee;
-            fulfillmentSnapshot = $"Merchant delivery — {zone.Name} (fee JOD {zone.DeliveryFee:0.000})"
-                + (zone.EstimatedDeliveryText is { } estimate ? $" · {estimate}" : string.Empty);
+            fulfillmentSnapshot = $"Merchant delivery — {deliveryAddress}";
         }
 
         var gradeIds = orderListings.Select(l => l.ConditionGradeId).Distinct().ToList();
@@ -262,14 +238,6 @@ public sealed class OrderService(
                 .Where(r => reasonIds.Contains(r.Id))
                 .ToDictionaryAsync(r => r.Id, r => r.Name, cancellationToken);
 
-        var subtotal = variantIndex.Values.Sum(x => x.Listing.RetailPrice!.Value * requested[x.Variant.Id]);
-
-        if (zone?.MinimumOrderValue is { } minimum && subtotal < minimum)
-        {
-            return Result<Guid>.Validation(
-                $"This delivery zone needs a minimum order of JOD {minimum:0.000}. Your items total JOD {subtotal:0.000}.");
-        }
-
         var now = clock.UtcNow;
         Order order;
         try
@@ -279,8 +247,6 @@ public sealed class OrderService(
                 merchantProfileId,
                 input.FulfillmentType,
                 locationId,
-                zoneId,
-                deliveryFee,
                 fulfillmentSnapshot,
                 deliveryAddress,
                 contactName,
@@ -765,7 +731,6 @@ public sealed class OrderService(
             order.FulfillmentType,
             order.FulfillmentSnapshot,
             order.DeliveryAddressText,
-            order.DeliveryFeeSnapshot,
             order.Subtotal,
             order.Total,
             order.ContactName,

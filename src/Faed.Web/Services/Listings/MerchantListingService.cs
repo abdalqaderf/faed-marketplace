@@ -53,14 +53,7 @@ public sealed class MerchantListingService(
             .Select(r => new CatalogChoice(r.Id, r.Name))
             .ToListAsync(cancellationToken);
 
-        var brands = await db.Brands
-            .AsNoTracking()
-            .Where(b => b.IsActive)
-            .OrderBy(b => b.Name)
-            .Select(b => new CatalogChoice(b.Id, b.Name))
-            .ToListAsync(cancellationToken);
-
-        return new ListingReferenceData(categories, grades, reasons, brands);
+        return new ListingReferenceData(categories, grades, reasons);
     }
 
     public async Task<PagedResult<MerchantListingListItem>> GetMyListingsAsync(
@@ -262,18 +255,10 @@ public sealed class MerchantListingService(
 
     public Task<Result> RemoveVariantAsync(
         string userId, Guid listingId, Guid variantId, CancellationToken cancellationToken = default) =>
-        MutateAsync(userId, listingId, async (listing, now) =>
+        MutateAsync(userId, listingId, (listing, now) =>
         {
-            // The adjustment audit outlives the variant it describes, so a variant whose stock
-            // has already been corrected is deactivated rather than deleted
-            if (await db.InventoryAdjustments.AnyAsync(a => a.ListingVariantId == variantId, cancellationToken))
-            {
-                return Result.Validation(
-                    "This variant has a stock adjustment history. Deactivate it instead of removing it.");
-            }
-
             listing.RemoveVariant(variantId, now);
-            return Result.Success();
+            return Task.FromResult(Result.Success());
         }, cancellationToken);
 
     public Task<Result> SetVariantActiveAsync(
@@ -526,7 +511,6 @@ public sealed class MerchantListingService(
     {
         listing.UpdateDetails(
             input.CategoryId,
-            input.BrandId,
             input.ConditionGradeId,
             input.Title,
             input.Description,
@@ -560,12 +544,6 @@ public sealed class MerchantListingService(
         if (!await db.ConditionGrades.AnyAsync(g => g.Id == input.ConditionGradeId && g.IsActive, cancellationToken))
         {
             return Result.Validation("Choose a condition grade.");
-        }
-
-        if (input.BrandId is { } brandId
-            && !await db.Brands.AnyAsync(b => b.Id == brandId && b.IsActive, cancellationToken))
-        {
-            return Result.Validation("Choose a brand from the list, or leave it blank.");
         }
 
         var reasonIds = input.DiscountReasonIds.Distinct().ToList();

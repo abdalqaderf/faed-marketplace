@@ -81,7 +81,7 @@
                             <div class="faed-store-reviews__stars"
                                  aria-label="@($"Average rating {Model.Reviews.Summary.AverageRating:0.0} out of 5")">
                                 <span
-                                aria-hidden="true">@DisputeStatusDisplay.Stars((int)Math.Round(Model.Reviews.Summary.AverageRating))</span>
+                                aria-hidden="true">@ReviewDisplay.Stars((int)Math.Round(Model.Reviews.Summary.AverageRating))</span>
                             </div>
                             <p>Based on @Model.Reviews.Summary.ReviewCount buyer review@(Model.Reviews.Summary.ReviewCount == 1 ? "" :
                                         "s").</p>
@@ -93,7 +93,7 @@
                                     <li class="faed-store-review-card">
                                         <div class="faed-store-review-card__topline">
                                             <span class="faed-store-review-card__stars" aria-label="@($"{review.Rating} out of 5 stars")"><span
-                                                aria-hidden="true">@DisputeStatusDisplay.Stars(review.Rating)</span></span>
+                                                aria-hidden="true">@ReviewDisplay.Stars(review.Rating)</span></span>
                                                 <span>@AmmanTime.FormatDate(review.CreatedAtUtc)</span>
                                             </div>
                                             @if (!string.IsNullOrWhiteSpace(review.Comment))

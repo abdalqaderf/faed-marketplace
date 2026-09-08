@@ -3,13 +3,13 @@
 namespace Faed.Web.Services.Catalog;
 
 /// <summary>
-/// Admin management of the catalog reference data — the taxonomy, condition grades, discount
-/// reasons and controlled brands.
+/// Admin management of the catalog reference data — the taxonomy, condition grades and
+/// discount reasons.
 /// Reference rows are never deleted — an unused sector, grade or reason is deactivated so
 /// existing listings that reference it keep working. The
 /// stable natural keys (<c>Code</c>, <c>Slug</c>) the seeder and existing listings depend on
 /// are immutable; only display fields and availability change. Every change re-checks the
-/// admin role and is written with an <c>AdminActionLog</c> entry in one transaction
+/// admin role and is committed in one transaction.
 /// </summary>
 public interface IAdminCatalogService
 {
@@ -41,14 +41,4 @@ public interface IAdminCatalogService
 
     Task<Result> SetDiscountReasonActiveAsync(
         string adminUserId, Guid discountReasonId, bool isActive, CancellationToken cancellationToken = default);
-
-    // ---- Brands ----
-    Task<Result<Guid>> CreateBrandAsync(
-        string adminUserId, string name, CancellationToken cancellationToken = default);
-
-    Task<Result> RenameBrandAsync(
-        string adminUserId, Guid brandId, string name, CancellationToken cancellationToken = default);
-
-    Task<Result> SetBrandActiveAsync(
-        string adminUserId, Guid brandId, bool isActive, CancellationToken cancellationToken = default);
 }

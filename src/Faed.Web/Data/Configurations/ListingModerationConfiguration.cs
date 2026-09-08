@@ -37,36 +37,3 @@ public sealed class ListingModerationConfiguration : IEntityTypeConfiguration<Li
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-
-public sealed class InventoryAdjustmentConfiguration : IEntityTypeConfiguration<InventoryAdjustment>
-{
-    public void Configure(EntityTypeBuilder<InventoryAdjustment> builder)
-    {
-        builder.ToTable("InventoryAdjustments");
-
-        builder.HasKey(a => a.Id);
-        builder.Property(a => a.Id).ValueGeneratedNever();
-
-        builder.Property(a => a.ChangedByUserId)
-            .IsRequired()
-            .HasMaxLength(450);
-
-        builder.Property(a => a.AdjustmentType)
-            .HasConversion<string>()
-            .HasMaxLength(32)
-            .IsRequired();
-
-        builder.Property(a => a.Reason)
-            .IsRequired()
-            .HasMaxLength(InventoryAdjustment.MaxReasonLength);
-
-        builder.HasIndex(a => new { a.ListingVariantId, a.CreatedAtUtc });
-
-        // The audit trail outlives the listing edit that produced it: removing a variant must
-        // not erase the record of why its stock moved.
-        builder.HasOne<ListingVariant>()
-            .WithMany()
-            .HasForeignKey(a => a.ListingVariantId)
-            .OnDelete(DeleteBehavior.Restrict);
-    }
-}

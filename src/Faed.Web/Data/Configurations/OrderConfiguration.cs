@@ -12,7 +12,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.ToTable("Orders", table =>
             table.HasCheckConstraint(
                 "CK_Orders_NonNegativeMoney",
-                "[Subtotal] >= 0 AND [Total] >= 0 AND [DeliveryFeeSnapshot] >= 0"));
+                "[Subtotal] >= 0 AND [Total] >= 0"));
 
         builder.HasKey(o => o.Id);
         builder.Property(o => o.Id).ValueGeneratedNever();
@@ -36,7 +36,6 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         // JOD is stored with three decimal places everywhere.
         builder.Property(o => o.Subtotal).HasColumnType("decimal(18,3)");
         builder.Property(o => o.Total).HasColumnType("decimal(18,3)");
-        builder.Property(o => o.DeliveryFeeSnapshot).HasColumnType("decimal(18,3)");
 
         // Persist the workflow enums as text so order queues and ad-hoc DB reads stay legible
         builder.Property(o => o.Status)
@@ -67,8 +66,8 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasPrincipalKey(u => u.Id)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Transactional history is preserved, never cascade-deleted with a merchant, location
-        // or zone.
+        // Transactional history is preserved, never cascade-deleted with a merchant or
+        // location.
         builder.HasOne<MerchantProfile>()
             .WithMany()
             .HasForeignKey(o => o.MerchantProfileId)
@@ -77,11 +76,6 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasOne<MerchantLocation>()
             .WithMany()
             .HasForeignKey(o => o.MerchantLocationId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<MerchantDeliveryZone>()
-            .WithMany()
-            .HasForeignKey(o => o.DeliveryZoneId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Navigation(o => o.Items).HasField("_items");

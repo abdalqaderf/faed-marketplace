@@ -41,7 +41,7 @@
                         <tr>
                             <td>@AmmanTime.FormatDate(r.CreatedAtUtc)</td>
                             <td><a asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@r.ReviewedMerchantSlug">@r.ReviewedMerchantBusinessName</a></td>
-                            <td><span aria-hidden="true">@DisputeStatusDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
+                            <td><span aria-hidden="true">@ReviewDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
                             <td>@(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment)</td>
                         </tr>
                     }

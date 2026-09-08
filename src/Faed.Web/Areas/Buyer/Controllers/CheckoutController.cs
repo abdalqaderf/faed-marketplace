@@ -76,7 +76,6 @@ public sealed class CheckoutController(IOrderService orders) : Controller
             lines,
             form.FulfillmentType,
             form.FulfillmentType == OrderFulfillmentType.Pickup ? form.MerchantLocationId : null,
-            form.FulfillmentType == OrderFulfillmentType.MerchantDelivery ? form.DeliveryZoneId : null,
             form.DeliveryAddressText,
             form.ContactName,
             form.ContactPhone,
@@ -96,7 +95,7 @@ public sealed class CheckoutController(IOrderService orders) : Controller
     private static CheckoutFormModel NewForm(CheckoutView checkout) => new()
     {
         ListingSlug = checkout.ListingSlug,
-        FulfillmentType = checkout.CanPickup ? OrderFulfillmentType.Pickup : OrderFulfillmentType.MerchantDelivery,
+        FulfillmentType = OrderFulfillmentType.Pickup,
         Lines = checkout.Lines.Select(l => new CheckoutLineFormModel { VariantId = l.VariantId, Quantity = 0 }).ToList(),
     };
 

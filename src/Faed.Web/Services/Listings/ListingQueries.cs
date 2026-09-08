@@ -50,16 +50,6 @@ internal static class ListingQueries
             .Select(g => new { g.Code, g.Name, g.Description })
             .SingleOrDefaultAsync(cancellationToken);
 
-        string? brandName = null;
-        if (listing.BrandId is { } brandId)
-        {
-            brandName = await db.Brands
-                .AsNoTracking()
-                .Where(b => b.Id == brandId)
-                .Select(b => b.Name)
-                .SingleOrDefaultAsync(cancellationToken);
-        }
-
         var reasonIds = listing.DiscountReasons.Select(r => r.DiscountReasonId).ToList();
         var reasonNames = await db.DiscountReasons
             .AsNoTracking()
@@ -89,8 +79,6 @@ internal static class ListingQueries
             listing.Description,
             listing.CategoryId,
             categoryName,
-            listing.BrandId,
-            brandName,
             listing.ConditionGradeId,
             grade?.Code ?? "?",
             grade?.Name ?? "Unknown condition",

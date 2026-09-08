@@ -11,7 +11,6 @@ namespace Faed.Web.Services.Listings;
 /// </summary>
 public sealed record ListingDetailsInput(
     Guid CategoryId,
-    Guid? BrandId,
     Guid ConditionGradeId,
     string Title,
     string Description,
@@ -50,13 +49,6 @@ public sealed record AddReferencePriceEvidenceInput(
     string? OriginalFileName,
     string? ContentType,
     long LengthBytes);
-
-/// <summary>A manual stock correction, always accompanied by a reason.</summary>
-public sealed record StockAdjustmentInput(
-    Guid VariantId,
-    InventoryAdjustmentType AdjustmentType,
-    int QuantityDelta,
-    string Reason);
 
 // ---- Views -------------------------------------------------------------------------
 
@@ -134,8 +126,6 @@ public sealed record ListingDetailView(
     string Description,
     Guid CategoryId,
     string CategoryName,
-    Guid? BrandId,
-    string? BrandName,
     Guid ConditionGradeId,
     string ConditionCode,
     string ConditionName,
@@ -195,61 +185,13 @@ public sealed record ModerationQueueItem(
     decimal? ReferencePrice,
     bool HasReferencePriceEvidence);
 
-/// <summary>A variant row in the merchant's inventory screen.</summary>
-public sealed record InventoryRow(
-    Guid VariantId,
-    Guid ListingId,
-    string ListingTitle,
-    ListingStatus ListingStatus,
-    string Sku,
-    IReadOnlyList<VariantOptionView> Options,
-    int AvailableQuantity,
-    int ReservedQuantity,
-    int SoldQuantity,
-    bool IsActive,
-    DateTime UpdatedAtUtc)
-{
-    public string Combination => Options.Count == 0
-        ? "Single variant"
-        : string.Join(" · ", Options.Select(o => $"{o.Option}: {o.Value}"));
-}
-
-/// <summary>
-/// Counts across a merchant's <em>entire</em> inventory, independent of which page of
-/// <see cref="InventoryRow"/> is on screen. "Low stock" reuses the same &le;3-unit convention
-/// as the public marketplace (<c>PublicMarketplaceModels.IsLowStock</c>).
-/// </summary>
-public sealed record InventorySummary(
-    int ActiveVariantCount,
-    int LowStockVariantCount,
-    int AvailableUnitsTotal,
-    int ReservedUnitsTotal)
-{
-    public const int LowStockThreshold = 3;
-
-    public static InventorySummary Empty { get; } = new(0, 0, 0, 0);
-}
-
-public sealed record InventoryAdjustmentView(
-    Guid Id,
-    Guid VariantId,
-    string Sku,
-    string ListingTitle,
-    InventoryAdjustmentType AdjustmentType,
-    int QuantityDelta,
-    int QuantityBefore,
-    int QuantityAfter,
-    string Reason,
-    DateTime CreatedAtUtc);
-
 public sealed record CatalogChoice(Guid Id, string Label);
 
 /// <summary>The DB-driven choices a listing form offers. Nothing here is hard-coded.</summary>
 public sealed record ListingReferenceData(
     IReadOnlyList<CatalogChoice> Categories,
     IReadOnlyList<CatalogChoice> ConditionGrades,
-    IReadOnlyList<CatalogChoice> DiscountReasons,
-    IReadOnlyList<CatalogChoice> Brands);
+    IReadOnlyList<CatalogChoice> DiscountReasons);
 
 /// <summary>Which listings a queue or list should return.</summary>
 public enum MerchantListingFilter

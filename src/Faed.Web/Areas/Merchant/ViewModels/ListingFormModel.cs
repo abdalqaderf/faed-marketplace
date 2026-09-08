@@ -14,9 +14,6 @@ public sealed class ListingFormModel
     [Display(Name = "Category")]
     public Guid? CategoryId { get; set; }
 
-    [Display(Name = "Brand")]
-    public Guid? BrandId { get; set; }
-
     [Required(ErrorMessage = "Choose a condition grade.")]
     [Display(Name = "Condition grade")]
     public Guid? ConditionGradeId { get; set; }
@@ -58,7 +55,6 @@ public sealed class ListingFormModel
 
     public ListingDetailsInput ToInput() => new(
         CategoryId!.Value,
-        BrandId,
         ConditionGradeId!.Value,
         Title,
         Description,
@@ -73,7 +69,6 @@ public sealed class ListingFormModel
     public static ListingFormModel FromDetail(ListingDetailView listing) => new()
     {
         CategoryId = listing.CategoryId,
-        BrandId = listing.BrandId,
         ConditionGradeId = listing.ConditionGradeId,
         Title = listing.Title,
         Description = listing.Description,

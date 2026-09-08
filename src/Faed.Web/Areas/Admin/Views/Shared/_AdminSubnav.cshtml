@@ -27,8 +27,7 @@
             Label = "Transactions & operations",
             Links = new[]
             {
-                (Section: "Orders", Controller: "Transactions", Action: "Orders", Label: "Orders", Icon: "receipt"),
-                (Section: "Disputes", Controller: "Disputes", Action: "Index", Label: "Disputes", Icon: "alert-circle")
+                (Section: "Orders", Controller: "Transactions", Action: "Orders", Label: "Orders", Icon: "receipt")
             }
         },
         new
@@ -36,8 +35,7 @@
             Label = "Trust & governance",
             Links = new[]
             {
-                (Section: "Reviews", Controller: "Reviews", Action: "Index", Label: "Reviews", Icon: "star"),
-                (Section: "AuditLog", Controller: "AuditLog", Action: "Index", Label: "Audit Log", Icon: "document")
+                (Section: "Reviews", Controller: "Reviews", Action: "Index", Label: "Reviews", Icon: "star")
             }
         }
     };
@@ -49,9 +47,7 @@
         "ListingModeration" => "Listing Moderation",
         "Catalog" => "Catalog",
         "Orders" => "Orders",
-        "Disputes" => "Disputes",
         "Reviews" => "Reviews",
-        "AuditLog" => "Audit Log",
         _ => "Admin Workspace"
     };
 }

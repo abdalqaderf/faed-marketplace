@@ -10,12 +10,6 @@ public sealed record MerchantLocationInput(
     string? PickupInstructions,
     string? PickupHoursText);
 
-public sealed record MerchantDeliveryZoneInput(
-    string Name,
-    decimal DeliveryFee,
-    decimal? MinimumOrderValue,
-    string? EstimatedDeliveryText);
-
 // ---- Views -----------------------------------------------------------------------
 
 public sealed record MerchantLocationView(
@@ -28,19 +22,9 @@ public sealed record MerchantLocationView(
     string? PickupHoursText,
     bool IsActive);
 
-public sealed record MerchantDeliveryZoneView(
-    Guid Id,
-    string Name,
-    decimal DeliveryFee,
-    decimal? MinimumOrderValue,
-    string? EstimatedDeliveryText,
-    bool IsActive);
-
 /// <summary>Everything the merchant's Store Settings screen shows about fulfilment options.</summary>
 public sealed record MerchantStoreSettingsView(
-    IReadOnlyList<MerchantLocationView> Locations,
-    IReadOnlyList<MerchantDeliveryZoneView> DeliveryZones)
+    IReadOnlyList<MerchantLocationView> Locations)
 {
-    public bool HasActiveFulfillment =>
-        Locations.Any(l => l.IsActive) || DeliveryZones.Any(z => z.IsActive);
+    public bool HasActiveFulfillment => Locations.Any(l => l.IsActive);
 }

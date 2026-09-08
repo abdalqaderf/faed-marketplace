@@ -36,8 +36,6 @@ public sealed class MerchantAnalyticsService(
             .Where(o => o.MerchantProfileId == mid && o.Status == OrderStatus.Completed);
 
         // ---- Recovered value: completed orders only, from immutable line snapshots ----
-        // The delivery-fee snapshot is deliberately excluded: recovered value is the value
-        // recovered *from inventory*, not fulfilment charges.
         var recoveredValue = await completedOrders
             .SelectMany(o => o.Items)
             .SumAsync(i => (decimal?)i.LineTotalSnapshot, cancellationToken) ?? 0m;
@@ -46,26 +44,12 @@ public sealed class MerchantAnalyticsService(
             .SelectMany(o => o.Items)
             .SumAsync(i => (int?)i.Quantity, cancellationToken) ?? 0;
 
-        // ---- Units listed: introduced supply = opening balance + every positive adjustment ----
-        // Negative adjustments explain units removed from sale; they do not undo the fact that
-        // those units were introduced.
-        var initialUnits = await db.Listings
+        // ---- Units listed: introduced supply, taken from each variant's opening balance ----
+        var unitsListed = await db.Listings
             .AsNoTracking()
             .Where(l => l.MerchantProfileId == mid)
             .SelectMany(l => l.Variants)
             .SumAsync(v => (int?)v.InitialQuantity, cancellationToken) ?? 0;
-
-        var positivelyAdjustedUnits = await (
-            from adjustment in db.InventoryAdjustments.AsNoTracking()
-            join variant in db.ListingVariants.AsNoTracking()
-                on adjustment.ListingVariantId equals variant.Id
-            join listing in db.Listings.AsNoTracking()
-                on variant.ListingId equals listing.Id
-            where listing.MerchantProfileId == mid && adjustment.QuantityDelta > 0
-            select (int?)adjustment.QuantityDelta)
-            .SumAsync(cancellationToken) ?? 0;
-
-        var unitsListed = checked(initialUnits + positivelyAdjustedUnits);
 
         // ---- Order volume and cancellations ----
         var orderCountsByStatus = await db.Orders

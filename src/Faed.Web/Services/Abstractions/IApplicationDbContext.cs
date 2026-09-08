@@ -23,15 +23,11 @@ public interface IApplicationDbContext
 
     DbSet<MerchantVerificationDocument> MerchantVerificationDocuments { get; }
 
-    DbSet<AdminActionLog> AdminActionLogs { get; }
-
     DbSet<Category> Categories { get; }
 
     DbSet<ConditionGrade> ConditionGrades { get; }
 
     DbSet<DiscountReason> DiscountReasons { get; }
-
-    DbSet<Brand> Brands { get; }
 
     DbSet<Listing> Listings { get; }
 
@@ -44,22 +40,12 @@ public interface IApplicationDbContext
 
     DbSet<ListingModeration> ListingModerations { get; }
 
-    DbSet<InventoryAdjustment> InventoryAdjustments { get; }
-
     DbSet<MerchantLocation> MerchantLocations { get; }
-
-    DbSet<MerchantDeliveryZone> MerchantDeliveryZones { get; }
 
     /// <summary>B2C orders. One buyer, one selling merchant, one or more variant lines.</summary>
     DbSet<Order> Orders { get; }
 
     DbSet<OrderItem> OrderItems { get; }
-
-    /// <summary>Post-transaction disputes against one order.</summary>
-    DbSet<Dispute> Disputes { get; }
-
-    /// <summary>Private evidence files attached to a dispute.</summary>
-    DbSet<DisputeEvidence> DisputeEvidence { get; }
 
     /// <summary>Merchant reviews left after a completed transaction.</summary>
     DbSet<Review> Reviews { get; }

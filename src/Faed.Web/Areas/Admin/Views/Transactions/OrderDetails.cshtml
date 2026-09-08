@@ -80,32 +80,8 @@
                     </tr>
                 }
                 <tr><th scope="row" colspan="5">Subtotal</th><td>JOD @o.Subtotal.ToString("0.000")</td></tr>
-                <tr><th scope="row" colspan="5">Fulfilment fee</th><td>JOD @o.DeliveryFeeSnapshot.ToString("0.000")</td></tr>
                 <tr><th scope="row" colspan="5">Total</th><td><strong>JOD @o.Total.ToString("0.000")</strong></td></tr>
             </tbody>
         </table>
     </div>
-
-    @if (o.Disputes.Count > 0)
-    {
-        <h2 class="faed-section__title">Disputes</h2>
-        <div class="faed-table-wrap">
-            <table class="faed-table faed-admin-table">
-                <thead>
-                    <tr><th scope="col">Raised</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col"></th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var dp in o.Disputes)
-                    {
-                        <tr>
-                            <td>@AmmanTime.FormatDate(dp.CreatedAtUtc)</td>
-                            <td>@DisputeStatusDisplay.ReasonLabel(dp.ReasonCode)</td>
-                            <td><span class="@DisputeStatusDisplay.BadgeClass(dp.Status)">@DisputeStatusDisplay.Label(dp.Status)</span></td>
-                            <td><a asp-controller="Disputes" asp-action="Details" asp-route-id="@dp.Id">Open</a></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
 </div>

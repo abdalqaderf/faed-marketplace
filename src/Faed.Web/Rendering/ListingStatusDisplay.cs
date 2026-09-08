@@ -49,14 +49,6 @@ public static class ListingStatusDisplay
         _ => type.ToString(),
     };
 
-    public static string AdjustmentTypeLabel(InventoryAdjustmentType type) => type switch
-    {
-        InventoryAdjustmentType.StockFound => "Stock found",
-        InventoryAdjustmentType.StockLostOrDamaged => "Lost or damaged",
-        InventoryAdjustmentType.ManualCorrection => "Manual correction",
-        _ => type.ToString(),
-    };
-
     public static string ModerationStatusLabel(ListingModerationStatus status) => status switch
     {
         ListingModerationStatus.Pending => "Pending",

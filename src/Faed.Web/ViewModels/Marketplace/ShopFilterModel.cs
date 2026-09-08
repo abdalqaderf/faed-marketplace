@@ -30,8 +30,6 @@ public sealed class ShopFilterModel
 
     public string? Reason { get; set; }
 
-    public string? Brand { get; set; }
-
     public string? Size { get; set; }
 
     public string? Color { get; set; }
@@ -77,7 +75,7 @@ public sealed class ShopFilterModel
         var page = Page < 1 ? 1 : Page;
 
         return new(
-            Category, Condition, Reason, Brand, Size, Color, minPrice, maxPrice, channel, sort,
+            Category, Condition, Reason, Size, Color, minPrice, maxPrice, channel, sort,
             string.IsNullOrEmpty(searchText) ? null : searchText, merchantSlug,
             page, ShopQuery.DefaultPageSize);
     }
@@ -91,7 +89,6 @@ public sealed class ShopFilterModel
         (!string.IsNullOrWhiteSpace(Category) ? 1 : 0) +
         (!string.IsNullOrWhiteSpace(Condition) ? 1 : 0) +
         (!string.IsNullOrWhiteSpace(Reason) ? 1 : 0) +
-        (!string.IsNullOrWhiteSpace(Brand) ? 1 : 0) +
         (!string.IsNullOrWhiteSpace(Size) ? 1 : 0) +
         (!string.IsNullOrWhiteSpace(Color) ? 1 : 0) +
         (MinPrice is not null || MaxPrice is not null ? 1 : 0) +
@@ -110,7 +107,6 @@ public sealed class ShopFilterModel
         ["Category"] = Category,
         ["Condition"] = Condition,
         ["Reason"] = Reason,
-        ["Brand"] = Brand,
         ["Size"] = Size,
         ["Color"] = Color,
         ["MinPrice"] = MinPrice?.ToString(CultureInfo.InvariantCulture),

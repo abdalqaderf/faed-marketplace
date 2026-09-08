@@ -7,8 +7,8 @@ namespace Faed.Web.Services.Listings;
 /// Admin listing moderation. The reviewing admin is re-checked against the Identity role
 /// inside every method: the MVC route is already behind the AdminOnly policy, but the service
 /// contract does not trust its caller.
-/// Decisions are written with their <c>AdminActionLog</c> entry in one transaction, so a
-/// moderation outcome always has an audit trail.
+/// Each decision appends a new <c>ListingModeration</c> row through the aggregate — the
+/// moderation history is append-only and never rewritten.
 /// </summary>
 public interface IListingModerationService
 {

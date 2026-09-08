@@ -22,7 +22,6 @@ public sealed class MerchantVerificationService(
     ILogger<MerchantVerificationService> logger) : IMerchantVerificationService
 {
     private const string VerificationContainer = "merchant-verification";
-    private const string MerchantProfileTargetType = nameof(MerchantProfile);
     private const string MerchantProfilePublicSlugIndex = "IX_MerchantProfiles_PublicSlug";
     private const string MerchantProfileUserIdIndex = "IX_MerchantProfiles_UserId";
     private const int MaxCreateAttempts = 3;
@@ -384,8 +383,7 @@ public sealed class MerchantVerificationService(
             adminUserId,
             merchantProfileId,
             (profile, now) => profile.Approve(adminUserId, now),
-            AdminActionType.MerchantApproved,
-            notes: null,
+            "approve",
             grantMerchantRole: true,
             cancellationToken);
 
@@ -400,8 +398,7 @@ public sealed class MerchantVerificationService(
             adminUserId,
             merchantProfileId,
             (profile, now) => profile.Reject(adminUserId, reason, now),
-            AdminActionType.MerchantRejected,
-            notes: reason.Trim(),
+            "reject",
             grantMerchantRole: false,
             cancellationToken);
     }
@@ -417,8 +414,7 @@ public sealed class MerchantVerificationService(
             adminUserId,
             merchantProfileId,
             (profile, now) => profile.Suspend(adminUserId, reason, now),
-            AdminActionType.MerchantSuspended,
-            notes: reason.Trim(),
+            "suspend",
             grantMerchantRole: false,
             cancellationToken);
     }
@@ -428,8 +424,7 @@ public sealed class MerchantVerificationService(
             adminUserId,
             merchantProfileId,
             (profile, now) => profile.Reinstate(adminUserId, now),
-            AdminActionType.MerchantReinstated,
-            notes: null,
+            "reinstate",
             grantMerchantRole: true,
             cancellationToken);
 
@@ -457,14 +452,9 @@ public sealed class MerchantVerificationService(
             return Result<StoredFileContent>.NotFound("The stored file is no longer available.");
         }
 
-        db.AdminActionLogs.Add(new AdminActionLog(
-            adminUserId,
-            AdminActionType.MerchantVerificationDocumentAccessed,
-            nameof(MerchantVerificationDocument),
-            documentId.ToString(),
-            $"merchantProfileId={document.MerchantProfileId}; file={document.OriginalFileName}",
-            clock.UtcNow));
-        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "Admin {AdminId} opened verification document {DocumentId} for merchant {MerchantId}",
+            adminUserId, documentId, document.MerchantProfileId);
 
         return Result<StoredFileContent>.Success(
             new StoredFileContent(stream, document.ContentType, document.OriginalFileName));
@@ -474,8 +464,7 @@ public sealed class MerchantVerificationService(
         string adminUserId,
         Guid merchantProfileId,
         Action<MerchantProfile, DateTime> transition,
-        AdminActionType actionType,
-        string? notes,
+        string action,
         bool grantMerchantRole,
         CancellationToken cancellationToken)
     {
@@ -511,17 +500,9 @@ public sealed class MerchantVerificationService(
             return Result.Conflict(ex.Message);
         }
 
-        db.AdminActionLogs.Add(new AdminActionLog(
-            adminUserId,
-            actionType,
-            MerchantProfileTargetType,
-            profile.Id.ToString(),
-            notes,
-            clock.UtcNow));
-
-        // The status change, its audit entry and the Merchant role grant either all commit
-        // or none do: a permanent role-sync failure must not leave an approved profile that
-        // can never be re-approved.
+        // The status change and the Merchant role grant either both commit or neither does: a
+        // permanent role-sync failure must not leave an approved profile that can never be
+        // re-approved.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -543,11 +524,11 @@ public sealed class MerchantVerificationService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to complete {Action} on merchant {MerchantId}; the change was rolled back", actionType, profile.Id);
+            logger.LogError(ex, "Failed to complete {Action} on merchant {MerchantId}; the change was rolled back", action, profile.Id);
             return Result.Conflict("The decision could not be completed. Reload the application and try again.");
         }
 
-        logger.LogInformation("Admin {AdminId} performed {Action} on merchant {MerchantId}", adminUserId, actionType, profile.Id);
+        logger.LogInformation("Admin {AdminId} performed {Action} on merchant {MerchantId}", adminUserId, action, profile.Id);
         return Result.Success();
     }
 

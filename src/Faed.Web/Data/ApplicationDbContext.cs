@@ -18,15 +18,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<MerchantVerificationDocument> MerchantVerificationDocuments => Set<MerchantVerificationDocument>();
 
-    public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
-
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<ConditionGrade> ConditionGrades => Set<ConditionGrade>();
 
     public DbSet<DiscountReason> DiscountReasons => Set<DiscountReason>();
-
-    public DbSet<Brand> Brands => Set<Brand>();
 
     public DbSet<Listing> Listings => Set<Listing>();
 
@@ -38,19 +34,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<ListingModeration> ListingModerations => Set<ListingModeration>();
 
-    public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
-
     public DbSet<MerchantLocation> MerchantLocations => Set<MerchantLocation>();
-
-    public DbSet<MerchantDeliveryZone> MerchantDeliveryZones => Set<MerchantDeliveryZone>();
 
     public DbSet<Order> Orders => Set<Order>();
 
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-
-    public DbSet<Dispute> Disputes => Set<Dispute>();
-
-    public DbSet<DisputeEvidence> DisputeEvidence => Set<DisputeEvidence>();
 
     public DbSet<Review> Reviews => Set<Review>();
 

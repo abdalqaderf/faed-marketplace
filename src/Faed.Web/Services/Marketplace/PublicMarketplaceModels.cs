@@ -27,7 +27,6 @@ public sealed record ShopQuery(
     string? CategorySlug,
     string? ConditionCode,
     string? DiscountReasonCode,
-    string? BrandSlug,
     string? SizeValue,
     string? ColorValue,
     decimal? MinPrice,
@@ -85,14 +84,12 @@ public sealed record ListingCardView(
 
 public sealed record FacetOption(string Value, string Label);
 
-/// <summary>The DB-driven filter choices for a browse page. Always the full reference list
-/// (categories/conditions/reasons are small and admin-managed), except brands — an optional,
-/// uncontrolled dimension shown only when at least one live listing actually uses one.</summary>
+/// <summary>The DB-driven filter choices for a browse page. Always the full reference list —
+/// categories, conditions and discount reasons are small and admin-managed.</summary>
 public sealed record ShopFacets(
     IReadOnlyList<FacetOption> Categories,
     IReadOnlyList<FacetOption> Conditions,
     IReadOnlyList<FacetOption> DiscountReasons,
-    IReadOnlyList<FacetOption> Brands,
     IReadOnlyList<FacetOption> Sizes,
     IReadOnlyList<FacetOption> Colors);
 
@@ -137,7 +134,6 @@ public sealed record PublicListingDetailView(
     string Description,
     string CategoryName,
     string CategorySlug,
-    string? BrandName,
     string ConditionCode,
     string ConditionName,
     string ConditionDescription,

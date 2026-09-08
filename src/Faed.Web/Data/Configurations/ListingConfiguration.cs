@@ -73,11 +73,6 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
             .HasForeignKey(l => l.ConditionGradeId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<Brand>()
-            .WithMany()
-            .HasForeignKey(l => l.BrandId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         // The aggregate owns these collections through backing fields; each child is
         // configured from its own dependent side.
         builder.Navigation(l => l.Options).HasField("_options");

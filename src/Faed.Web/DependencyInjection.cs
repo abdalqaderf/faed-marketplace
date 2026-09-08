@@ -40,11 +40,10 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(MerchantVerificationOptions.SectionName));
         services.AddScoped<IMerchantVerificationService, MerchantVerificationService>();
 
-        // Listings, variants, inventory and moderation use cases.
+        // Listings, variants and moderation use cases.
         services.AddOptions<ListingOptions>()
             .Bind(configuration.GetSection(ListingOptions.SectionName));
         services.AddScoped<IMerchantListingService, MerchantListingService>();
-        services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<IListingModerationService, ListingModerationService>();
         services.AddScoped<IListingMediaService, ListingMediaService>();
 
@@ -65,11 +64,7 @@ public static class DependencyInjection
             services.AddHostedService<ReservationExpiryService>();
         }
 
-        // Post-transaction trust: disputes + evidence, the admin dispute workflow, and
-        // merchant reviews.
-        services.AddOptions<TrustOptions>()
-            .Bind(configuration.GetSection(TrustOptions.SectionName));
-        services.AddScoped<IDisputeService, DisputeService>();
+        // Post-transaction trust: merchant reviews left after a completed order.
         services.AddScoped<IReviewService, ReviewService>();
 
         // Merchant recovery analytics and the consolidated admin operational screens

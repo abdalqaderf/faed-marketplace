@@ -51,7 +51,7 @@
                     {
                         <tr>
                             <td>@AmmanTime.FormatDate(r.CreatedAtUtc)</td>
-                            <td><span aria-hidden="true">@DisputeStatusDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
+                            <td><span aria-hidden="true">@ReviewDisplay.Stars(r.Rating)</span> @r.Rating / 5</td>
                             <td>@r.ReviewerLabel</td>
                             <td>@(string.IsNullOrWhiteSpace(r.Comment) ? "—" : r.Comment)</td>
                         </tr>

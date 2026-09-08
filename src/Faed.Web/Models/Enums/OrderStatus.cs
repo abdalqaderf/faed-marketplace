@@ -4,9 +4,6 @@
 /// B2C order lifecycle.
 /// Allowed transitions are enforced explicitly by the <see cref="Faed.Web.Models.Entities.Order"/>
 /// aggregate — a status is never assigned from controller input.
-/// There is deliberately no <c>Disputed</c> status: the trust phase models a
-/// dispute as a separate <see cref="Faed.Web.Models.Entities.Dispute"/> aggregate with its
-/// own lifecycle, and never mutates the order status or its stock.
 /// </summary>
 public enum OrderStatus
 {

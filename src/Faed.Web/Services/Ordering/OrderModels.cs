@@ -16,7 +16,6 @@ public sealed record PlaceOrderInput(
     IReadOnlyList<OrderLineInput> Lines,
     OrderFulfillmentType FulfillmentType,
     Guid? MerchantLocationId,
-    Guid? DeliveryZoneId,
     string? DeliveryAddressText,
     string ContactName,
     string ContactPhone,
@@ -36,9 +35,6 @@ public sealed record CheckoutLineView(
 public sealed record PickupLocationOption(
     Guid Id, string Name, string Address, string? Instructions, string? Hours);
 
-public sealed record DeliveryZoneOption(
-    Guid Id, string Name, decimal DeliveryFee, decimal? MinimumOrderValue, string? Estimate);
-
 /// <summary>The single-listing order builder shown to a signed-in buyer before checkout.</summary>
 public sealed record CheckoutView(
     Guid ListingId,
@@ -50,14 +46,11 @@ public sealed record CheckoutView(
     string ConditionLabel,
     IReadOnlyList<string> DiscountReasonNames,
     IReadOnlyList<CheckoutLineView> Lines,
-    IReadOnlyList<PickupLocationOption> PickupLocations,
-    IReadOnlyList<DeliveryZoneOption> DeliveryZones)
+    IReadOnlyList<PickupLocationOption> PickupLocations)
 {
     public bool CanPickup => PickupLocations.Count > 0;
 
-    public bool CanDeliver => DeliveryZones.Count > 0;
-
-    public bool CanOrder => Lines.Any(l => l.IsSellable) && (CanPickup || CanDeliver);
+    public bool CanOrder => Lines.Any(l => l.IsSellable) && CanPickup;
 }
 
 // ---- Order views ----------------------------------------------------------------
@@ -91,7 +84,6 @@ public sealed record OrderDetailView(
     OrderFulfillmentType FulfillmentType,
     string FulfillmentSnapshot,
     string? DeliveryAddressText,
-    decimal DeliveryFeeSnapshot,
     decimal Subtotal,
     decimal Total,
     string ContactName,

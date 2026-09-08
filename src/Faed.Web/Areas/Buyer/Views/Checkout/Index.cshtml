@@ -112,7 +112,7 @@
                             <span class="faed-checkout-section__step" aria-hidden="true">2</span>
                             <div>
                                 <h2 id="checkout-fulfilment-title">How will you get it?</h2>
-                                <p>Choose one available fulfilment route. The merchant's own locations and delivery zones are shown below.</p>
+                                <p>Reserve for pickup at one of the merchant's locations.</p>
                             </div>
                         </div>
 
@@ -126,17 +126,6 @@
                                     <span>
                                         <strong>Pickup</strong>
                                         <small>Collect directly from a merchant location.</small>
-                                    </span>
-                                </label>
-                            }
-                            @if (checkout.CanDeliver)
-                            {
-                                <label class="faed-choice-card">
-                                    <input type="radio" asp-for="Form.FulfillmentType" value="@OrderFulfillmentType.MerchantDelivery" data-fulfillment="delivery" />
-                                    <span class="faed-choice-card__mark" aria-hidden="true"></span>
-                                    <span>
-                                        <strong>Merchant delivery</strong>
-                                        <small>Choose one of the merchant's supported delivery zones.</small>
                                     </span>
                                 </label>
                             }
@@ -170,41 +159,6 @@
                             </fieldset>
                         }
 
-                        @if (checkout.CanDeliver)
-                        {
-                            <fieldset class="faed-fieldset-reset faed-checkout-subsection" data-section="delivery">
-                                <legend>Choose a delivery zone</legend>
-                                <div class="faed-checkout-option-list">
-                                    @foreach (var zone in checkout.DeliveryZones)
-                                    {
-                                        <label class="faed-checkout-option">
-                                            <input type="radio" asp-for="Form.DeliveryZoneId" value="@zone.Id"
-                                                   data-delivery-fee="@zone.DeliveryFee.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
-                                            <span class="faed-checkout-option__dot" aria-hidden="true"></span>
-                                            <span>
-                                                <strong>@zone.Name</strong>
-                                                <small>Delivery fee · JOD @zone.DeliveryFee.ToString("0.000")</small>
-                                                @if (zone.MinimumOrderValue is { } min)
-                                                {
-                                                    <small>Minimum order · JOD @min.ToString("0.000")</small>
-                                                }
-                                                @if (!string.IsNullOrWhiteSpace(zone.Estimate))
-                                                {
-                                                    <small>@zone.Estimate</small>
-                                                }
-                                            </span>
-                                        </label>
-                                    }
-                                </div>
-
-                                <div class="faed-field faed-checkout-address">
-                                    <label class="faed-field__label" for="Form_DeliveryAddressText">Delivery address</label>
-                                    <textarea class="faed-input" asp-for="Form.DeliveryAddressText" rows="3"
-                                              placeholder="Street, building, apartment, and any useful landmark"></textarea>
-                                    <span asp-validation-for="Form.DeliveryAddressText" class="faed-field__error"></span>
-                                </div>
-                            </fieldset>
-                        }
                     </section>
 
                     <section class="faed-checkout-section" aria-labelledby="checkout-contact-title">
@@ -269,7 +223,6 @@
                     <div class="faed-checkout-estimate" aria-live="polite">
                         <div><span>Selected units</span><strong data-checkout-units>0</strong></div>
                         <div><span>Items subtotal</span><strong data-checkout-subtotal>JOD 0.000</strong></div>
-                        <div><span>Delivery fee</span><strong data-checkout-fee>—</strong></div>
                         <div class="faed-checkout-estimate__total"><span>Estimated total</span><strong data-checkout-total>JOD 0.000</strong></div>
                     </div>
 
@@ -295,26 +248,12 @@
             var form = document.getElementById('checkout-form');
             if (!form) { return; }
 
-            var pickup = form.querySelector('[data-section="pickup"]');
-            var delivery = form.querySelector('[data-section="delivery"]');
             var unitsOutput = form.querySelector('[data-checkout-units]');
             var subtotalOutput = form.querySelector('[data-checkout-subtotal]');
-            var feeOutput = form.querySelector('[data-checkout-fee]');
             var totalOutput = form.querySelector('[data-checkout-total]');
 
             function money(value) {
                 return 'JOD ' + value.toFixed(3);
-            }
-
-            function selectedMode() {
-                var selected = form.querySelector('input[name="Form.FulfillmentType"]:checked');
-                return selected ? selected.getAttribute('data-fulfillment') : null;
-            }
-
-            function syncFulfilment() {
-                var mode = selectedMode();
-                if (pickup) { pickup.hidden = mode !== 'pickup'; }
-                if (delivery) { delivery.hidden = mode !== 'delivery'; }
             }
 
             function syncEstimate() {
@@ -327,35 +266,16 @@
                     subtotal += quantity * price;
                 });
 
-                var mode = selectedMode();
-                var fee = 0;
-                var feeKnown = mode === 'pickup';
-                if (mode === 'delivery') {
-                    var zone = form.querySelector('input[name="Form.DeliveryZoneId"]:checked');
-                    if (zone) {
-                        fee = parseFloat(zone.getAttribute('data-delivery-fee') || '0') || 0;
-                        feeKnown = true;
-                    }
-                }
-
                 if (unitsOutput) { unitsOutput.textContent = units.toString(); }
                 if (subtotalOutput) { subtotalOutput.textContent = money(subtotal); }
-                if (feeOutput) { feeOutput.textContent = feeKnown ? money(fee) : 'Choose a zone'; }
-                if (totalOutput) { totalOutput.textContent = feeKnown ? money(subtotal + fee) : money(subtotal); }
+                if (totalOutput) { totalOutput.textContent = money(subtotal); }
             }
 
-            form.querySelectorAll('input[name="Form.FulfillmentType"]').forEach(function (el) {
-                el.addEventListener('change', function () {
-                    syncFulfilment();
-                    syncEstimate();
-                });
-            });
-            form.querySelectorAll('[data-checkout-quantity], input[name="Form.DeliveryZoneId"]').forEach(function (el) {
+            form.querySelectorAll('[data-checkout-quantity]').forEach(function (el) {
                 el.addEventListener('input', syncEstimate);
                 el.addEventListener('change', syncEstimate);
             });
 
-            syncFulfilment();
             syncEstimate();
         })();
     </script>

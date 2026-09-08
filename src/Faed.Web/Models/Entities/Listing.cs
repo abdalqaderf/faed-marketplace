@@ -65,8 +65,6 @@ public class Listing
 
     public Guid CategoryId { get; private set; }
 
-    public Guid? BrandId { get; private set; }
-
     public Guid ConditionGradeId { get; private set; }
 
     public string Title { get; private set; } = null!;
@@ -149,7 +147,6 @@ public class Listing
     /// </summary>
     public void UpdateDetails(
         Guid categoryId,
-        Guid? brandId,
         Guid conditionGradeId,
         string title,
         string description,
@@ -180,7 +177,6 @@ public class Listing
 
         var changes = new List<string>();
         Compare(changes, "category", CategoryId != categoryId);
-        Compare(changes, "brand", BrandId != brandId);
         Compare(changes, "condition grade", ConditionGradeId != conditionGradeId);
         Compare(changes, "title", !string.Equals(Title, title, StringComparison.Ordinal));
         Compare(changes, "description", !string.Equals(Description, description, StringComparison.Ordinal));
@@ -194,7 +190,6 @@ public class Listing
         Compare(changes, "discount reasons", !requestedReasons.SetEquals(currentReasons));
 
         CategoryId = categoryId;
-        BrandId = brandId;
         ConditionGradeId = conditionGradeId;
         Title = title;
         Description = description;

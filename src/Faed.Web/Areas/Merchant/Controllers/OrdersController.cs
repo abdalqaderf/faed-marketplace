@@ -17,7 +17,7 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.ApprovedMerchant)]
-public sealed class OrdersController(IOrderService orders, IDisputeService disputes) : Controller
+public sealed class OrdersController(IOrderService orders) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -47,18 +47,9 @@ public sealed class OrdersController(IOrderService orders, IDisputeService dispu
             return NotFound();
         }
 
-        var forThisOrder = await disputes.GetDisputesForOrderAsync(userId, id, cancellationToken);
-        var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
-
         return View(new MerchantOrderDetailPageModel
         {
             Order = order,
-            ActiveDispute = activeDispute,
-            PastDisputes = forThisOrder.Where(d => !d.IsActive).ToList(),
-            // A selling merchant can dispute an order once it is confirmed and not cancelled —
-            // the same window DisputeService enforces.
-            CanRaiseDispute = activeDispute is null && order.Status is OrderStatus.Confirmed
-                or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed,
         });
     }
 

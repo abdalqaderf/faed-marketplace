@@ -30,8 +30,6 @@ public sealed class CheckoutFormModel
 
     public Guid? MerchantLocationId { get; set; }
 
-    public Guid? DeliveryZoneId { get; set; }
-
     [StringLength(600)]
     public string? DeliveryAddressText { get; set; }
 
@@ -66,13 +64,5 @@ public sealed class BuyerOrderDetailPageModel
     /// <summary>Whether this buyer may review the selling merchant for this order, and any review already left.</summary>
     public ReviewEligibilityView? ReviewEligibility { get; init; }
 
-    /// <summary>An active (Open/UnderReview) dispute on this order, if there is one.</summary>
-    public DisputeSummaryView? ActiveDispute { get; init; }
-
-    /// <summary>Closed disputes on this order, shown as history.</summary>
-    public IReadOnlyList<DisputeSummaryView> PastDisputes { get; init; } = [];
-
     public LeaveReviewFormModel ReviewForm { get; set; } = new();
-
-    public bool CanRaiseDispute { get; init; }
 }

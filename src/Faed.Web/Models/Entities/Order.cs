@@ -10,8 +10,9 @@ namespace Faed.Web.Models.Entities;
 /// The aggregate owns the stock-workflow rules but not the stock movements themselves: it
 /// records the status transition and its timestamp, and the order service moves the
 /// reserved/available/sold quantities on each <see cref="OrderItem"/>'s variant inside the
-/// same transaction. Money is always server-calculated here
-/// from the line snapshots plus the fulfilment fee snapshot — never trusted from input
+/// same transaction. Money is always server-calculated here from the line snapshots — never
+/// trusted from input. Faed does not model a delivery fee: any delivery arrangement is
+/// settled between the buyer and the merchant directly.
 /// </summary>
 public class Order
 {
@@ -41,8 +42,6 @@ public class Order
         Guid merchantProfileId,
         OrderFulfillmentType fulfillmentType,
         Guid? merchantLocationId,
-        Guid? deliveryZoneId,
-        decimal deliveryFeeSnapshot,
         string fulfillmentSnapshot,
         string? deliveryAddressText,
         string contactName,
@@ -66,24 +65,12 @@ public class Order
             throw new DomainException("A pickup order needs a pickup location.");
         }
 
-        if (fulfillmentType == OrderFulfillmentType.MerchantDelivery && deliveryZoneId is null)
-        {
-            throw new DomainException("A delivery order needs a delivery zone.");
-        }
-
-        if (deliveryFeeSnapshot < 0)
-        {
-            throw new DomainException("A delivery fee cannot be negative.");
-        }
-
         Id = Guid.CreateVersion7();
         BuyerUserId = buyerUserId;
         MerchantProfileId = merchantProfileId;
         Status = OrderStatus.Pending;
         FulfillmentType = fulfillmentType;
         MerchantLocationId = merchantLocationId;
-        DeliveryZoneId = deliveryZoneId;
-        DeliveryFeeSnapshot = deliveryFeeSnapshot;
         FulfillmentSnapshot = RequireThenTruncate(
             fulfillmentSnapshot, "fulfilment details", MaxFulfillmentSnapshotLength);
         DeliveryAddressText = Optional(deliveryAddressText, "delivery address", MaxDeliveryAddressLength);
@@ -113,11 +100,7 @@ public class Order
 
     public Guid? MerchantLocationId { get; private set; }
 
-    public Guid? DeliveryZoneId { get; private set; }
-
-    public decimal DeliveryFeeSnapshot { get; private set; }
-
-    /// <summary>Human-readable fulfilment description captured at checkout (location or zone details).</summary>
+    /// <summary>Human-readable fulfilment description captured at checkout (location or delivery details).</summary>
     public string FulfillmentSnapshot { get; private set; } = null!;
 
     public string? DeliveryAddressText { get; private set; }
@@ -204,11 +187,11 @@ public class Order
         return item;
     }
 
-    /// <summary>Recomputes the money totals from the line snapshots plus the fulfilment fee.</summary>
+    /// <summary>Recomputes the money totals from the line snapshots.</summary>
     public void RecalculateTotals()
     {
         Subtotal = _items.Sum(i => i.LineTotalSnapshot);
-        Total = Subtotal + DeliveryFeeSnapshot;
+        Total = Subtotal;
     }
 
     // ---- Lifecycle ------------------------------------------------------------------

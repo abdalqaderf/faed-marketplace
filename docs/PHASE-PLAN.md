@@ -82,6 +82,13 @@ correctly instead, and note the limitation in the test file.
 - Remove B2B registrations from `DependencyInjection.cs` (including the two expiry services)
 - `Review`: drop `B2BDealId`, make `OrderId` required, remove the "exactly one" constraint
 - `Dispute`: drop `B2BDealId` for now (the entity itself goes in Phase 3)
+- `Listing`: drop the sales-channel and wholesale fields — `AllowB2C`, `AllowB2B`,
+  `AllowMixedVariantB2B`, `WholesaleIndicativeUnitPrice`, `WholesaleMinQuantity` — and every
+  reference to them in `ListingFormModel`, `Workspace.cshtml`, `MerchantListingService`,
+  `ListingOptions`, `PublicMarketplaceService`, the moderation views and the listing cards.
+  These are B2B fields, not sector fields; they belong to this deletion, not to Phase 5
+- `DescribeSubmissionBlockers`: remove the two channel branches. **A retail price is now
+  always required** — that is the rule the `AllowB2C` check used to express
 - Clean `AdminOperationsService`, `MerchantAnalyticsService`, `ReviewService`, `DisputeService`,
   admin transaction views and `DemoDataSeeder` of every B2B reference
 - Remove B2B links from `_MerchantSubnav.cshtml` and `_AdminSubnav.cshtml`
@@ -110,7 +117,17 @@ correctly instead, and note the limitation in the test file.
 - Keep `Services/Trust/Review*` — reviews stay
 - `Listing`: remove `BrandId` and its navigation
 - `Order`: remove `DeliveryZoneId` and `DeliveryFeeSnapshot`; `OrderFulfillmentType` keeps
-  `Pickup` and `MerchantDelivery`, but the fee is no longer modelled
+  `Pickup` and `MerchantDelivery`, but the fee is no longer modelled. **Every Phase-1 order is
+  created as `Pickup`** — the delivery choice is not offered at checkout, because the platform
+  models no zone, no fee and no address. Delivery is arranged between the two parties on
+  WhatsApp after confirmation, at the merchant's own responsibility
+- Delete the merchant Inventory feature entirely: `InventoryController`, `IInventoryService`,
+  `InventoryService`, `InventoryPageModel`, the Inventory views and the merchant subnav link.
+  It is a merchant-facing screen only — it holds no reservation or release logic, so nothing
+  in ordering depends on it. Stock editing moves to the quantity field on the listing form
+- **Carry this rule forward:** `IInventoryService` documented that a quantity is not a claim
+  about the product, so adjusting stock never sent a published listing back to moderation.
+  That rule survives the deletion — see Phase 8
 - Strip audit-log calls out of every admin service
 
 **Acceptance**
@@ -152,15 +169,13 @@ correctly instead, and note the limitation in the test file.
 - Discount reason `PastSeason` → `SupersededModel` ("Superseded Model")
 - Condition grade names and descriptions rewritten for appliances (see the four cards in
   `CORE.md` §3.3); the A–D codes do not change
-- `Listing`: remove `AllowB2C`, `AllowB2B`, `AllowMixedVariantB2B`,
-  `WholesaleIndicativeUnitPrice`, `WholesaleMinQuantity`, `WarrantyText`
+- `Listing`: remove `WarrantyText` (the sales-channel and wholesale fields were already
+  removed in Phase 2)
 - `Listing`: add `WarrantyType` enum (`None`, `ManufacturerWarranty`, `ShopWarranty`) and
   `WarrantyMonths` (nullable int, 1–120)
 - `ReferencePriceEvidenceType`: reduce to `Photo` and `Link`
 - `Order`: add `Reference` — 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, unique index,
   generated on creation
-- Update `DescribeSubmissionBlockers` — the B2C/B2B channel blockers are gone; a retail price
-  is now always required
 - Replace the category images in `wwwroot/images/categories/` with placeholders named for the
   new slugs
 
@@ -239,6 +254,9 @@ correctly instead, and note the limitation in the test file.
 - Selecting card 2 or 4 reveals the defect-photo upload inline
 - Hide options and variants entirely: the quantity field creates one variant with a generated
   SKU
+- **A quantity-only change must not send a published listing back to moderation.** Stock is not
+  a claim about the product; the title, condition, photos and price are. This rule came from
+  the deleted `IInventoryService` and must be enforced here instead — comment it where it lives
 - One photo box plus the contextual defect box — not three typed buckets
 - Original price is optional; when set, one evidence field appears (photo or link)
 - Rename the merchant's actions to **Pause** and **Delete** only
@@ -260,7 +278,8 @@ correctly instead, and note the limitation in the test file.
 
 **Do**
 - Rename checkout to **Reserve** everywhere; `Checkout/Index.cshtml` 362 lines → about 80
-- Remove all cart-and-payment language from views and copy
+- Remove all cart-and-payment language from views and copy, including any delivery choice —
+  every Phase-1 order is `Pickup`
 - `ShopFilterModel`: 10 filters → 4 (category, condition, price range, text). Delete the
   advanced-filter drawer
 - **Contact reveal:** before `Confirmed` the buyer sees the shop's area only; after, the full

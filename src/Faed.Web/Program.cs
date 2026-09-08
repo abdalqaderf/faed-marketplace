@@ -36,7 +36,6 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // There are independent upload paths for:
 // - Merchant verification documents
 // - Listing images
-// - Dispute evidence
 //
 // The framework-level limit must therefore allow the largest configured
 // file plus a small multipart overhead.
@@ -48,15 +47,9 @@ var maxImageBytes = builder.Configuration.GetValue<long?>(
     $"{ListingOptions.SectionName}:{nameof(ListingOptions.MaxImageBytes)}")
     ?? new ListingOptions().MaxImageBytes;
 
-var maxEvidenceBytes = builder.Configuration.GetValue<long?>(
-    $"{TrustOptions.SectionName}:{nameof(TrustOptions.MaxEvidenceBytes)}")
-    ?? new TrustOptions().MaxEvidenceBytes;
-
 builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit =
-        Math.Max(
-            Math.Max(maxDocumentBytes, maxImageBytes),
-            maxEvidenceBytes)
+        Math.Max(maxDocumentBytes, maxImageBytes)
         + 1024 * 1024);
 
 // ASP.NET Core Identity.

@@ -17,7 +17,7 @@ namespace Faed.Web.Areas.Buyer.Controllers;
 [Area("Buyer")]
 [Authorize(Policy = FaedPolicies.CanPlaceB2COrder)]
 public sealed class OrdersController(
-    IOrderService orders, IReviewService reviews, IDisputeService disputes) : Controller
+    IOrderService orders, IReviewService reviews) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, CancellationToken cancellationToken = default)
@@ -38,19 +38,10 @@ public sealed class OrdersController(
 
         var eligibility = await reviews.GetEligibilityAsync(userId, id, cancellationToken);
 
-        var forThisOrder = await disputes.GetDisputesForOrderAsync(userId, id, cancellationToken);
-        // Only an Open/UnderReview dispute suppresses a new filing; a closed one is history
-        // and the authoritative rules may allow another dispute.
-        var activeDispute = forThisOrder.FirstOrDefault(d => d.IsActive);
-
         return View(new BuyerOrderDetailPageModel
         {
             Order = order,
             ReviewEligibility = eligibility,
-            ActiveDispute = activeDispute,
-            PastDisputes = forThisOrder.Where(d => !d.IsActive).ToList(),
-            CanRaiseDispute = activeDispute is null && order.Status is OrderStatus.Confirmed
-                or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed,
         });
     }
 

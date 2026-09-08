@@ -11,8 +11,8 @@
     var isMerchant = User.IsInRole(FaedRoles.Merchant);
 
     // Mirrors FaedPolicies.CanPlaceB2COrder: Buyer or Merchant, never an administrator.
-    // Buyer/Orders and Buyer/Disputes are the only destinations gated by that policy, so
-    // this is the exact set of users for whom those top-level controls actually resolve.
+    // Buyer/Orders is the only destination gated by that policy, so this is the exact set of
+    // users for whom that top-level control actually resolves.
     var canBuy = !isAdmin && (User.IsInRole(FaedRoles.Buyer) || isMerchant);
 
     // Faed has no cart and no name claim, so the trigger stays initial + "Account" and the
@@ -83,14 +83,6 @@
             </div>
 
             <hr class="dropdown-divider" />
-
-            @if (canBuy)
-            {
-                <a class="dropdown-item" asp-area="Buyer" asp-controller="Disputes" asp-action="Index">
-                    @FaedIcon.Render("alert-circle", "faed-icon faed-account-menu__icon")
-                    <span>My disputes</span>
-                </a>
-            }
 
             @if (!isAdmin && !isMerchant)
             {

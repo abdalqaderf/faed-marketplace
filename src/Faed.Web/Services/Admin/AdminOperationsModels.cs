@@ -14,7 +14,6 @@ namespace Faed.Web.Services.Admin;
 public sealed record AdminDashboardView(
     int MerchantsAwaitingReview,
     int ListingsAwaitingReview,
-    int OpenDisputes,
     int OrdersInProgress,
     int InactiveCatalogItems);
 
@@ -57,7 +56,6 @@ public sealed record AdminOrderDetailView(
     string FulfillmentSnapshot,
     string? DeliveryAddressText,
     decimal Subtotal,
-    decimal DeliveryFeeSnapshot,
     decimal Total,
     string ContactName,
     string ContactPhone,
@@ -69,15 +67,7 @@ public sealed record AdminOrderDetailView(
     DateTime? CompletedAtUtc,
     DateTime? CancelledAtUtc,
     DateTime? ReservationExpiresAtUtc,
-    IReadOnlyList<AdminOrderLineView> Items,
-    IReadOnlyList<AdminLinkedDisputeView> Disputes);
-
-/// <summary>A dispute attached to the order being viewed, shown for context.</summary>
-public sealed record AdminLinkedDisputeView(
-    Guid Id,
-    DisputeStatus Status,
-    DisputeReasonCode ReasonCode,
-    DateTime CreatedAtUtc);
+    IReadOnlyList<AdminOrderLineView> Items);
 
 // ---- Review monitoring --------------------------------------------------------
 
@@ -90,24 +80,3 @@ public sealed record AdminReviewRow(
     string ReviewedMerchantBusinessName,
     string ReviewedMerchantSlug,
     Guid OrderId);
-
-// ---- Audit log ---------------------------------------------------------------
-
-public enum AdminAuditLogFilter
-{
-    All = 0,
-    Merchants = 1,
-    Listings = 2,
-    Disputes = 3,
-    Catalog = 4,
-}
-
-/// <summary>A row in the admin audit-log viewer.</summary>
-public sealed record AdminAuditLogRow(
-    Guid Id,
-    DateTime CreatedAtUtc,
-    string AdminEmail,
-    AdminActionType ActionType,
-    string TargetType,
-    string TargetId,
-    string? Notes);

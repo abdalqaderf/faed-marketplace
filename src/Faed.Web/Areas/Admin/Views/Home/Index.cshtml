@@ -36,12 +36,6 @@
                 <strong class="faed-admin-queue-card__value">@d.ListingsAwaitingReview</strong>
                 <span class="faed-admin-queue-card__meta">Awaiting review</span>
             </a>
-            <a class="faed-admin-queue-card@(d.OpenDisputes > 0 ? " faed-admin-queue-card--attention" : "")"
-               asp-controller="Disputes" asp-action="Index">
-                <span class="faed-admin-queue-card__label">Disputes</span>
-                <strong class="faed-admin-queue-card__value">@d.OpenDisputes</strong>
-                <span class="faed-admin-queue-card__meta">Open cases</span>
-            </a>
         </div>
     </section>
 

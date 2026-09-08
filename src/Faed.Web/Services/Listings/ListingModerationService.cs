@@ -16,8 +16,6 @@ public sealed class ListingModerationService(
     IClock clock,
     ILogger<ListingModerationService> logger) : IListingModerationService
 {
-    private const string ListingTargetType = nameof(Listing);
-
     public Task<PagedResult<ModerationQueueItem>> GetQueueAsync(
         ModerationQueueFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {
@@ -75,8 +73,8 @@ public sealed class ListingModerationService(
             adminUserId,
             listingId,
             (listing, now) => listing.Approve(adminUserId, reviewNote, now),
-            AdminActionType.ListingApproved,
-            reviewNote,
+            "approve",
+            isApproval: true,
             cancellationToken);
 
     public Task<Result> RejectAsync(
@@ -91,8 +89,8 @@ public sealed class ListingModerationService(
             adminUserId,
             listingId,
             (listing, now) => listing.Reject(adminUserId, reason, now),
-            AdminActionType.ListingRejected,
-            reason.Trim(),
+            "reject",
+            isApproval: false,
             cancellationToken);
     }
 
@@ -108,8 +106,8 @@ public sealed class ListingModerationService(
             adminUserId,
             listingId,
             (listing, now) => listing.HideByAdmin(adminUserId, reason, now),
-            AdminActionType.ListingHidden,
-            reason.Trim(),
+            "hide",
+            isApproval: false,
             cancellationToken);
     }
 
@@ -119,16 +117,16 @@ public sealed class ListingModerationService(
             adminUserId,
             listingId,
             (listing, now) => listing.RestoreByAdmin(adminUserId, now),
-            AdminActionType.ListingRestored,
-            notes: null,
+            "restore",
+            isApproval: false,
             cancellationToken);
 
     private async Task<Result> DecideAsync(
         string adminUserId,
         Guid listingId,
         Action<Listing, DateTime> transition,
-        AdminActionType actionType,
-        string? notes,
+        string action,
+        bool isApproval,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(adminUserId)
@@ -148,7 +146,7 @@ public sealed class ListingModerationService(
             return Result.NotFound("That listing was not found.");
         }
 
-        if (actionType == AdminActionType.ListingApproved)
+        if (isApproval)
         {
             // "A Live Listing's merchant must be approved" is the
             // natural enforcement point here: a merchant can be suspended or rejected between
@@ -188,16 +186,8 @@ public sealed class ListingModerationService(
             return Result.Conflict(ex.Message);
         }
 
-        db.AdminActionLogs.Add(new AdminActionLog(
-            adminUserId,
-            actionType,
-            ListingTargetType,
-            listing.Id.ToString(),
-            notes,
-            clock.UtcNow));
-
-        // A moderation outcome without its audit entry would be unauditable, so the decision
-        // and the log commit together.
+        // The decision appends a new ListingModeration row through the aggregate; the write
+        // is wrapped in a transaction so the status change and that row commit together.
         await using var transaction = await db.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -211,7 +201,7 @@ public sealed class ListingModerationService(
         }
 
         logger.LogInformation(
-            "Admin {AdminId} performed {Action} on listing {ListingId}", adminUserId, actionType, listing.Id);
+            "Admin {AdminId} performed {Action} on listing {ListingId}", adminUserId, action, listing.Id);
         return Result.Success();
     }
 
