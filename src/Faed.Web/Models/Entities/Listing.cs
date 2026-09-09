@@ -103,6 +103,16 @@ public class Listing
     /// </summary>
     public bool HiddenByAdmin { get; private set; }
 
+    /// <summary>
+    /// True while this listing is Hidden specifically because the merchant's subscription
+    /// lapsed (expired or was cancelled), as opposed to the merchant pausing it themselves or
+    /// an admin taking it down for a policy reason. A renewal must restore in one click
+    /// (BUSINESS-MODEL.md §6.5), not one click per listing, so this flag is what lets the
+    /// subscription service tell a lapse-hide apart from an ordinary Pause and restore exactly
+    /// those listings. Only <see cref="RestoreFromSubscriptionLapse"/> clears it.
+    /// </summary>
+    public bool HiddenBySubscriptionLapse { get; private set; }
+
     public DateTime CreatedAtUtc { get; private set; }
 
     public DateTime UpdatedAtUtc { get; private set; }
@@ -680,6 +690,19 @@ public class Listing
     }
 
     /// <summary>
+    /// The subscription service hides a published listing because the merchant's subscription
+    /// expired or was cancelled. Marked distinctly from an ordinary <see cref="Hide"/> — and
+    /// from a downgrade's quota-driven pause, which uses plain <see cref="Hide"/> and is a
+    /// merchant choice to unpause, not an automatic one — so a later renewal can restore
+    /// exactly these listings automatically.
+    /// </summary>
+    public void HideForSubscriptionLapse(DateTime nowUtc)
+    {
+        Hide(nowUtc);
+        HiddenBySubscriptionLapse = true;
+    }
+
+    /// <summary>
     /// Merchant republishes their own hidden listing. Only allowed while the last review is
     /// still an approval — a material edit made while hidden returns the listing to Draft, so
     /// this can never restore unreviewed content — and only when an admin did not hide it:
@@ -711,6 +734,23 @@ public class Listing
         HiddenByAdmin = false;
     }
 
+    /// <summary>
+    /// The subscription service restores a listing that a lapse hid, as part of a renewal.
+    /// Refuses a listing that is Hidden for any other reason — a merchant's own Pause or an
+    /// admin takedown must not be silently reopened by a renewal that has nothing to do with
+    /// either.
+    /// </summary>
+    public void RestoreFromSubscriptionLapse(DateTime nowUtc)
+    {
+        RequireHidden();
+        if (!HiddenBySubscriptionLapse)
+        {
+            throw new DomainException("This listing was not hidden by a subscription lapse.");
+        }
+
+        RestorePublication(nowUtc);
+    }
+
     private void RequireHidden()
     {
         if (Status != ListingStatus.Hidden)
@@ -727,6 +767,9 @@ public class Listing
         }
 
         Status = AvailableUnits > 0 ? ListingStatus.Live : ListingStatus.SoldOut;
+        // Cleared unconditionally: whatever route a listing left Hidden by, it is no longer
+        // waiting on a renewal to bring it back.
+        HiddenBySubscriptionLapse = false;
         Touch(nowUtc);
     }
 

@@ -42,6 +42,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<Review> Reviews => Set<Review>();
 
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+
+    public DbSet<MerchantSubscription> MerchantSubscriptions => Set<MerchantSubscription>();
+
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
 

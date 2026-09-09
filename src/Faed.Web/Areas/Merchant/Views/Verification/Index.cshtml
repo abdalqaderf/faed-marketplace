@@ -5,7 +5,9 @@
     var app = Model.Application;
     var docTypes = Enum.GetValues<MerchantVerificationDocumentType>();
     var maxMb = VerificationDocumentValidator.MaxMegabytes(VerificationOptions.Value);
-    ViewData["MerchantWorkspaceRestricted"] = Model.Application?.CanSell != true;
+    // Drafts are buildable from registration (BUSINESS-MODEL.md §7.4), so the workspace is only
+    // restricted before a merchant profile exists at all — not merely until it is approved.
+    ViewData["MerchantWorkspaceRestricted"] = Model.Application is null;
 }
 
 <div class="faed-page">

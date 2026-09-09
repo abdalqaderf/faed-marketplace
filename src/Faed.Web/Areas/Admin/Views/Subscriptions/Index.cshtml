@@ -1,0 +1,85 @@
+@model SubscriptionQueuePageModel
+@{
+    ViewData["Title"] = "Subscriptions";
+
+    (SubscriptionQueueFilter value, string label)[] tabs =
+    {
+        (SubscriptionQueueFilter.PendingActivation, "Pending activation"),
+        (SubscriptionQueueFilter.Active, "Active"),
+        (SubscriptionQueueFilter.Expired, "Expired"),
+        (SubscriptionQueueFilter.Cancelled, "Cancelled"),
+        (SubscriptionQueueFilter.All, "All"),
+    };
+
+    string BadgeClass(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.Active => "faed-badge faed-badge--approved",
+        SubscriptionStatus.PendingActivation => "faed-badge faed-badge--pending",
+        SubscriptionStatus.Cancelled => "faed-badge faed-badge--suspended",
+        _ => "faed-badge faed-badge--rejected",
+    };
+}
+
+<div class="faed-page faed-page--wide faed-admin-queue-page">
+    <partial name="_AdminSubnav" model="@("Subscriptions")" />
+
+    <div class="faed-page__header faed-admin-page-header">
+        <div>
+            <h1 class="faed-page__title">Subscriptions</h1>
+            <p class="faed-page__subtitle">Activate, extend or cancel a merchant's subscription with a recorded payment reference.</p>
+        </div>
+    </div>
+
+    <nav class="faed-subnav faed-admin-filterbar" aria-label="Filter subscriptions">
+        @foreach (var tab in tabs)
+        {
+            <a asp-action="Index" asp-route-filter="@tab.value"
+               class="@(Model.Filter == tab.value ? "is-active" : null)">@tab.label</a>
+        }
+    </nav>
+
+    @if (Model.Items.TotalCount == 0)
+    {
+        <div class="faed-panel">
+            <div class="faed-empty">
+                <div class="faed-empty__title">Nothing here</div>
+                <div>No subscriptions match this filter.</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="faed-table-wrap">
+            <table class="faed-table faed-admin-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Merchant</th>
+                        <th scope="col">Plan</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Expires</th>
+                        <th scope="col">Payment reference</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items.Items)
+                    {
+                        <tr>
+                            <td>@item.BusinessName</td>
+                            <td>@item.PlanName</td>
+                            <td><span class="@BadgeClass(item.Status)">@item.Status</span></td>
+                            <td>@(item.ExpiresAtUtc is { } e ? AmmanTime.FormatDate(e) : "—")</td>
+                            <td>@(item.PaymentReference ?? "—")</td>
+                            <td>
+                                <a class="faed-btn faed-btn--ghost faed-btn--sm"
+                                   asp-action="Details" asp-route-id="@item.MerchantProfileId">Manage</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model='PaginationViewModel.From(Model.Items, "Index", new Dictionary<string, string?> { ["filter"] = Model.Filter.ToString() }, "subscription")' />
+    }
+</div>

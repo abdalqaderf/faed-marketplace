@@ -57,6 +57,14 @@ public static class CatalogDataSeeder
         ("power-tools", "Power Tools & Workshop", 3),
     ];
 
+    // Monthly only — no annual plans, discounts or trials (BUSINESS-MODEL.md §6.2).
+    private static readonly (string Code, string Name, decimal MonthlyPriceJod, int ActiveListingQuota, bool HasFeaturedPlacement, int SortOrder)[] SubscriptionPlans =
+    [
+        ("Basic", "Basic", 35m, 15, false, 1),
+        ("Standard", "Standard", 50m, 40, false, 2),
+        ("Pro", "Pro", 80m, 120, true, 3),
+    ];
+
     public static async Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
@@ -69,6 +77,7 @@ public static class CatalogDataSeeder
         added += await SeedConditionGradesAsync(db, cancellationToken);
         added += await SeedDiscountReasonsAsync(db, cancellationToken);
         added += await SeedLaunchTaxonomyAsync(db, cancellationToken);
+        added += await SeedSubscriptionPlansAsync(db, cancellationToken);
 
         if (added == 0)
         {
@@ -141,6 +150,25 @@ public static class CatalogDataSeeder
             if (existingSlugs.Add(slug))
             {
                 db.Categories.Add(new Category(name, slug, root.Id, sortOrder));
+                added++;
+            }
+        }
+
+        return added;
+    }
+
+    private static async Task<int> SeedSubscriptionPlansAsync(ApplicationDbContext db, CancellationToken cancellationToken)
+    {
+        var existing = (await db.SubscriptionPlans.Select(p => p.Code).ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var added = 0;
+        foreach (var (code, name, monthlyPriceJod, activeListingQuota, hasFeaturedPlacement, sortOrder) in SubscriptionPlans)
+        {
+            if (existing.Add(code))
+            {
+                db.SubscriptionPlans.Add(
+                    new SubscriptionPlan(code, name, monthlyPriceJod, activeListingQuota, hasFeaturedPlacement, sortOrder));
                 added++;
             }
         }

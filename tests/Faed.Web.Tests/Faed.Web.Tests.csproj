@@ -11,6 +11,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- In-memory EF Core provider for domain/service tests that need a real DbContext without
+         a SQL Server instance. Never used for rowversion concurrency assertions — the InMemory
+         provider does not support concurrency tokens. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>

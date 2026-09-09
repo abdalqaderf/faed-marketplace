@@ -9,6 +9,7 @@ using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Storage;
+using Faed.Web.Services.Subscriptions;
 using Faed.Web.Services.Trust;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +67,17 @@ public static class DependencyInjection
 
         // Post-transaction trust: merchant reviews left after a completed order.
         services.AddScoped<IReviewService, ReviewService>();
+
+        // Subscriptions: the publish gate, manual collection, and the expiry sweep.
+        services.AddOptions<SubscriptionOptions>()
+            .Bind(configuration.GetSection(SubscriptionOptions.SectionName));
+        services.AddScoped<ISubscriptionBilling, ManualSubscriptionBilling>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+
+        if (!environment.IsEnvironment("Testing"))
+        {
+            services.AddHostedService<SubscriptionExpiryService>();
+        }
 
         // Merchant recovery analytics and the consolidated admin operational screens
         // All read-only projections over authoritative data; catalog management is the only

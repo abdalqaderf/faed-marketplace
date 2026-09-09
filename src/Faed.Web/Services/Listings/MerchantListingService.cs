@@ -4,6 +4,7 @@ using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Catalog;
 using Faed.Web.Services.Common;
+using Faed.Web.Services.Subscriptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ namespace Faed.Web.Services.Listings;
 public sealed class MerchantListingService(
     IApplicationDbContext db,
     IFileStorage fileStorage,
+    ISubscriptionService subscriptions,
     IClock clock,
     IOptions<ListingOptions> options,
     ILogger<MerchantListingService> logger) : IMerchantListingService
@@ -124,7 +126,7 @@ public sealed class MerchantListingService(
     public async Task<Result<Guid>> CreateAsync(
         string userId, ListingDetailsInput input, CancellationToken cancellationToken = default)
     {
-        var merchant = await RequireApprovedMerchantAsync(userId, cancellationToken);
+        var merchant = await RequireRegisteredMerchantAsync(userId, cancellationToken);
         if (merchant.Failed)
         {
             return Result<Guid>.From(merchant);
@@ -410,6 +412,16 @@ public sealed class MerchantListingService(
         string userId, Guid listingId, CancellationToken cancellationToken = default) =>
         MutateAsync(userId, listingId, async (listing, now) =>
         {
+            // The publish gate: verified, subscribed and under quota, checked and reported
+            // independently (CLAUDE.md invariant 7). Submitting is the merchant's "publish"
+            // action — admin approval re-checks the same gate before the listing actually
+            // goes live.
+            var gate = await subscriptions.CheckPublishGateAsync(listing.MerchantProfileId, cancellationToken);
+            if (!gate.CanPublish)
+            {
+                return Result.Forbidden(gate.Message!);
+            }
+
             var (conditionGradeCode, discountReasonCodes) = await listing.LoadDisclosureCodesAsync(db, cancellationToken);
 
             var blockers = listing.DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
@@ -431,10 +443,18 @@ public sealed class MerchantListingService(
         }, cancellationToken);
 
     public Task<Result> RestoreAsync(string userId, Guid listingId, CancellationToken cancellationToken = default) =>
-        MutateAsync(userId, listingId, (listing, now) =>
+        MutateAsync(userId, listingId, async (listing, now) =>
         {
+            // Restoring a paused listing consumes a quota slot again, so it passes through the
+            // same publish gate as submission.
+            var gate = await subscriptions.CheckPublishGateAsync(listing.MerchantProfileId, cancellationToken);
+            if (!gate.CanPublish)
+            {
+                return Result.Forbidden(gate.Message!);
+            }
+
             listing.Restore(now);
-            return Task.FromResult(Result.Success());
+            return Result.Success();
         }, cancellationToken);
 
     public Task<Result> ArchiveAsync(string userId, Guid listingId, CancellationToken cancellationToken = default) =>
@@ -457,7 +477,7 @@ public sealed class MerchantListingService(
         Func<Listing, DateTime, Task<Result>> mutate,
         CancellationToken cancellationToken)
     {
-        var merchant = await RequireApprovedMerchantAsync(userId, cancellationToken);
+        var merchant = await RequireRegisteredMerchantAsync(userId, cancellationToken);
         if (merchant.Failed)
         {
             return merchant;
@@ -561,7 +581,13 @@ public sealed class MerchantListingService(
         return Result.Success();
     }
 
-    private async Task<Result<Guid>> RequireApprovedMerchantAsync(string userId, CancellationToken cancellationToken)
+    /// <summary>
+    /// The listing-workspace gate: a merchant profile that has not been suspended. Draft
+    /// creation and editing need only this — verification approval and an active subscription
+    /// are checked separately, and only at the point a listing actually tries to become public
+    /// (<see cref="SubmitForReviewAsync"/>, <see cref="RestoreAsync"/>).
+    /// </summary>
+    private async Task<Result<Guid>> RequireRegisteredMerchantAsync(string userId, CancellationToken cancellationToken)
     {
         var profile = await db.MerchantProfiles
             .AsNoTracking()
@@ -571,15 +597,14 @@ public sealed class MerchantListingService(
 
         if (profile is null)
         {
-            return Result<Guid>.Forbidden("Complete merchant verification before creating listings.");
+            return Result<Guid>.Forbidden("Complete your merchant application before creating listings.");
         }
 
-        // Defence in depth: the MVC route already requires the ApprovedMerchant policy, but a
-        // suspension between the two checks must still stop the write.
-        return profile.VerificationStatus == MerchantVerificationStatus.Approved
-            ? Result<Guid>.Success(profile.Id)
-            : Result<Guid>.Forbidden(
-                $"Your merchant account is {profile.VerificationStatus} and cannot manage listings.");
+        // Defence in depth: the MVC route already requires the RegisteredMerchant policy, but
+        // a suspension between the two checks must still stop the write.
+        return profile.VerificationStatus == MerchantVerificationStatus.Suspended
+            ? Result<Guid>.Forbidden("Your merchant account is suspended and cannot manage listings.")
+            : Result<Guid>.Success(profile.Id);
     }
 
     private Task<Guid?> ResolveMerchantIdAsync(string userId, CancellationToken cancellationToken) =>

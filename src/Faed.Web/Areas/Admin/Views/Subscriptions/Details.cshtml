@@ -1,0 +1,84 @@
+@model AdminSubscriptionDetail
+@{
+    ViewData["Title"] = $"Subscription — {Model.BusinessName}";
+    var isPendingActivation = Model.Status == SubscriptionStatus.PendingActivation;
+    var isActive = Model.Status == SubscriptionStatus.Active;
+    var canCancel = Model.Status is SubscriptionStatus.Active or SubscriptionStatus.PendingActivation;
+
+    string BadgeClass(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.Active => "faed-badge faed-badge--approved",
+        SubscriptionStatus.PendingActivation => "faed-badge faed-badge--pending",
+        SubscriptionStatus.Cancelled => "faed-badge faed-badge--suspended",
+        _ => "faed-badge faed-badge--rejected",
+    };
+}
+
+<div class="faed-page faed-admin-detail-page">
+    <partial name="_AdminSubnav" model="@("Subscriptions")" />
+
+    <div class="faed-page__header faed-admin-page-header">
+        <div>
+            <h1 class="faed-page__title">@Model.BusinessName</h1>
+            <p class="faed-page__subtitle">@Model.PlanName — @Model.MonthlyPriceJod.ToString("0.###") JOD/month</p>
+        </div>
+        <div class="faed-page__actions">
+            <span class="@BadgeClass(Model.Status)">@Model.Status</span>
+        </div>
+    </div>
+
+    <div class="faed-panel">
+        <h2 class="faed-panel__title">Subscription</h2>
+        <dl class="faed-details">
+            <dt>Plan</dt>
+            <dd>@Model.PlanName (@Model.ActiveListingQuota active listings, @Model.MonthlyPriceJod.ToString("0.###") JOD/month)</dd>
+            <dt>Live listings</dt>
+            <dd>@Model.LiveListingCount of @Model.ActiveListingQuota</dd>
+            <dt>Starts</dt>
+            <dd>@(Model.StartsAtUtc is { } s ? AmmanTime.FormatDateTime(s) : "—")</dd>
+            <dt>Expires</dt>
+            <dd>@(Model.ExpiresAtUtc is { } e ? AmmanTime.FormatDateTime(e) : "—")</dd>
+            <dt>Last payment reference</dt>
+            <dd>@(Model.PaymentReference ?? "—")</dd>
+            @if (Model.ActivatedByAdminId is not null)
+            {
+                <dt>Last recorded by</dt>
+                <dd>@Model.ActivatedByAdminId</dd>
+            }
+        </dl>
+    </div>
+
+    <div class="faed-panel faed-admin-decision-panel">
+        <h2 class="faed-panel__title">@(isPendingActivation ? "Activate" : "Record a renewal payment")</h2>
+        <p class="faed-panel__hint">
+            The merchant pays by CliQ, bank transfer or cash outside the platform. Enter what they gave you as
+            the reference before activating or extending.
+        </p>
+        <form asp-action="@(isPendingActivation ? "Activate" : "Extend")" method="post" class="faed-decision-row">
+            <input type="hidden" name="id" value="@Model.MerchantProfileId" />
+            <div class="faed-field faed-decision-row__grow">
+                <label class="faed-field__label" for="payment-reference">Payment reference</label>
+                <input class="faed-input" id="payment-reference" name="PaymentReference" required maxlength="200"
+                       placeholder="e.g. CliQ ref, bank transfer id, or cash receipt no." />
+            </div>
+            <button type="submit" class="faed-btn faed-btn--primary">
+                @(isPendingActivation ? "Activate — 1 month" : "Extend — 1 month")
+            </button>
+        </form>
+    </div>
+
+    @if (canCancel)
+    {
+        <div class="faed-panel faed-admin-decision-panel faed-admin-decision-panel--danger">
+            <h2 class="faed-panel__title">Cancel subscription</h2>
+            <p class="faed-panel__hint">
+                Ends the subscription early. Has the same effect as expiry: the merchant's listings are hidden,
+                never deleted, and return when the subscription is activated again.
+            </p>
+            <form asp-action="Cancel" method="post">
+                <input type="hidden" name="id" value="@Model.MerchantProfileId" />
+                <button type="submit" class="faed-btn faed-btn--danger">Cancel subscription</button>
+            </form>
+        </div>
+    }
+</div>

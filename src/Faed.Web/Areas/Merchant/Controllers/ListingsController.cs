@@ -9,11 +9,12 @@ namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
 /// Merchant listing management: create, edit variants/media/evidence, and submit for
-/// moderation. Gated by the
-/// <c>ApprovedMerchant</c> policy; the service layer re-checks ownership on every call.
+/// moderation. Gated by the <c>RegisteredMerchant</c> policy so drafts can be built before
+/// verification is approved; the service layer re-checks ownership on every call and enforces
+/// the full publish gate (verified, subscribed, under quota) on submission and restoration.
 /// </summary>
 [Area("Merchant")]
-[Authorize(Policy = FaedPolicies.ApprovedMerchant)]
+[Authorize(Policy = FaedPolicies.RegisteredMerchant)]
 public sealed class ListingsController(IMerchantListingService listings) : Controller
 {
     [HttpGet]

@@ -50,6 +50,12 @@ public interface IApplicationDbContext
     /// <summary>Merchant reviews left after a completed transaction.</summary>
     DbSet<Review> Reviews { get; }
 
+    /// <summary>Seeded, admin-editable monthly plans (Basic/Standard/Pro).</summary>
+    DbSet<SubscriptionPlan> SubscriptionPlans { get; }
+
+    /// <summary>One row per merchant: the subscription state that gates publishing.</summary>
+    DbSet<MerchantSubscription> MerchantSubscriptions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -83,6 +83,10 @@ builder.Services.AddScoped<
     IAuthorizationHandler,
     ApprovedMerchantHandler>();
 
+builder.Services.AddScoped<
+    IAuthorizationHandler,
+    RegisteredMerchantHandler>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
@@ -101,6 +105,18 @@ builder.Services.AddAuthorization(options =>
                         !context.User.IsInRole(FaedRoles.Admin))
                 .AddRequirements(
                     new ApprovedMerchantRequirement()));
+
+    // Listing-workspace authorization: any non-suspended merchant, so drafts can be built
+    // before verification is approved. The publish gate itself is checked separately.
+    options.AddPolicy(
+        FaedPolicies.RegisteredMerchant,
+        policy =>
+            policy.RequireAuthenticatedUser()
+                .RequireAssertion(
+                    context =>
+                        !context.User.IsInRole(FaedRoles.Admin))
+                .AddRequirements(
+                    new RegisteredMerchantRequirement()));
 
     // B2C ordering belongs to Buyer accounts and merchants
     // acting as buyers. Administrators are excluded.

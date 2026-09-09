@@ -4,6 +4,7 @@ using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Common;
+using Faed.Web.Services.Subscriptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,7 @@ namespace Faed.Web.Services.Listings;
 public sealed class ListingModerationService(
     IApplicationDbContext db,
     IUserRoleService userRoles,
+    ISubscriptionService subscriptions,
     IClock clock,
     ILogger<ListingModerationService> logger) : IListingModerationService
 {
@@ -148,19 +150,13 @@ public sealed class ListingModerationService(
 
         if (isApproval)
         {
-            // "A Live Listing's merchant must be approved" is the
-            // natural enforcement point here: a merchant can be suspended or rejected between
-            // submission and this decision, and publishing must not silently ignore that
-            var merchantIsApproved = await db.MerchantProfiles
-                .AsNoTracking()
-                .AnyAsync(
-                    p => p.Id == listing.MerchantProfileId && p.VerificationStatus == MerchantVerificationStatus.Approved,
-                    cancellationToken);
-
-            if (!merchantIsApproved)
+            // The publish gate is re-checked here, not trusted from submission time: a
+            // merchant can be suspended, lose their subscription, or fill their quota with
+            // another listing between submission and this decision (CLAUDE.md invariant 7).
+            var gate = await subscriptions.CheckPublishGateAsync(listing.MerchantProfileId, cancellationToken);
+            if (!gate.CanPublish)
             {
-                return Result.Conflict(
-                    "This listing's merchant is no longer an approved seller, so it cannot be published.");
+                return Result.Conflict(gate.Message!);
             }
 
             // Approval publishes whatever the listing currently is, not the snapshot that was

@@ -6,6 +6,7 @@ using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 using Faed.Web.Services.Merchants;
 using Faed.Web.Services.Ordering;
+using Faed.Web.Services.Subscriptions;
 using Faed.Web.Services.Trust;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -213,6 +214,7 @@ public static class DemoDataSeeder
         private readonly IMerchantStoreService _store;
         private readonly IOrderService _orders;
         private readonly IReviewService _reviews;
+        private readonly ISubscriptionService _subscriptions;
         private readonly string _password;
         private readonly CancellationToken _ct;
 
@@ -228,6 +230,7 @@ public static class DemoDataSeeder
             _store = sp.GetRequiredService<IMerchantStoreService>();
             _orders = sp.GetRequiredService<IOrderService>();
             _reviews = sp.GetRequiredService<IReviewService>();
+            _subscriptions = sp.GetRequiredService<ISubscriptionService>();
 
             // A generous command timeout. The seed does not race anything in a real
             // Development database, but a CI box or a workstation running the whole test
@@ -243,9 +246,9 @@ public static class DemoDataSeeder
             var buyerBId = await CreateUserAsync(BuyerBEmail, FaedRoles.Buyer);
 
             var merchantA = await CreateApprovedMerchantAsync(
-                MerchantAEmail, "Amman Kitchen Co.", "hello@amman-kitchen.example", "+962 6 500 0001", adminId);
+                MerchantAEmail, "Amman Kitchen Co.", "hello@amman-kitchen.example", "+962 6 500 0001", adminId, "Standard");
             var merchantB = await CreateApprovedMerchantAsync(
-                MerchantBEmail, "Petra Power Tools", "sales@petra-power-tools.example", "+962 6 500 0002", adminId);
+                MerchantBEmail, "Petra Power Tools", "sales@petra-power-tools.example", "+962 6 500 0002", adminId, "Basic");
             await CreatePendingMerchantAsync(
                 PendingMerchantEmail, "Rainbow Home Essentials", "info@rainbow-home.example", "+962 6 500 0003");
 
@@ -359,7 +362,7 @@ public static class DemoDataSeeder
         }
 
         private async Task<DemoMerchant> CreateApprovedMerchantAsync(
-            string email, string businessName, string contactEmail, string contactPhone, string adminId)
+            string email, string businessName, string contactEmail, string contactPhone, string adminId, string planCode)
         {
             // No starter role: approving the verification grants the Merchant role, exactly as
             // it would for a real applicant.
@@ -375,6 +378,15 @@ public static class DemoDataSeeder
                 $"attach verification document for {businessName}");
             Ok(await _verification.SubmitForReviewAsync(userId, _ct), $"submit {businessName} for verification");
             Ok(await _verification.ApproveAsync(adminId, profileId, _ct), $"approve {businessName}");
+
+            // Verification before payment (BUSINESS-MODEL.md §7): the plan is chosen and
+            // activated only after approval, exactly like a real merchant's path.
+            var plans = await _subscriptions.GetAvailablePlansAsync(_ct);
+            var plan = plans.SingleOrDefault(p => p.Code == planCode)
+                ?? throw Fail($"choose plan for {businessName}", [$"No active subscription plan with code '{planCode}'."]);
+            Ok(await _subscriptions.ChoosePlanAsync(userId, plan.Id, _ct), $"choose {planCode} plan for {businessName}");
+            Ok(await _subscriptions.ActivateAsync(adminId, profileId, $"DEMO-{planCode.ToUpperInvariant()}-{businessName}", _ct),
+                $"activate {planCode} subscription for {businessName}");
 
             return new DemoMerchant(userId, profileId, businessName);
         }

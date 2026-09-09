@@ -10,7 +10,8 @@
             Label = "Account",
             Links = new[]
             {
-                (Section: "Verification", Controller: "Verification", Label: "Verification", Icon: "shield-check")
+                (Section: "Verification", Controller: "Verification", Label: "Verification", Icon: "shield-check"),
+                (Section: "Subscription", Controller: "Subscription", Label: "Subscription", Icon: "exchange")
             }
         },
         new
@@ -58,6 +59,7 @@
     var activeLabel = active switch
     {
         "Verification" => "Verification",
+        "Subscription" => "Subscription",
         "Listings" => "Listings",
         "Orders" => "Orders",
         "Reviews" => "Reviews",

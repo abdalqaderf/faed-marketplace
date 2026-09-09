@@ -323,6 +323,11 @@ public sealed class MerchantVerificationService(
             .AsNoTracking()
             .AnyAsync(p => p.UserId == userId && p.VerificationStatus == MerchantVerificationStatus.Approved, cancellationToken);
 
+    public Task<bool> IsRegisteredMerchantAsync(string userId, CancellationToken cancellationToken = default) =>
+        db.MerchantProfiles
+            .AsNoTracking()
+            .AnyAsync(p => p.UserId == userId && p.VerificationStatus != MerchantVerificationStatus.Suspended, cancellationToken);
+
     public Task<PagedResult<MerchantQueueItem>> GetQueueAsync(
         MerchantQueueFilter filter, int page = 1, CancellationToken cancellationToken = default)
     {

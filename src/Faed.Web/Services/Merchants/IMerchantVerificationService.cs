@@ -24,6 +24,14 @@ public interface IMerchantVerificationService
     /// <summary>True when the user's merchant profile is Approved. Backs the ApprovedMerchant policy.</summary>
     Task<bool> IsApprovedMerchantAsync(string userId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// True when the user has a merchant profile that has not been suspended — Draft,
+    /// PendingReview, Approved or Rejected all qualify. Backs the RegisteredMerchant policy,
+    /// which is what lets a merchant build listing drafts before their application is
+    /// approved.
+    /// </summary>
+    Task<bool> IsRegisteredMerchantAsync(string userId, CancellationToken cancellationToken = default);
+
     // --- Admin review ---
 
     Task<PagedResult<MerchantQueueItem>> GetQueueAsync(

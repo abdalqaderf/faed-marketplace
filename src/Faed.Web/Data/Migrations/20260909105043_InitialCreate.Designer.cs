@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Faed.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260901141629_AddListingsAndInventory")]
-    partial class AddListingsAndInventory
+    [Migration("20260909105043_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,73 +24,6 @@ namespace Faed.Web.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("Faed.Web.Models.Entities.AdminActionLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ActionType")
-                        .IsRequired()
-                        .HasMaxLength(48)
-                        .HasColumnType("nvarchar(48)");
-
-                    b.Property<string>("AdminUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("TargetId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("TargetType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("TargetType", "TargetId");
-
-                    b.ToTable("AdminActionLogs", (string)null);
-                });
-
-            modelBuilder.Entity("Faed.Web.Models.Entities.Brand", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Brands", (string)null);
-                });
 
             modelBuilder.Entity("Faed.Web.Models.Entities.Category", b =>
                 {
@@ -190,63 +123,9 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("DiscountReasons", (string)null);
                 });
 
-            modelBuilder.Entity("Faed.Web.Models.Entities.InventoryAdjustment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AdjustmentType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("ChangedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("ListingVariantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("QuantityAfter")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuantityBefore")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuantityDelta")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ListingVariantId", "CreatedAtUtc");
-
-                    b.ToTable("InventoryAdjustments", (string)null);
-                });
-
             modelBuilder.Entity("Faed.Web.Models.Entities.Listing", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("AllowB2B")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("AllowB2C")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("AllowMixedVariantB2B")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("BrandId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("CategoryId")
@@ -262,6 +141,12 @@ namespace Faed.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool>("HiddenByAdmin")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HiddenBySubscriptionLapse")
+                        .HasColumnType("bit");
 
                     b.Property<string>("IncludedItemsText")
                         .HasMaxLength(2000)
@@ -314,19 +199,15 @@ namespace Faed.Web.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("WarrantyText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<decimal?>("WholesaleIndicativeUnitPrice")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<int?>("WholesaleMinQuantity")
+                    b.Property<int?>("WarrantyMonths")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
+                    b.Property<string>("WarrantyType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
-                    b.HasIndex("BrandId");
+                    b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
 
@@ -617,6 +498,64 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("ListingVariantOptionValues", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PickupHoursText")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("PickupInstructions")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantProfileId", "IsActive");
+
+                    b.ToTable("MerchantLocations", (string)null);
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -689,6 +628,60 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("MerchantProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActivatedByAdminId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PaymentReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("StartsAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("SubscriptionPlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantProfileId")
+                        .IsUnique();
+
+                    b.HasIndex("SubscriptionPlanId");
+
+                    b.HasIndex("Status", "ExpiresAtUtc");
+
+                    b.ToTable("MerchantSubscriptions", (string)null);
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantVerificationDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -733,6 +726,254 @@ namespace Faed.Web.Data.Migrations
                     b.ToTable("MerchantVerificationDocuments", (string)null);
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BuyerNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("BuyerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeliveryAddressText")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<string>("FulfillmentSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FulfillmentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("MerchantLocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nchar(6)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("ReservationExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantLocationId");
+
+                    b.HasIndex("Reference")
+                        .IsUnique();
+
+                    b.HasIndex("BuyerUserId", "CreatedAtUtc");
+
+                    b.HasIndex("MerchantProfileId", "Status");
+
+                    b.HasIndex("Status", "ReservationExpiresAtUtc");
+
+                    b.ToTable("Orders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Orders_NonNegativeMoney", "[Subtotal] >= 0 AND [Total] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.OrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConditionGradeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("DiscountReasonSnapshot")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<decimal>("LineTotalSnapshot")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ListingTitleSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ListingVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPriceSnapshot")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("VariantSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ListingId");
+
+                    b.HasIndex("ListingVariantId");
+
+                    b.HasIndex("OrderId", "ListingVariantId")
+                        .IsUnique();
+
+                    b.ToTable("OrderItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItems_PositiveQuantityAndMoney", "[Quantity] > 0 AND [UnitPriceSnapshot] >= 0 AND [LineTotalSnapshot] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Review", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ReviewedMerchantProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReviewerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Reviews_OrderId_Unique");
+
+                    b.HasIndex("ReviewerUserId");
+
+                    b.HasIndex("ReviewedMerchantProfileId", "CreatedAtUtc");
+
+                    b.ToTable("Reviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Reviews_RatingRange", "[Rating] >= 1 AND [Rating] <= 5");
+                        });
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActiveListingQuota")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<bool>("HasFeaturedPlacement")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MonthlyPriceJod")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("SubscriptionPlans", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SubscriptionPlans_Positive", "[MonthlyPriceJod] >= 0 AND [ActiveListingQuota] >= 1");
+                        });
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -757,10 +998,20 @@ namespace Faed.Web.Data.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -955,22 +1206,8 @@ namespace Faed.Web.Data.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("Faed.Web.Models.Entities.InventoryAdjustment", b =>
-                {
-                    b.HasOne("Faed.Web.Models.Entities.ListingVariant", null)
-                        .WithMany()
-                        .HasForeignKey("ListingVariantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Faed.Web.Models.Entities.Listing", b =>
                 {
-                    b.HasOne("Faed.Web.Models.Entities.Brand", null)
-                        .WithMany()
-                        .HasForeignKey("BrandId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Faed.Web.Models.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
@@ -1084,11 +1321,35 @@ namespace Faed.Web.Data.Migrations
                     b.Navigation("OptionValue");
                 });
 
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantLocation", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
                         .WithOne()
                         .HasForeignKey("Faed.Web.Models.Entities.MerchantProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.MerchantSubscription", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithOne()
+                        .HasForeignKey("Faed.Web.Models.Entities.MerchantSubscription", "MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.SubscriptionPlan", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionPlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1099,6 +1360,68 @@ namespace Faed.Web.Data.Migrations
                         .WithMany("Documents")
                         .HasForeignKey("MerchantProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("BuyerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantLocation", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.OrderItem", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.Listing", null)
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.ListingVariant", null)
+                        .WithMany()
+                        .HasForeignKey("ListingVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.Order", null)
+                        .WithMany("Items")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Review", b =>
+                {
+                    b.HasOne("Faed.Web.Models.Entities.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Entities.MerchantProfile", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedMerchantProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Faed.Web.Models.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1186,6 +1509,11 @@ namespace Faed.Web.Data.Migrations
             modelBuilder.Entity("Faed.Web.Models.Entities.MerchantProfile", b =>
                 {
                     b.Navigation("Documents");
+                });
+
+            modelBuilder.Entity("Faed.Web.Models.Entities.Order", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

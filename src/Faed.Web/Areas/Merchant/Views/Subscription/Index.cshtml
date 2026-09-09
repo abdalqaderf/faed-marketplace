@@ -1,0 +1,117 @@
+@using Faed.Web.Models.Enums
+@model SubscriptionPageModel
+@{
+    ViewData["Title"] = "Subscription";
+    var page = Model.Page;
+    var sub = page.Subscription;
+
+    string BadgeClass(SubscriptionStatus status) => status switch
+    {
+        SubscriptionStatus.Active => "faed-badge--approved",
+        SubscriptionStatus.PendingActivation => "faed-badge--pending",
+        SubscriptionStatus.Cancelled => "faed-badge--suspended",
+        _ => "faed-badge--rejected",
+    };
+}
+
+<div class="faed-page faed-page--wide">
+    <partial name="_MerchantSubnav" model="@("Subscription")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">Subscription</h1>
+            <p class="faed-page__subtitle">
+                An active subscription is required to publish. Faed never charges you directly —
+                pay the merchant by CliQ, bank transfer or cash, then an admin activates your plan.
+            </p>
+        </div>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="faed-alert faed-alert--error" role="alert"></div>
+
+    @if (!page.IsVerified)
+    {
+        <div class="faed-alert faed-alert--info" role="alert">
+            Your merchant application must be approved before you can choose a plan. Finish
+            <a asp-area="Merchant" asp-controller="Verification" asp-action="Index">verification</a> first —
+            you can keep building listing drafts while you wait.
+        </div>
+    }
+    else if (sub is null)
+    {
+        <div class="faed-alert faed-alert--info" role="alert">
+            You're approved to sell. Choose a plan below, then pay the merchant so an admin can activate it.
+        </div>
+    }
+
+    @if (sub is not null)
+    {
+        var quotaUsed = page.IsVerified && sub.ActiveListingQuota > 0
+            ? Math.Min(100, sub.LiveListingCount * 100 / sub.ActiveListingQuota)
+            : 0;
+
+        <div class="faed-panel faed-merchant-settings-section">
+            <div>
+                <h2 class="faed-panel__title">Current plan</h2>
+            </div>
+            <div class="faed-plan-card faed-plan-card--current" style="max-width:22rem;">
+                <div class="faed-plan-card__header">
+                    <strong>@sub.PlanName</strong>
+                    <span class="faed-badge @BadgeClass(sub.Status)">@sub.Status</span>
+                </div>
+                <div class="faed-plan-card__price">@sub.MonthlyPriceJod.ToString("0.###") JOD<span class="faed-plan-card__quota">/month</span></div>
+                <div class="faed-plan-card__quota">@sub.LiveListingCount of @sub.ActiveListingQuota active listings</div>
+                <div class="faed-quota-bar">
+                    <div class="faed-quota-bar__fill @(quotaUsed >= 100 ? "faed-quota-bar__fill--full" : "")" style="width:@quotaUsed%;"></div>
+                </div>
+                @if (sub.ExpiresAtUtc is { } expires)
+                {
+                    <div class="faed-plan-card__quota">
+                        @(sub.Status == SubscriptionStatus.Active ? "Renews or expires" : "Expired") @expires.ToString("d MMM yyyy")
+                    </div>
+                }
+                @if (sub.PaymentReference is { } reference)
+                {
+                    <div class="faed-plan-card__quota">Last payment reference: @reference</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (page.IsVerified)
+    {
+        <div class="faed-panel faed-merchant-settings-section">
+            <div>
+                <h2 class="faed-panel__title">@(sub is null ? "Choose a plan" : "Change plan")</h2>
+                <p class="faed-panel__hint">
+                    Downgrading applies immediately: your most recently published listings stay live up to the
+                    new quota, and the rest are paused — nothing is deleted.
+                </p>
+            </div>
+
+            <form asp-action="ChoosePlan" method="post" class="faed-plan-grid">
+                @foreach (var plan in page.AvailablePlans)
+                {
+                    var checkedAttr = (Model.SelectedPlanId ?? sub?.SubscriptionPlanId) == plan.Id;
+                    <label class="faed-plan-card">
+                        <div class="faed-plan-card__header">
+                            <strong>@plan.Name</strong>
+                            <input type="radio" name="SubscriptionPlanId" value="@plan.Id" @(checkedAttr ? "checked" : "") />
+                        </div>
+                        <div class="faed-plan-card__price">@plan.MonthlyPriceJod.ToString("0.###") JOD<span class="faed-plan-card__quota">/month</span></div>
+                        <div class="faed-plan-card__quota">@plan.ActiveListingQuota active listings</div>
+                        @if (plan.HasFeaturedPlacement)
+                        {
+                            <div class="faed-plan-card__quota">Featured placement</div>
+                        }
+                    </label>
+                }
+                <div class="faed-merchant-form-actions faed-field--full">
+                    <button type="submit" class="faed-btn faed-btn--primary">
+                        @(sub is null ? "Choose plan" : "Change plan")
+                    </button>
+                </div>
+            </form>
+        </div>
+    }
+</div>
