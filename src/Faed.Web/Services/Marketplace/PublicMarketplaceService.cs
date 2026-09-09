@@ -224,7 +224,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
     public async Task<PublicListingDetailView?> GetListingBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         // The launch-sector boundary is a public-visibility rule, not just a browse filter: a
-        // Live listing filed under a category outside Fashion Overstock must 404 on its own
+        // Live listing filed under a category outside Open-Box & Ex-Display must 404 on its own
         // slug exactly as it is absent from Home and Shop, or direct URL access would be a
         // hole straight through the "Do not expose unrelated sectors in the MVP UI" rule
         var launchCategoryIds = await GetLaunchSectorCategoryIdsAsync(cancellationToken);
@@ -287,7 +287,8 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             listing.ReferencePrice,
             listing.RetailPrice,
             listing.ReturnPolicyText,
-            listing.WarrantyText,
+            listing.WarrantyType,
+            listing.WarrantyMonths,
             listing.IncludedItemsText,
             listing.MissingItemsText,
             reasonNames,
@@ -355,7 +356,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
                     m.Id == l.MerchantProfileId && m.VerificationStatus == MerchantVerificationStatus.Approved));
 
     /// <summary>
-    /// Every active category id inside the <c>Fashion Overstock</c> launch sector, walked from
+    /// Every active category id inside the <c>Open-Box &amp; Ex-Display</c> launch sector, walked from
     /// its root (<see cref="CatalogDataSeeder.RootCategorySlug"/>) — the boundary that keeps a
     /// category added under a future sector from appearing in the MVP UI just because it is
     /// active. The table is small and admin-managed, so one full read

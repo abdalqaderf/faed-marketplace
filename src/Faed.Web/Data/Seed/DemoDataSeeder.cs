@@ -243,28 +243,28 @@ public static class DemoDataSeeder
             var buyerBId = await CreateUserAsync(BuyerBEmail, FaedRoles.Buyer);
 
             var merchantA = await CreateApprovedMerchantAsync(
-                MerchantAEmail, "Amman Threads", "hello@amman-threads.example", "+962 6 500 0001", adminId);
+                MerchantAEmail, "Amman Kitchen Co.", "hello@amman-kitchen.example", "+962 6 500 0001", adminId);
             var merchantB = await CreateApprovedMerchantAsync(
-                MerchantBEmail, "Petra Footwear", "sales@petra-footwear.example", "+962 6 500 0002", adminId);
+                MerchantBEmail, "Petra Power Tools", "sales@petra-power-tools.example", "+962 6 500 0002", adminId);
             await CreatePendingMerchantAsync(
-                PendingMerchantEmail, "Rainbow Kids Wear", "info@rainbow-kids.example", "+962 6 500 0003");
+                PendingMerchantEmail, "Rainbow Home Essentials", "info@rainbow-home.example", "+962 6 500 0003");
 
-            await ConfigureFulfillmentAsync(merchantA, "Amman Threads — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
-            await ConfigureFulfillmentAsync(merchantB, "Petra Footwear — Sweifieh", "8 Wakalat St", "Sweifieh");
+            await ConfigureFulfillmentAsync(merchantA, "Amman Kitchen Co. — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
+            await ConfigureFulfillmentAsync(merchantB, "Petra Power Tools — Sweifieh", "8 Wakalat St", "Sweifieh");
 
-            var tshirt = await CreateTshirtListingAsync(merchantA, adminId);
-            var handbag = await CreateHandbagListingAsync(merchantA, adminId);
-            await CreateDenimJacketListingAsync(merchantA, adminId);
-            await CreateWoolScarfListingAsync(merchantA, adminId);
-            await CreateLeatherBeltListingAsync(merchantA, adminId);
-            await CreateCanvasBackpackListingAsync(merchantA, adminId);
+            var kettle = await CreateKettleListingAsync(merchantA, adminId);
+            var vacuum = await CreateVacuumListingAsync(merchantA, adminId);
+            await CreateToasterListingAsync(merchantA, adminId);
+            await CreateHandMixerListingAsync(merchantA, adminId);
+            await CreateIronListingAsync(merchantA, adminId);
+            await CreateBlenderListingAsync(merchantA, adminId);
 
-            await CreateSneakersListingAsync(merchantB, adminId);
-            var clearance = await CreateClearanceListingAsync(merchantB, adminId);
-            var runningShoes = await CreateRunningShoesListingAsync(merchantB, adminId);
-            await CreateLeatherSandalsListingAsync(merchantB, adminId);
-            await CreateSportsSocksListingAsync(merchantB, adminId);
-            await CreateShoeBagSetListingAsync(merchantB, adminId);
+            await CreateDrillListingAsync(merchantB, adminId);
+            var clearance = await CreateClearanceVacuumListingAsync(merchantB, adminId);
+            var circularSaw = await CreateCircularSawListingAsync(merchantB, adminId);
+            await CreateAngleGrinderListingAsync(merchantB, adminId);
+            await CreateScrewdriverSetListingAsync(merchantB, adminId);
+            await CreateToolBagListingAsync(merchantB, adminId);
 
             // Drop everything the listing build tracked before the transactional scenarios so
             // the order/negotiation/deal services start against a clean change tracker.
@@ -272,12 +272,12 @@ public static class DemoDataSeeder
 
             // One active B2C order: placed by Buyer A, confirmed by the merchant.
             var activeOrderId = await PlaceOrderAsync(
-                buyerAId, merchantA, [(tshirt.VariantIds[0], 1), (tshirt.VariantIds[1], 1)], "Buyer A", "+962 79 000 0001");
+                buyerAId, merchantA, [(kettle.VariantIds[0], 1), (kettle.VariantIds[1], 1)], "Buyer A", "+962 79 000 0001");
             Ok(await _orders.ConfirmAsync(merchantA.UserId, activeOrderId, _ct), "confirm active demo order");
 
             // One completed B2C order: fully fulfilled and confirmed by the buyer.
             var completedOrderId = await PlaceOrderAsync(
-                buyerBId, merchantA, [(handbag.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002");
+                buyerBId, merchantA, [(vacuum.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002");
             Ok(await _orders.ConfirmAsync(merchantA.UserId, completedOrderId, _ct), "confirm completed demo order");
             Ok(await _orders.MarkReadyForPickupAsync(merchantA.UserId, completedOrderId, _ct), "ready completed demo order");
             Ok(await _orders.ConfirmReceiptAsync(buyerBId, completedOrderId, _ct), "buyer confirms completed demo order");
@@ -292,7 +292,7 @@ public static class DemoDataSeeder
             // One dispatched delivery order: demonstrates merchant-delivery fulfilment and the
             // OutForDelivery lifecycle state, left short of completion.
             var deliveryOrderId = await PlaceDeliveryOrderAsync(
-                buyerBId, [(runningShoes.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
+                buyerBId, [(circularSaw.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
                 "14 Al Yarmouk St, Sweifieh, Amman");
             Ok(await _orders.ConfirmAsync(merchantB.UserId, deliveryOrderId, _ct), "confirm delivery demo order");
             Ok(await _orders.MarkOutForDeliveryAsync(merchantB.UserId, deliveryOrderId, _ct), "dispatch delivery demo order");
@@ -301,7 +301,7 @@ public static class DemoDataSeeder
             Ok(
                 await _reviews.SubmitReviewAsync(buyerBId, new SubmitReviewInput(
                     completedOrderId, 5,
-                    "Bag was exactly as described, including the disclosed corner scuff. Smooth pickup."), _ct),
+                    "Vacuum was exactly as described, including the disclosed scuff. Smooth pickup."), _ct),
                 "submit demo review");
         }
 
@@ -403,201 +403,206 @@ public static class DemoDataSeeder
                 $"add pickup location for {merchant.BusinessName}");
         }
 
-        // ---- Listings — Amman Threads (clothing / bags & accessories) ----------------
+        // ---- Listings — Amman Kitchen Co. (small kitchen appliances / home & cleaning) ----
 
-        private async Task<DemoListing> CreateTshirtListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateKettleListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 2 — T-Shirt, Condition A, Overstock, Size M/L/XL × Colour Black/White.
+            // Listing 2 — Kettle, Condition A, Overstock, Capacity 1.5L/1.7L/2L × Colour Black/White.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), await GradeIdAsync("A"),
-                "Everyday Cotton Crew Tee (Overstock)",
-                "End-of-run stock of our best-selling 180gsm combed-cotton crew tee. Brand-new with tags; " +
+                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("A"),
+                "Rapid-Boil Electric Kettle (Overstock)",
+                "End-of-run stock of our best-selling rapid-boil kettle. Sealed and unopened; " +
                 "the only reason for the discount is that we over-ordered for the season.",
                 null, 12.000m,
-                "14-day size-exchange on unworn items.", null, "One tee, folded with tag.", null, []);
+                "14-day exchange on unopened units.", WarrantyType.ManufacturerWarranty, 12,
+                "One kettle, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create tee listing");
-            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "M", "L", "XL");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create kettle listing");
+            var capacity = await AddOptionAsync(merchant.UserId, listingId, "Capacity", "1.5L", "1.7L", "2L");
             var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "White");
-            await AddVariantAsync(merchant.UserId, listingId, "TEE-BLK-M", [size["M"], colour["Black"]], 40);
-            await AddVariantAsync(merchant.UserId, listingId, "TEE-WHT-L", [size["L"], colour["White"]], 25);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tee-front.png", "Folded black crew tee, front view");
+            await AddVariantAsync(merchant.UserId, listingId, "KETTLE-BLK-15L", [capacity["1.5L"], colour["Black"]], 40);
+            await AddVariantAsync(merchant.UserId, listingId, "KETTLE-WHT-17L", [capacity["1.7L"], colour["White"]], 25);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tee-front.png", "Boxed black electric kettle, front view");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach tee discount reason");
+                "attach kettle discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateHandbagListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateVacuumListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 3 — Handbag, Condition D, Display Item, visible cosmetic-defect photo.
+            // Listing 3 — Vacuum cleaner, Condition D, Display Item, visible cosmetic-defect photo.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("D"),
-                "Structured Leather Tote — Display Unit",
-                "Former window-display tote in full-grain leather. Structurally perfect; there is light " +
+                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("D"),
+                "Bagless Upright Vacuum — Display Unit",
+                "Former showroom vacuum. Structurally perfect and fully functional; there is light " +
                 "surface scuffing to one bottom corner from the display stand, shown in the defect photo.",
                 null, 55.000m,
-                "Sold as-is; no size exchange on clearance display units.", null, "Tote and dust bag.", null, []);
+                "Sold as-is; no exchange on clearance display units.", WarrantyType.ShopWarranty, 3,
+                "Vacuum and dust bag.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create handbag listing");
-            await AddVariantAsync(merchant.UserId, listingId, "TOTE-COGNAC", [], 3);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tote-front.png", "Cognac leather tote, front view");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create vacuum listing");
+            await AddVariantAsync(merchant.UserId, listingId, "VAC-UPRIGHT", [], 3);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tote-front.png", "Upright vacuum cleaner, front view");
             await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "tote-corner-scuff.png", "Close-up of light scuffing on the bottom corner");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("DisplayItem")] }, _ct),
-                "attach handbag discount reason");
+                "attach vacuum discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateDenimJacketListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateToasterListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), await GradeIdAsync("B"),
-                "Classic Indigo Denim Jacket (Past Season)",
-                "Last winter's colourway of our best-selling trucker jacket. Brand-new and unworn; the " +
-                "swing tags are present but the retail box was opened for a photo shoot, which is why it " +
-                "is being cleared at a discount.",
+                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("B"),
+                "Classic 2-Slice Toaster (Superseded Model)",
+                "Last year's colourway of our best-selling 2-slice toaster. Sealed and unopened; the " +
+                "retail box was opened for a photo shoot, which is why it is being cleared at a discount.",
                 null, 28.000m,
-                "14-day size-exchange on unworn items.", null, "One jacket, folded with tag.", null, []);
+                "14-day exchange on unopened units.", WarrantyType.ManufacturerWarranty, 24,
+                "One toaster, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create denim jacket listing");
-            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "S", "M", "L");
-            await AddVariantAsync(merchant.UserId, listingId, "DENIM-S", [size["S"]], 10);
-            await AddVariantAsync(merchant.UserId, listingId, "DENIM-M", [size["M"]], 18);
-            await AddVariantAsync(merchant.UserId, listingId, "DENIM-L", [size["L"]], 12);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-front.png", "Indigo denim jacket, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-detail.png", "Button placket detail");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create toaster listing");
+            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Silver", "Red");
+            await AddVariantAsync(merchant.UserId, listingId, "TOAST-BLK", [colour["Black"]], 10);
+            await AddVariantAsync(merchant.UserId, listingId, "TOAST-SLV", [colour["Silver"]], 18);
+            await AddVariantAsync(merchant.UserId, listingId, "TOAST-RED", [colour["Red"]], 12);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-front.png", "Black 2-slice toaster, front view");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-detail.png", "Control dial detail");
             await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "denim-jacket-box.png", "Retail box opened for a photo shoot");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("PastSeason")] }, _ct),
-                "attach denim jacket discount reason");
+                    details with { DiscountReasonIds = [await ReasonIdAsync("SupersededModel")] }, _ct),
+                "attach toaster discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateWoolScarfListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateHandMixerListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("A"),
-                "Charcoal Wool-Blend Scarf — Final Units",
-                "Soft brushed wool-blend scarf from our overstock run. New with tags; only a handful of " +
-                "units are left after our winter promotion.",
+                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("A"),
+                "5-Speed Hand Mixer — Final Units",
+                "Compact hand mixer from our overstock run. Sealed and unopened; only a handful of " +
+                "units are left after our promotion.",
                 null, 9.500m,
-                "7-day exchange while stock lasts.", null, "One scarf with tag.", null, []);
+                "7-day exchange while stock lasts.", WarrantyType.None, null, "One hand mixer, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create wool scarf listing");
-            await AddVariantAsync(merchant.UserId, listingId, "SCARF-CHARCOAL", [], LowStockOpeningQuantity);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "wool-scarf.png", "Charcoal wool-blend scarf, flat lay");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create hand mixer listing");
+            await AddVariantAsync(merchant.UserId, listingId, "MIXER-STD", [], LowStockOpeningQuantity);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "wool-scarf.png", "5-speed hand mixer, flat lay");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach wool scarf discount reason");
+                "attach hand mixer discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateLeatherBeltListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateIronListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("C"),
-                "Genuine Leather Belt — Customer Return",
-                "Full-grain leather belt returned unused within our exchange window. Inspected, re-boxed " +
+                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("C"),
+                "Steam Iron — Customer Return",
+                "Steam iron returned unused within our exchange window. Inspected, re-boxed " +
                 "and in full working order; sold at a discount because it can no longer be sold as new.",
                 null, 14.000m,
-                "Sold as-is; no further exchange on returned units.", null, "One belt, boxed.", null, []);
+                "Sold as-is; no further exchange on returned units.", WarrantyType.ManufacturerWarranty, 6,
+                "One iron, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather belt listing");
-            await AddVariantAsync(merchant.UserId, listingId, "BELT-BRN-M", [], 15);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-belt.png", "Brown leather belt with buckle");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create iron listing");
+            await AddVariantAsync(merchant.UserId, listingId, "IRON-STD", [], 15);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-belt.png", "Steam iron, front view");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("CustomerReturn")] }, _ct),
-                "attach leather belt discount reason");
+                "attach iron discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateCanvasBackpackListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateBlenderListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("B"),
-                "Heavyweight Canvas Backpack (Packaging Damage)",
-                "Durable waxed-canvas backpack with a padded laptop sleeve. Brand-new and unused; some " +
+                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("B"),
+                "Heavy-Duty Blender (Packaging Damage)",
+                "Durable countertop blender with a shatterproof jug. Sealed and unused; some " +
                 "retail boxes arrived crushed from the freight pallet, which is why these are discounted.",
                 null, 24.000m,
-                "14-day exchange on unused items.", null, "One backpack; box condition varies.", null, []);
+                "14-day exchange on unused items.", WarrantyType.ManufacturerWarranty, 12,
+                "One blender; box condition varies.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create canvas backpack listing");
-            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Olive");
-            await AddVariantAsync(merchant.UserId, listingId, "BAG-BLK", [colour["Black"]], 20);
-            await AddVariantAsync(merchant.UserId, listingId, "BAG-OLV", [colour["Olive"]], 15);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "canvas-backpack.png", "Olive canvas backpack, front view");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create blender listing");
+            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Red");
+            await AddVariantAsync(merchant.UserId, listingId, "BLEND-BLK", [colour["Black"]], 20);
+            await AddVariantAsync(merchant.UserId, listingId, "BLEND-RED", [colour["Red"]], 15);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "canvas-backpack.png", "Red countertop blender, front view");
             await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "canvas-backpack-box.png", "Example of a crushed retail box");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("PackagingDamage")] }, _ct),
-                "attach canvas backpack discount reason");
+                "attach blender discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        // ---- Listings — Petra Footwear (shoes / bags & accessories) -------------------
+        // ---- Listings — Petra Power Tools (power tools / home & cleaning) -------------
 
-        private async Task<DemoListing> CreateSneakersListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateDrillListingAsync(DemoMerchant merchant, string adminId)
         {
-            // Listing 1 — Sneakers, Condition B, Past Season + Packaging Damage,
-            // Size 41/42/43 × Colour Black.
+            // Listing 1 — Drill, Condition B, Superseded Model + Packaging Damage,
+            // Voltage 12V/18V/20V × Colour Black.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), await GradeIdAsync("B"),
-                "Court Low Sneakers (Past Season)",
-                "Last season's colourway of our court low. The shoes are brand-new and unworn; some boxes " +
+                await CategoryIdAsync("power-tools"), await GradeIdAsync("B"),
+                "Cordless Drill Driver (Superseded Model)",
+                "Last year's colourway of our cordless drill driver. Sealed and unused; some boxes " +
                 "are crushed or missing lids from warehouse handling, which is why they are discounted.",
                 null, 45.000m,
-                "14-day exchange on unworn pairs in any condition of box.", null, "One pair; box condition varies.", null, []);
+                "14-day exchange on unused units in any condition of box.", WarrantyType.ManufacturerWarranty, 24,
+                "One drill; box condition varies.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create sneakers listing");
-            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "41", "42", "43");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create drill listing");
+            var voltage = await AddOptionAsync(merchant.UserId, listingId, "Voltage", "12V", "18V", "20V");
             var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black");
-            await AddVariantAsync(merchant.UserId, listingId, "COURT-BLK-41", [size["41"], colour["Black"]], 30);
-            await AddVariantAsync(merchant.UserId, listingId, "COURT-BLK-42", [size["42"], colour["Black"]], 30);
-            await AddVariantAsync(merchant.UserId, listingId, "COURT-BLK-43", [size["43"], colour["Black"]], 20);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "court-low-pair.png", "Pair of black court low sneakers");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "court-low-box.png", "Example of a crushed shoe box");
+            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-12V", [voltage["12V"], colour["Black"]], 30);
+            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-18V", [voltage["18V"], colour["Black"]], 30);
+            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-20V", [voltage["20V"], colour["Black"]], 20);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "court-low-pair.png", "Cordless drill driver with battery");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "court-low-box.png", "Example of a crushed retail box");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("PastSeason"), await ReasonIdAsync("PackagingDamage")] }, _ct),
-                "attach sneakers discount reasons");
+                    details with { DiscountReasonIds = [await ReasonIdAsync("SupersededModel"), await ReasonIdAsync("PackagingDamage")] }, _ct),
+                "attach drill discount reasons");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateClearanceListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateClearanceVacuumListingAsync(DemoMerchant merchant, string adminId)
         {
             // Listing 4 — a listing that ends up sold out, for public
             // sold-out behaviour. Opens with a small stock a demo buyer then clears.
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("clothing"), await GradeIdAsync("C"),
-                "Merino Half-Zip — Final Units",
-                "Customer-returned but unworn merino half-zips from our winter range. Inspected and " +
-                "re-tagged. Only a handful of units left.",
+                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("C"),
+                "Handheld Vacuum — Final Units",
+                "Customer-returned but unused handheld vacuums from our winter range. Inspected and " +
+                "re-boxed. Only a handful of units left.",
                 null, 38.000m,
-                "14-day size-exchange while stock lasts.", null, "One half-zip with tag.", null, []);
+                "14-day exchange while stock lasts.", WarrantyType.None, null, "One handheld vacuum, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create clearance listing");
-            await AddVariantAsync(merchant.UserId, listingId, "MERINO-HZ-M", [], ClearanceOpeningQuantity);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "merino-half-zip.png", "Grey merino half-zip, flat lay");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create clearance vacuum listing");
+            await AddVariantAsync(merchant.UserId, listingId, "VAC-HANDHELD", [], ClearanceOpeningQuantity);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "merino-half-zip.png", "Grey handheld vacuum, flat lay");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("CustomerReturn")] }, _ct),
@@ -607,93 +612,94 @@ public static class DemoDataSeeder
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateRunningShoesListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateCircularSawListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), await GradeIdAsync("A"),
-                "TrailHead Runner — Overstock Colourway",
-                "A colourway we simply over-ordered for the season. New, unworn and boxed; nothing wrong " +
-                "with the pair, just more stock than we can sell at full price.",
+                await CategoryIdAsync("power-tools"), await GradeIdAsync("A"),
+                "TrailHead Circular Saw — Overstock",
+                "A model we simply over-ordered for the season. Sealed, unused and boxed; nothing wrong " +
+                "with it, just more stock than we can sell at full price.",
                 null, 42.000m,
-                "14-day exchange on unworn pairs.", null, "One pair, boxed.", null, []);
+                "14-day exchange on unused units.", WarrantyType.ManufacturerWarranty, 24, "One saw, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create running shoes listing");
-            var size = await AddOptionAsync(merchant.UserId, listingId, "Size", "40", "41", "42");
-            await AddVariantAsync(merchant.UserId, listingId, "RUN-40", [size["40"]], 25);
-            await AddVariantAsync(merchant.UserId, listingId, "RUN-41", [size["41"]], 25);
-            await AddVariantAsync(merchant.UserId, listingId, "RUN-42", [size["42"]], 20);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "running-shoes-pair.png", "Pair of TrailHead running shoes");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create circular saw listing");
+            var bladeSize = await AddOptionAsync(merchant.UserId, listingId, "Blade size", "150mm", "165mm", "185mm");
+            await AddVariantAsync(merchant.UserId, listingId, "SAW-150", [bladeSize["150mm"]], 25);
+            await AddVariantAsync(merchant.UserId, listingId, "SAW-165", [bladeSize["165mm"]], 25);
+            await AddVariantAsync(merchant.UserId, listingId, "SAW-185", [bladeSize["185mm"]], 20);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "running-shoes-pair.png", "TrailHead circular saw");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach running shoes discount reason");
+                "attach circular saw discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateLeatherSandalsListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateAngleGrinderListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("shoes"), await GradeIdAsync("D"),
-                "Leather Sandals — Display Unit",
-                "Former window-display sandals in tan leather. Structurally sound; there is a light mark " +
-                "on the strap from the display stand, shown in the defect photo.",
+                await CategoryIdAsync("power-tools"), await GradeIdAsync("D"),
+                "Angle Grinder — Display Unit",
+                "Former showroom angle grinder. Structurally sound and fully functional; there is a light " +
+                "mark on the housing from the display stand, shown in the defect photo.",
                 null, 19.000m,
-                "Sold as-is; no exchange on clearance display units.", null, "One pair, no box.", null, []);
+                "Sold as-is; no exchange on clearance display units.", WarrantyType.None, null, "One grinder, no box.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create leather sandals listing");
-            await AddVariantAsync(merchant.UserId, listingId, "SANDAL-TAN-42", [], 6);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-sandals-front.png", "Tan leather sandals, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "leather-sandals-scuff.png", "Close-up of a light mark on the strap");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create angle grinder listing");
+            await AddVariantAsync(merchant.UserId, listingId, "GRINDER-STD", [], 6);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-sandals-front.png", "Angle grinder, front view");
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "leather-sandals-scuff.png", "Close-up of a light mark on the housing");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("DisplayItem")] }, _ct),
-                "attach leather sandals discount reason");
+                "attach angle grinder discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateSportsSocksListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateScrewdriverSetListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("A"),
-                "Sports Socks 3-Pack — Final Units",
-                "Cushioned sports socks from our overstock run. New with tags; only a few packs are left.",
+                await CategoryIdAsync("power-tools"), await GradeIdAsync("A"),
+                "Precision Screwdriver Set — Final Units",
+                "20-piece precision screwdriver set from our overstock run. Sealed and unopened; only a " +
+                "few sets are left.",
                 null, 6.500m,
-                "7-day exchange while stock lasts.", null, "One 3-pack, tagged.", null, []);
+                "7-day exchange while stock lasts.", WarrantyType.None, null, "One set, boxed.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create sports socks listing");
-            await AddVariantAsync(merchant.UserId, listingId, "SOCK-3PK", [], LowStockOpeningQuantity + 2);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "sports-socks.png", "Sports socks 3-pack, flat lay");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create screwdriver set listing");
+            await AddVariantAsync(merchant.UserId, listingId, "SCREWDRIVER-SET", [], LowStockOpeningQuantity + 2);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "sports-socks.png", "Precision screwdriver set, flat lay");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach sports socks discount reason");
+                "attach screwdriver set discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);
         }
 
-        private async Task<DemoListing> CreateShoeBagSetListingAsync(DemoMerchant merchant, string adminId)
+        private async Task<DemoListing> CreateToolBagListingAsync(DemoMerchant merchant, string adminId)
         {
             var details = new ListingDetailsInput(
-                await CategoryIdAsync("bags-accessories"), await GradeIdAsync("C"),
-                "Travel Shoe Bag Set (3-Pack) — Cosmetic Defect",
-                "Drawstring travel bags for keeping shoes separate in a suitcase. New and unused; the " +
-                "printed logo is slightly off-centre on one bag in the set, which does not affect use.",
+                await CategoryIdAsync("power-tools"), await GradeIdAsync("C"),
+                "Canvas Tool Bag — Cosmetic Defect",
+                "Heavy-duty canvas tool bag with reinforced base. New and unused; the " +
+                "printed logo is slightly off-centre, which does not affect use.",
                 null, 11.000m,
-                "7-day exchange on unused sets.", null, "Set of three drawstring bags.", null, []);
+                "7-day exchange on unused units.", WarrantyType.None, null, "One tool bag.", null, []);
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create shoe bag set listing");
-            await AddVariantAsync(merchant.UserId, listingId, "SHOEBAG-SET", [], 12);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "shoe-bag-set.png", "Travel shoe bag set, flat lay");
+            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create tool bag listing");
+            await AddVariantAsync(merchant.UserId, listingId, "TOOLBAG-STD", [], 12);
+            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "shoe-bag-set.png", "Canvas tool bag, flat lay");
             await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "shoe-bag-set-logo.png", "Close-up of the off-centre printed logo");
             Ok(
                 await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
                     details with { DiscountReasonIds = [await ReasonIdAsync("CosmeticDefect")] }, _ct),
-                "attach shoe bag set discount reason");
+                "attach tool bag discount reason");
             await PublishAsync(merchant.UserId, adminId, listingId);
 
             return await DescribeListingAsync(listingId);

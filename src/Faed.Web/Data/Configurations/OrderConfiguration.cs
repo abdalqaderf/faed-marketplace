@@ -24,6 +24,8 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Ignore(o => o.MerchantCanCancel);
         builder.Ignore(o => o.TotalUnits);
 
+        builder.Property(o => o.Reference).IsRequired().HasMaxLength(Order.ReferenceLength).IsFixedLength();
+
         builder.Property(o => o.BuyerUserId).IsRequired().HasMaxLength(450);
 
         builder.Property(o => o.ContactName).IsRequired().HasMaxLength(Order.MaxContactNameLength);
@@ -51,6 +53,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         // Guards a buyer cancellation racing a merchant status transition on the same order.
         builder.Property(o => o.RowVersion).IsRowVersion();
 
+        builder.HasIndex(o => o.Reference).IsUnique();
         builder.HasIndex(o => new { o.BuyerUserId, o.CreatedAtUtc });
         builder.HasIndex(o => new { o.MerchantProfileId, o.Status });
         // Drives the reservation-expiry sweep.

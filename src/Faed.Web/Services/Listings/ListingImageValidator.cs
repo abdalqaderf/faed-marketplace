@@ -8,10 +8,9 @@ namespace Faed.Web.Services.Listings;
 /// The client-supplied file name, extension and
 /// content type are never trusted on their own: they must agree with each other and with
 /// the bytes.
-/// Structural inspection is delegated to
-/// <see cref="VerificationDocumentValidator.ValidatePayload"/>, which already walks JPEG,
-/// PNG and PDF fail-closed. Listing
-/// uploads face the same threat as verification uploads, so they get the same scanner
+/// Magic-byte inspection is delegated to
+/// <see cref="VerificationDocumentValidator.ValidatePayload"/>. Listing
+/// uploads face the same threat as verification uploads, so they get the same check
 /// rather than a second, weaker one.
 /// </summary>
 public static class ListingImageValidator

@@ -212,9 +212,19 @@
                         <textarea class="faed-input" asp-for="Form.ReturnPolicyText" rows="2" disabled="@(!canEdit)"></textarea>
                     </div>
 
-                    <div class="faed-field faed-field--full">
-                        <label class="faed-field__label" asp-for="Form.WarrantyText">Warranty</label>
-                        <textarea class="faed-input" asp-for="Form.WarrantyText" rows="2" disabled="@(!canEdit)"></textarea>
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.WarrantyType">Warranty</label>
+                        <select class="faed-select" asp-for="Form.WarrantyType" disabled="@(!canEdit)">
+                            @foreach (WarrantyType type in Enum.GetValues<WarrantyType>())
+                            {
+                                <option value="@type">@ListingStatusDisplay.WarrantyTypeLabel(type)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.WarrantyMonths">Warranty length (months, optional)</label>
+                        <input class="faed-input" type="number" min="1" max="120" asp-for="Form.WarrantyMonths" disabled="@(!canEdit)" />
                     </div>
                 </div>
 
@@ -231,7 +241,7 @@
         <div class="faed-section__header">
             <div>
                 <h2 class="faed-section__title">Options &amp; variants</h2>
-                <p class="faed-section__hint">Define Size/Colour, then add each sellable combination with its own SKU and stock.</p>
+                <p class="faed-section__hint">Define attributes like Capacity or Colour, then add each sellable combination with its own SKU and stock.</p>
             </div>
         </div>
         <div class="faed-section__body">
@@ -280,7 +290,7 @@
             {
                 <form asp-action="AddOption" asp-route-id="@listing.Id" method="post" class="d-flex gap-2 mb-4" novalidate>
                     <label class="visually-hidden" asp-for="AddOption.Name">Option name</label>
-                    <input class="faed-input faed-input--medium" asp-for="AddOption.Name" placeholder="e.g. Size or Colour" />
+                    <input class="faed-input faed-input--medium" asp-for="AddOption.Name" placeholder="e.g. Capacity or Colour" />
                     <button type="submit" class="faed-btn faed-btn--ghost">Add option</button>
                 </form>
             }
@@ -348,7 +358,7 @@
                 @if (listing.Options.Count == 0)
                 {
                     <p class="faed-field__hint">
-                        No options defined — this adds a single undifferentiated SKU. Add a Size/Colour
+                        No options defined — this adds a single undifferentiated SKU. Add a Capacity/Colour
                         option above first if this product comes in variants.
                     </p>
                 }

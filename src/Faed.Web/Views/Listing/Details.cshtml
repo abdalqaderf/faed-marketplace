@@ -13,7 +13,7 @@
     var hasPolicyDetails = !string.IsNullOrWhiteSpace(Model.IncludedItemsText)
         || !string.IsNullOrWhiteSpace(Model.MissingItemsText)
         || !string.IsNullOrWhiteSpace(Model.ReturnPolicyText)
-        || !string.IsNullOrWhiteSpace(Model.WarrantyText);
+        || Model.WarrantyType != WarrantyType.None;
 }
 
 <div class="faed-page faed-page--wide faed-listing-page">
@@ -316,11 +316,17 @@
                                                         <dd>@Model.ReturnPolicyText</dd>
                                                     </div>
                                                 }
-                                                @if (!string.IsNullOrWhiteSpace(Model.WarrantyText))
+                                                @if (Model.WarrantyType != WarrantyType.None)
                                                 {
                                                     <div>
                                                         <dt>Warranty</dt>
-                                                        <dd>@Model.WarrantyText</dd>
+                                                        <dd>
+                                                            @ListingStatusDisplay.WarrantyTypeLabel(Model.WarrantyType)
+                                                            @if (Model.WarrantyMonths is { } months)
+                                                            {
+                                                                @($" — {months} month{(months == 1 ? "" : "s")}")
+                                                            }
+                                                        </dd>
                                                     </div>
                                                 }
                                             </dl>

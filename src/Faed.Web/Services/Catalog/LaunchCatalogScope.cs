@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Faed.Web.Services.Catalog;
 
 /// <summary>
-/// Resolves the category tree that belongs to the Fashion Overstock launch sector. The
+/// Resolves the category tree that belongs to the Open-Box &amp; Ex-Display launch sector. The
 /// taxonomy remains multi-sector capable, but only descendants of the seeded launch root
 /// are eligible in the MVP UI.
 /// </summary>

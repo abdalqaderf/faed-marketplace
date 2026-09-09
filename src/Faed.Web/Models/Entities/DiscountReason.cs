@@ -31,7 +31,7 @@ public class DiscountReason
 
     public Guid Id { get; private set; }
 
-    /// <summary>Stable natural key (for example <c>PastSeason</c>). Matched on when seeding.</summary>
+    /// <summary>Stable natural key (for example <c>SupersededModel</c>). Matched on when seeding.</summary>
     public string Code { get; private set; } = null!;
 
     public string Name { get; private set; } = null!;

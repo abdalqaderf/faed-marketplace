@@ -3297,16 +3297,16 @@ video {
     transition: transform 460ms ease;
 }
 
-.faed-category-card--clothing .faed-category-card__media {
-    background-image: linear-gradient(145deg, rgba(231,223,211,.7), rgba(119,108,95,.24)), url('/images/categories/faed-category-clothing.webp');
+.faed-category-card--small-kitchen-appliances .faed-category-card__media {
+    background-image: linear-gradient(145deg, rgba(231,223,211,.7), rgba(119,108,95,.24)), url('/images/categories/faed-category-small-kitchen-appliances.png');
 }
 
-.faed-category-card--shoes .faed-category-card__media {
-    background-image: linear-gradient(145deg, rgba(236,230,219,.68), rgba(95,104,101,.18)), url('/images/categories/faed-category-shoes.webp');
+.faed-category-card--home-cleaning .faed-category-card__media {
+    background-image: linear-gradient(145deg, rgba(236,230,219,.68), rgba(95,104,101,.18)), url('/images/categories/faed-category-home-cleaning.png');
 }
 
-.faed-category-card--bags-accessories .faed-category-card__media {
-    background-image: linear-gradient(145deg, rgba(232,221,204,.62), rgba(99,79,62,.22)), url('/images/categories/faed-category-bags-accessories.webp');
+.faed-category-card--power-tools .faed-category-card__media {
+    background-image: linear-gradient(145deg, rgba(232,221,204,.62), rgba(99,79,62,.22)), url('/images/categories/faed-category-power-tools.png');
 }
 
 .faed-category-card__scrim {
@@ -5791,7 +5791,7 @@ button.faed-quick-filter {
     font-weight: 620;
 }
 
-/* The supporting panel uses only CSS geometry: it avoids adding a fashion-only static
+/* The supporting panel uses only CSS geometry: it avoids adding a sector-specific static
    image to a permanent account surface while keeping the visual language recognisably Faed. */
 .faed-auth-context {
     position: relative;

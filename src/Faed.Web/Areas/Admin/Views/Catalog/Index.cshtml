@@ -21,7 +21,7 @@
     <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Categories</h2>
         <p class="faed-panel__hint">
-            The MVP taxonomy is limited to Fashion Overstock. Add lower-level categories beneath this sector;
+            The MVP taxonomy is limited to Open-Box &amp; Ex-Display. Add lower-level categories beneath this sector;
             new sector roots remain unavailable until a future-sector readiness decision.
         </p>
         <div class="faed-table-wrap">
@@ -75,7 +75,7 @@
             <label class="faed-field">
                 <span class="faed-field__label">Parent</span>
                 <select class="faed-select" name="parentCategoryId" required>
-                    <option value="">Choose a Fashion Overstock parent</option>
+                    <option value="">Choose an Open-Box &amp; Ex-Display parent</option>
                     @foreach (var cat in c.Categories.Where(category => category.IsActive))
                     {
                         <option value="@cat.Id">@cat.Name</option>
@@ -93,7 +93,7 @@
     @* ---- Condition grades -------------------------------------------------- *@
     <section class="faed-panel faed-admin-catalog-section">
         <h2 class="faed-panel__title">Condition grades</h2>
-        <p class="faed-panel__hint">The grade set is fixed at A&ndash;D for the Fashion MVP. Copy and availability only.</p>
+        <p class="faed-panel__hint">The grade set is fixed at A&ndash;D for the Phase 1 MVP. Copy and availability only.</p>
         <div class="faed-table-wrap">
             <table class="faed-table faed-admin-table">
                 <thead>

@@ -82,7 +82,9 @@ public class Listing
 
     public string? ReturnPolicyText { get; private set; }
 
-    public string? WarrantyText { get; private set; }
+    public WarrantyType WarrantyType { get; private set; }
+
+    public int? WarrantyMonths { get; private set; }
 
     public string? IncludedItemsText { get; private set; }
 
@@ -153,7 +155,8 @@ public class Listing
         decimal? referencePrice,
         decimal? retailPrice,
         string? returnPolicyText,
-        string? warrantyText,
+        WarrantyType warrantyType,
+        int? warrantyMonths,
         string? includedItemsText,
         string? missingItemsText,
         IReadOnlyCollection<Guid> discountReasonIds,
@@ -169,7 +172,7 @@ public class Listing
         title = RequireText(title, "title", MinTitleLength, MaxTitleLength);
         description = RequireText(description, "description", 1, MaxDescriptionLength);
         returnPolicyText = OptionalText(returnPolicyText, "return policy", MaxPolicyTextLength);
-        warrantyText = OptionalText(warrantyText, "warranty text", MaxPolicyTextLength);
+        RequireValidWarranty(warrantyType, warrantyMonths);
         includedItemsText = OptionalText(includedItemsText, "included items", MaxPolicyTextLength);
         missingItemsText = OptionalText(missingItemsText, "missing items", MaxPolicyTextLength);
         RequireNonNegative(referencePrice, "Reference price");
@@ -201,7 +204,8 @@ public class Listing
         // Return policy and warranty are commercial terms rather than claims about the
         // product, so they are deliberately not on the material list.
         ReturnPolicyText = returnPolicyText;
-        WarrantyText = warrantyText;
+        WarrantyType = warrantyType;
+        WarrantyMonths = warrantyMonths;
 
         _discountReasons.RemoveAll(r => !requestedReasons.Contains(r.DiscountReasonId));
         foreach (var id in requestedReasons.Where(id => !currentReasons.Contains(id)))
@@ -909,6 +913,22 @@ public class Listing
         if (value is < 0)
         {
             throw new DomainException($"{field} cannot be negative.");
+        }
+    }
+
+    private const int MinWarrantyMonths = 1;
+    private const int MaxWarrantyMonths = 120;
+
+    private static void RequireValidWarranty(WarrantyType warrantyType, int? warrantyMonths)
+    {
+        if (!Enum.IsDefined(warrantyType))
+        {
+            throw new DomainException("Choose a valid warranty option.");
+        }
+
+        if (warrantyMonths is { } months && (months < MinWarrantyMonths || months > MaxWarrantyMonths))
+        {
+            throw new DomainException($"Warranty length must be between {MinWarrantyMonths} and {MaxWarrantyMonths} months.");
         }
     }
 

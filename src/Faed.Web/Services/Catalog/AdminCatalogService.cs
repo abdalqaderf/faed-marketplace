@@ -94,14 +94,14 @@ public sealed class AdminCatalogService(
             if (parentCategoryId is not { } parentId)
             {
                 return Result<Guid>.Validation(
-                    "Choose a parent inside Fashion Overstock. New sector roots are not available in the MVP.");
+                    "Choose a parent inside Open-Box & Ex-Display. New sector roots are not available in the MVP.");
             }
 
             var launchCategoryIds = await LaunchCatalogScope.GetCategoryIdsAsync(
                 db, activeOnly: true, includeRoot: true, cancellationToken);
             if (!launchCategoryIds.Contains(parentId))
             {
-                return Result<Guid>.Validation("Choose an active parent inside Fashion Overstock.");
+                return Result<Guid>.Validation("Choose an active parent inside Open-Box & Ex-Display.");
             }
 
             var slug = await UniqueCategorySlugAsync(cleanName, cancellationToken);
@@ -118,7 +118,7 @@ public sealed class AdminCatalogService(
                 db, activeOnly: false, includeRoot: true, cancellationToken);
             if (!launchCategoryIds.Contains(categoryId))
             {
-                return Result.NotFound("That Fashion Overstock category was not found.");
+                return Result.NotFound("That Open-Box & Ex-Display category was not found.");
             }
 
             var category = await db.Categories.SingleOrDefaultAsync(c => c.Id == categoryId, cancellationToken);
@@ -147,7 +147,7 @@ public sealed class AdminCatalogService(
                 db, activeOnly: false, includeRoot: true, cancellationToken);
             if (!launchCategoryIds.Contains(categoryId))
             {
-                return Result.NotFound("That Fashion Overstock category was not found.");
+                return Result.NotFound("That Open-Box & Ex-Display category was not found.");
             }
 
             var category = await db.Categories.SingleOrDefaultAsync(c => c.Id == categoryId, cancellationToken);

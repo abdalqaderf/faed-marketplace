@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Faed.Web.Models;
 using Faed.Web.Models.Enums;
 
@@ -21,6 +22,11 @@ public class Order
     public const int MaxDeliveryAddressLength = 600;
     public const int MaxBuyerNoteLength = 1000;
     public const int MaxStatusReasonLength = 500;
+
+    // No I, L, O, 0 or 1: this code is read aloud over the phone and typed into WhatsApp, so
+    // characters that are easily confused by ear or by eye are excluded by design.
+    public const string ReferenceAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    public const int ReferenceLength = 6;
 
     /// <summary>
     /// Storage ceiling for the human-readable fulfilment description. Sized generously above
@@ -66,6 +72,7 @@ public class Order
         }
 
         Id = Guid.CreateVersion7();
+        Reference = GenerateReference();
         BuyerUserId = buyerUserId;
         MerchantProfileId = merchantProfileId;
         Status = OrderStatus.Pending;
@@ -88,6 +95,13 @@ public class Order
     }
 
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Six-character human-readable code a buyer and merchant read aloud to each other over
+    /// the phone or type into WhatsApp. Unique, generated once at order creation — never the
+    /// authorization key, which stays <see cref="Id"/>.
+    /// </summary>
+    public string Reference { get; private set; } = null!;
 
     /// <summary>The Identity user id of the buyer. Their orders are private to them.</summary>
     public string BuyerUserId { get; private set; } = null!;
@@ -289,6 +303,9 @@ public class Order
     }
 
     private void Touch(DateTime nowUtc) => UpdatedAtUtc = nowUtc;
+
+    private static string GenerateReference() =>
+        new(RandomNumberGenerator.GetItems<char>(ReferenceAlphabet, ReferenceLength));
 
     private static string Require(string value, string field, int maxLength)
     {

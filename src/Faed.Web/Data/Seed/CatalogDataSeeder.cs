@@ -7,8 +7,8 @@ namespace Faed.Web.Data.Seed;
 
 /// <summary>
 /// Idempotent seeding of the fixed Faed catalog reference data: condition grades A–D, the
-/// eight approved discount reasons, and the launch taxonomy (<c>Fashion Overstock</c> →
-/// Clothing, Shoes, Bags &amp; Accessories).
+/// eight approved discount reasons, and the launch taxonomy (<c>Open-Box &amp; Ex-Display</c> →
+/// Small Kitchen Appliances, Home &amp; Cleaning Appliances, Power Tools &amp; Workshop).
 /// Runs in every environment at startup, after <see cref="IdentityDataSeeder"/>. The schema
 /// must already exist (apply migrations first — the app does not migrate on startup). Each
 /// row is matched on its natural key (grade / reason <c>Code</c>, category <c>Slug</c>) and
@@ -21,26 +21,26 @@ namespace Faed.Web.Data.Seed;
 /// </summary>
 public static class CatalogDataSeeder
 {
-    public const string RootCategorySlug = "fashion-overstock";
+    public const string RootCategorySlug = "open-box-ex-display";
 
-    // Grades A–D only — no used-goods Grade E in the Fashion MVP.
+    // Grades A–D only — no used-goods Grade E in the appliances MVP.
     private static readonly (string Code, string Name, string Description, int SortOrder)[] Grades =
     [
-        ("A", "New / Complete",
-            "New, unused and complete, with normal packaging and tags where expected.", 1),
-        ("B", "New / Packaging Imperfection",
-            "New and unused, but the packaging, tag or box is damaged or missing.", 2),
-        ("C", "Opened or Returned / Unused",
-            "Opened, inspected or customer-returned, but not used or worn and still physically sound.", 3),
-        ("D", "Display / Cosmetic Imperfection",
-            "Display item or minor cosmetic imperfection that does not prevent normal use and is clearly disclosed.", 4),
+        ("A", "Sealed",
+            "New and unopened in the original box.", 1),
+        ("B", "Box Opened or Damaged",
+            "The appliance is new and unused, but the packaging is opened, dented or torn.", 2),
+        ("C", "Customer Return",
+            "Opened and inspected by a previous customer, but never used.", 3),
+        ("D", "Ex-Display",
+            "A showroom unit with light scratches or marks from display use, clearly disclosed.", 4),
     ];
 
     // All eight approved reasons, including OtherApprovedReason.
     private static readonly (string Code, string Name)[] Reasons =
     [
         ("Overstock", "Overstock"),
-        ("PastSeason", "Past Season"),
+        ("SupersededModel", "Superseded Model"),
         ("CustomerReturn", "Customer Return"),
         ("DisplayItem", "Display Item"),
         ("PackagingDamage", "Packaging Damage"),
@@ -52,9 +52,9 @@ public static class CatalogDataSeeder
     // Launch categories. Lower-level taxonomy is deferred.
     private static readonly (string Slug, string Name, int SortOrder)[] LaunchCategories =
     [
-        ("clothing", "Clothing", 1),
-        ("shoes", "Shoes", 2),
-        ("bags-accessories", "Bags & Accessories", 3),
+        ("small-kitchen-appliances", "Small Kitchen Appliances", 1),
+        ("home-cleaning", "Home & Cleaning Appliances", 2),
+        ("power-tools", "Power Tools & Workshop", 3),
     ];
 
     public static async Task SeedAsync(IServiceProvider services, CancellationToken cancellationToken = default)
@@ -130,7 +130,7 @@ public static class CatalogDataSeeder
             c => string.Equals(c.Slug, RootCategorySlug, StringComparison.OrdinalIgnoreCase));
         if (root is null)
         {
-            root = new Category("Fashion Overstock", RootCategorySlug, parentCategoryId: null, sortOrder: 0);
+            root = new Category("Open-Box & Ex-Display", RootCategorySlug, parentCategoryId: null, sortOrder: 0);
             db.Categories.Add(root);
             existingSlugs.Add(RootCategorySlug);
             added++;

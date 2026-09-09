@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Faed.Web.Models.Entities;
+using Faed.Web.Models.Enums;
 using Faed.Web.Services.Listings;
 
 namespace Faed.Web.Areas.Merchant.ViewModels;
@@ -41,9 +42,14 @@ public sealed class ListingFormModel
     [Display(Name = "Return policy")]
     public string? ReturnPolicyText { get; set; }
 
-    [StringLength(Listing.MaxPolicyTextLength)]
+    [Required]
+    [EnumDataType(typeof(WarrantyType), ErrorMessage = "Choose a valid warranty option.")]
     [Display(Name = "Warranty")]
-    public string? WarrantyText { get; set; }
+    public WarrantyType WarrantyType { get; set; } = WarrantyType.None;
+
+    [Range(1, 120, ErrorMessage = "Warranty length must be between 1 and 120 months.")]
+    [Display(Name = "Warranty length (months)")]
+    public int? WarrantyMonths { get; set; }
 
     [StringLength(Listing.MaxPolicyTextLength)]
     [Display(Name = "What's included")]
@@ -61,7 +67,8 @@ public sealed class ListingFormModel
         ReferencePrice,
         RetailPrice,
         ReturnPolicyText,
-        WarrantyText,
+        WarrantyType,
+        WarrantyMonths,
         IncludedItemsText,
         MissingItemsText,
         DiscountReasonIds);
@@ -76,7 +83,8 @@ public sealed class ListingFormModel
         ReferencePrice = listing.ReferencePrice,
         RetailPrice = listing.RetailPrice,
         ReturnPolicyText = listing.ReturnPolicyText,
-        WarrantyText = listing.WarrantyText,
+        WarrantyType = listing.WarrantyType,
+        WarrantyMonths = listing.WarrantyMonths,
         IncludedItemsText = listing.IncludedItemsText,
         MissingItemsText = listing.MissingItemsText,
     };

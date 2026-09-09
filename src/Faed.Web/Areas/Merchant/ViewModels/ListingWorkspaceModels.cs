@@ -79,7 +79,7 @@ public sealed class AddEvidenceModel
     [Required]
     [EnumDataType(typeof(ReferencePriceEvidenceType), ErrorMessage = "Choose a valid evidence type.")]
     [Display(Name = "Evidence type")]
-    public ReferencePriceEvidenceType EvidenceType { get; set; } = ReferencePriceEvidenceType.PreviousStorePrice;
+    public ReferencePriceEvidenceType EvidenceType { get; set; } = ReferencePriceEvidenceType.Photo;
 
     [StringLength(2000)]
     [Display(Name = "Link")]

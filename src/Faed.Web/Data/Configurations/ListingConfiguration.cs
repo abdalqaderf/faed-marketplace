@@ -34,7 +34,6 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
             .HasMaxLength(Listing.MaxDescriptionLength);
 
         builder.Property(l => l.ReturnPolicyText).HasMaxLength(Listing.MaxPolicyTextLength);
-        builder.Property(l => l.WarrantyText).HasMaxLength(Listing.MaxPolicyTextLength);
         builder.Property(l => l.IncludedItemsText).HasMaxLength(Listing.MaxPolicyTextLength);
         builder.Property(l => l.MissingItemsText).HasMaxLength(Listing.MaxPolicyTextLength);
 
@@ -45,6 +44,11 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
         // Persist the workflow enum as text so moderation queues and ad-hoc DB reads stay
         // legible.
         builder.Property(l => l.Status)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+
+        builder.Property(l => l.WarrantyType)
             .HasConversion<string>()
             .HasMaxLength(32)
             .IsRequired();

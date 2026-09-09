@@ -4,7 +4,7 @@ namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A node in the marketplace taxonomy. The tree is generic so
-/// future sectors are added as data, never as new schema. The MVP seeds only the <c>Fashion Overstock</c> root and
+/// future sectors are added as data, never as new schema. The MVP seeds only the <c>Open-Box &amp; Ex-Display</c> root and
 /// the three launch categories; deeper taxonomy is deferred.
 /// <see cref="Slug"/> is a display/routing identifier only, never an authorization key
 /// </summary>

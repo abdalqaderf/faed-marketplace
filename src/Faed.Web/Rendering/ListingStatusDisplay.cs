@@ -40,12 +40,16 @@ public static class ListingStatusDisplay
 
     public static string EvidenceTypeLabel(ReferencePriceEvidenceType type) => type switch
     {
-        ReferencePriceEvidenceType.MerchantCurrentPrice => "Current selling price",
-        ReferencePriceEvidenceType.PreviousStorePrice => "Previous store price",
-        ReferencePriceEvidenceType.CatalogPrice => "Catalog price",
-        ReferencePriceEvidenceType.ProductUrl => "Product page link",
-        ReferencePriceEvidenceType.InvoiceOrCatalogDocument => "Invoice / catalog document",
-        ReferencePriceEvidenceType.AdminNote => "Admin note",
+        ReferencePriceEvidenceType.Photo => "Photo",
+        ReferencePriceEvidenceType.Link => "Link",
+        _ => type.ToString(),
+    };
+
+    public static string WarrantyTypeLabel(WarrantyType type) => type switch
+    {
+        WarrantyType.None => "None",
+        WarrantyType.ManufacturerWarranty => "Manufacturer warranty",
+        WarrantyType.ShopWarranty => "Shop warranty",
         _ => type.ToString(),
     };
 

@@ -1,9 +1,9 @@
 ﻿namespace Faed.Web.Models.Entities;
 
 /// <summary>
-/// One dimension a listing's stock varies along — <c>Size</c>, <c>Colour</c> — held
-/// generically rather than as hard-coded columns, so a T-shirt (Colour × Size) and a shoe
-/// (Size only) use the same schema.
+/// One dimension a listing's stock varies along — <c>Capacity</c>, <c>Colour</c> — held
+/// generically rather than as hard-coded columns, so a blender (Colour only) and a drill
+/// (Voltage × Colour) use the same schema.
 /// </summary>
 public class ListingOption
 {

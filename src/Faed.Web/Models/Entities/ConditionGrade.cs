@@ -5,7 +5,7 @@ namespace Faed.Web.Models.Entities;
 /// <summary>
 /// Physical-condition reference data. A DB
 /// reference table rather than an enum so admins can manage the copy later.
-/// The Fashion MVP seeds grades A–D
+/// The Phase 1 MVP seeds grades A–D
 /// only; there is no used-goods Grade E.
 /// Deliberately independent of <see cref="DiscountReason"/>: the physical state of an item
 /// and the commercial reason it is discounted are separate concepts
@@ -45,7 +45,7 @@ public class ConditionGrade
 
     /// <summary>
     /// Admin edit of the buyer-facing copy. The <see cref="Code"/> is the stable
-    /// natural key and is never changed; the grade set stays A–D for the Fashion MVP
+    /// natural key and is never changed; the grade set stays A–D for the Phase 1 MVP
     /// </summary>
     public void UpdateDetails(string name, string description, int sortOrder)
     {

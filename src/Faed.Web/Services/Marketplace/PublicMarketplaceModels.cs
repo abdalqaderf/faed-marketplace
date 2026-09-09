@@ -118,7 +118,7 @@ public sealed record PublicListingVariantView(
     public bool IsSellable => IsActive && AvailableQuantity > 0;
 
     public string Combination => Options.Count == 0
-        ? "One size"
+        ? "Single variant"
         : string.Join(" · ", Options.Select(o => $"{o.Option}: {o.Value}"));
 }
 
@@ -140,7 +140,8 @@ public sealed record PublicListingDetailView(
     decimal? ReferencePrice,
     decimal? RetailPrice,
     string? ReturnPolicyText,
-    string? WarrantyText,
+    WarrantyType WarrantyType,
+    int? WarrantyMonths,
     string? IncludedItemsText,
     string? MissingItemsText,
     IReadOnlyList<string> DiscountReasonNames,
