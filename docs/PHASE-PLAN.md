@@ -1,7 +1,12 @@
 # Phase Plan — `faed-core`
 
-Eleven phases. **One phase per session.** Every phase ends with a green build and green tests
-before the next begins.
+Phases 0–10 below are the scope reduction. **Phases 11–13** (design system · public-surface
+rebuild · demo readiness) were planned in the design brief and are complete; they are summarised
+before Phase 14 and back-filled into this document by Phase 14 §8. **Phase 14** closes the
+branch.
+
+**One phase per session.** Every phase ends with a green build and green tests before the next
+begins.
 
 `main` is never touched. All work happens on `faed-core`.
 
@@ -359,6 +364,232 @@ correctly instead, and note the limitation in the test file.
 
 ---
 
+## Phases 11–13 — Visual rebuild (complete)
+
+Planned in the design brief, not here. Summarised so Phase 14 has the context:
+
+| Phase | Work |
+|---|---|
+| **11** | Design system (tokens) + mockups of the five public screens. No app code |
+| **12** | Public surface rebuilt to the mockups · workspaces token pass · an empty state for every screen · one responsive check |
+| **13** | Demo readiness: real images in `DemoDataSeeder` · a written demo script for the defence · full walkthrough of all three roles |
+
+Phase 14 §8 back-fills these three into this document from what the code actually does.
+
+---
+
+## Phase 14 — Final audit and defence readiness
+
+**Goal:** a repository that tells the truth, contains nothing it does not need, and a demo that
+cannot break. **No new features.**
+
+This project is being finished for a **university graduation defence**, not a launch. The demo
+is the product: a panel watches a screen, it does not read the code. Phase 14 removes what is
+dead, proves what is claimed, and rehearses the walkthrough.
+
+### Working rules for this phase
+
+1. **Audit first, fix second.** Work Steps 1–9 in order, writing every finding into
+   `docs/AUDIT-PHASE-14.md` as it is found — severity (Blocker / High / Medium / Low), file,
+   what is wrong, proposed fix. **Change no code until the full report is reviewed and
+   approved.** The only exceptions are Step 1 (secrets) and Step 2 (the build must compile) —
+   fix those immediately and record what was done.
+2. Prefer deleting over flagging. Delete code, never comment it out. No `TODO` comments.
+3. **Do not touch `wwwroot/css/faed.css`** beyond deleting rules that can be *proven*
+   unreferenced. It is 8,000+ lines, it works, and it is invisible to the panel. Refactoring it
+   is out of scope.
+4. No new NuGet packages, no frontend framework, no build step, no new features.
+5. If a deletion is ambiguous — a file that cannot be proven unreferenced, or a comment that may
+   carry a business rule the docs do not — **stop and ask.** A rule that lives only as a comment
+   on a deleted file disappears with it; this has already gone wrong twice on this project.
+6. Numbers in the docs are markers of intent, not the intent. When a number collides with the
+   goal, the goal wins — report the collision rather than working around the number.
+
+### Step 1 — Secrets and public-repo safety *(fix immediately)*
+
+The repo is public. Grep the tree for connection strings, passwords, API keys, tokens, real
+e-mail addresses and phone numbers across `appsettings*.json`, `*.cs`, `*.cshtml`, `*.md`,
+`.vscode/`, `Properties/launchSettings.json`. Confirm `.gitignore` covers
+`appsettings.Development.json`, `bin/`, `obj/`, `*.user` and uploaded media. `git ls-files` must
+list no uploaded verification document and no local media dump. Seeded demo credentials are
+expected — but they must be obviously fake and documented in `README.md`. If a secret is already
+in git history, report it; do not rewrite history.
+
+### Step 2 — Clean build *(fix immediately)*
+
+`dotnet clean && dotnet build Faed.slnx -warnaserror`. Nullable reference types are on and
+`CLAUDE.md` forbids suppressing warnings to make code compile. Fix real warnings properly; if
+one can only be silenced by a suppression, leave it and report it.
+
+### Step 3 — Migration and schema state
+
+`Data/Migrations/` holds exactly one migration plus the model snapshot, and
+`dotnet ef migrations list` agrees. Prove model and snapshot are in sync:
+`dotnet ef migrations add __probe` must produce an **empty** migration — then delete `__probe`.
+The app must not migrate on startup, and seeding must be idempotent (run it twice).
+
+### Step 4 — Dead vocabulary and dead code
+
+Re-run the earlier acceptance greps across the **whole** tree — `.cs`, `.cshtml`, `.js`, `.css`,
+`.json`, `docs/`. Phases 11–13 rebuilt the public surface, so earlier greens may have regressed:
+
+```bash
+grep -rin "b2b\|negotiation\|wholesale\|dispute\|escrow\|checkout\|cart\b" src/
+grep -rin "brand\|inventory\|deliveryzone\|auditlog\|adminactionlog" src/
+grep -rin "fashion\|apparel\|garment\|pastseason" src/
+grep -rn  "TODO\|FIXME\|HACK" src/ tests/
+```
+
+Some hits are legitimate (`Brand` inside a third-party string, `size` as a file size) — judge
+each and list the judgements. Then confirm the merchant-facing UI contains none of `variant`,
+`SKU`, `condition grade`, `discount reason`, `archive`, `hide`; the merchant sees two lifecycle
+words only, **Pause** and **Delete**. Finally, find genuinely dead code: unreferenced
+controllers, actions, services, interfaces, view models, enums, partials, `Rendering/` helpers,
+and DI registrations pointing at nothing.
+
+### Step 5 — Files that should not exist
+
+**The repository must contain nothing it does not need.** Walk the entire tree, not only `src/`,
+and propose for deletion every file that no longer earns its place. `git ls-files` is the list
+that matters — an untracked local file is not the panel's problem, a tracked one is.
+
+**Markdown and documents — this is the keep-list. Everything else in `.md` goes.**
+
+| Keep | Why |
+|---|---|
+| `README.md` | repo root — the entry point |
+| `CLAUDE.md` | repo root — the working rules |
+| `docs/CORE.md` | the scope |
+| `docs/BUSINESS-MODEL.md` | the reasoning |
+| `docs/PHASE-PLAN.md` | this file |
+| `docs/B2B-DESIGN.md` | the archived module, deliberately preserved |
+| `docs/04-DOMAIN-MODEL.md` | regenerated in Step 8 |
+| `docs/DEPLOYMENT.md` | keep **only if** it still matches reality — otherwise fix it or delete it |
+| `docs/COMMITS-AND-COMMENTS.md` | referenced by `CLAUDE.md` |
+| `docs/AUDIT-PHASE-14.md` | this phase's own report |
+
+Anything else — a stale `plan.md`, numbered design documents from the pre-`faed-core` era
+(`docs/01-*`, `docs/02-*`, `docs/03-*`, `05-*` …), `NOTES.md`, `CHANGELOG.md`, `TASKS.md`,
+scratch notes, a second copy of the README, **the Arabic working documents and the Claude Code
+prompt files** (the file-placement table says those live outside the repo) — is proposed for
+deletion. A `.md` that is stale is worse than absent: it is a document that contradicts the code
+in front of the panel. If a stale document contains a decision the keep-list files do not,
+**move that paragraph into the right doc first, then delete the file** — do not delete a
+decision.
+
+**Everything else that should not be there.** Report each with its evidence:
+
+- Editor and OS droppings: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `*.swp`, `.idea/`,
+  `*.user`, `*.suo`
+- Tracked build output: `bin/`, `obj/`, `TestResults/`, `*.log` — and the `.gitignore` lines
+  that should have stopped them
+- Backups and duplicates: `*.bak`, `*.orig`, `*.rej`, `*~`, `*.old.*`, `* copy.*`,
+  `Copy of *`, `*-v2.cshtml`, `Index2.cshtml`, `Class1.cs`, `NewFile1.cs`
+- Framework template leftovers never used by this app: `WeatherForecast*`, unused scaffolding,
+  unused `Areas/Identity` pages that were never wired
+- Design-phase artefacts: mockup `.html` files, exported PNG comps, Figma dumps, tokens
+  sketches from Phase 11 — the design shipped as CSS; the mockups are not the app
+- Unused `wwwroot/lib/` packages, second icon sets, alternate Bootstrap themes, unreferenced
+  fonts, `libman.json` entries pointing at what is no longer used
+- Archives and media dumps: `*.zip`, `*.rar`, `*.7z`, screenshots, sample uploads, a committed
+  `.bak` database
+- Empty directories, and directories left holding a single unreferenced file
+
+**Assets in use** — the ordinary sweep: every file in `wwwroot/images/` is referenced or gone;
+category images match the three current slugs and no fashion-era placeholder survives; no orphan
+script in `wwwroot/js/`, and none bound to an element that no longer exists; no Razor view
+without an action behind it (Phases 8, 9 and 12 merged several pages). Obsolete fashion-palette
+tokens in `faed.css` (`#f7f3eb`, `#0d6957`) are **reported, not deleted**, per rule 3.
+
+**How to prove a file is dead** before proposing it: `grep -rn "<filename-without-extension>"`
+across `src/`, `tests/`, `docs/`, `*.csproj`, `Faed.slnx` and `libman.json`; for a view, find the
+action or the `Partial`/`Component` call that renders it; for an image, the view, CSS or seeder
+that names it. **A file you cannot prove is dead is not proposed — it is asked about**, per
+rule 5. After deleting, `dotnet build Faed.slnx -warnaserror && dotnet test` must still pass,
+and Step 9's rehearsal must still run — a missing partial or image fails at runtime, not at
+build time.
+
+### Step 6 — Tests
+
+`dotnet test` green. Then confirm the five tests still assert what they were written for against
+current behaviour: listing status transitions · submission blockers · the three-check publish
+gate · reservation expiry · the quota rule. **A test that now passes vacuously is worse than a
+missing one** — report it. Then list, without writing them, the gaps that matter for the
+defence: the 12 h / 48 h / 72 h sweeps, "Actually collected" on a `NoShow`, and the response
+rate below and above the 5-order threshold. Confirm the InMemory `rowversion` limitation is
+still commented in the test file.
+
+### Step 7 — Invariants review
+
+Check the eight invariants in `CLAUDE.md` one by one and state, for each, whether it holds and
+**which file enforces it**: `rowversion` on stock · order snapshots · no physical deletes of
+transactional history · append-only moderation · business rules in the entity not the service ·
+nothing waits on a human forever · publishing needs two independent conditions · money never
+touches the platform.
+
+Two rules were carried across deletions and can only be enforced where they now live — verify
+both explicitly:
+
+- a **quantity-only** edit must not send a published listing back to moderation;
+- `HiddenBySubscriptionLapse` must stay distinguishable from a merchant's own Pause, so renewal
+  restores listings automatically.
+
+Confirm nothing from the `CLAUDE.md` "Do not add" list crept in during Phases 11–13.
+
+### Step 8 — Documentation drift
+
+- Back-fill **Phases 11, 12, 13** into this document as completed sections in the same
+  Do / Acceptance / Verify format, written from what the code actually does — not from what was
+  planned — and record Phase 14's own outcome.
+- Regenerate `docs/04-DOMAIN-MODEL.md` from the current entities: every entity, its key fields,
+  its relationships, and an entity count. It was due in Phase 7 and never done.
+- `README.md`: setup in the right order, demo accounts, the three roles, the current categories
+  and plans. Someone who has never seen the repo must get it running from it alone.
+- Flag any statement in `CORE.md` or `BUSINESS-MODEL.md` the code now contradicts. **List
+  contradictions; never silently rewrite a business decision.**
+- Confirm `docs/B2B-DESIGN.md` survived and is still detailed enough to rebuild the module.
+
+### Step 9 — Defence rehearsal from zero
+
+Simulate the machine the demo runs on: fresh clone to a temp folder, `faed-core`, build,
+`dotnet ef database drop -f`, `database update`, `dotnet run`. Then walk all three roles end to
+end and **time each step**: merchant publishes · admin approves · buyer reserves · merchant
+confirms · contact reveal · pickup completes · buyer reviews. Report every empty screen, broken
+image, 404, unhandled exception, console error and slow page — that is what the panel will see.
+Confirm the Phase 13 demo script still matches the actual screens.
+
+**Run this step again after the Step 5 deletions land.** A deleted partial, image or script
+fails at runtime, not at build time, and this rehearsal is the only thing that catches it.
+
+### Deliverable
+
+`docs/AUDIT-PHASE-14.md` — findings ordered by severity, each with file, evidence and proposed
+fix; a **deletion list** as its own section, each entry with the proof that the file is dead;
+then the rehearsal log with timings; then a "state of the repo" summary: tracked file count,
+entity count, C# line count, migration count, test count, build warnings. Present the report and
+**stop**. Fix only what is approved, in severity order, in separate commits, running
+`dotnet build Faed.slnx && dotnet test` after each — deletions in one commit of their own, so a
+single `git revert` undoes them.
+
+**Acceptance**
+- No secret, credential or uploaded document tracked in git
+- `dotnet build Faed.slnx -warnaserror` passes
+- Exactly one migration plus the snapshot; a probe migration comes out empty
+- The Step 4 greps return only hits justified in writing
+- **`git ls-files` lists no file that cannot be justified**: no `.md` outside the keep-list, no
+  build output, no backup or duplicate, no editor dropping, no design-phase artefact, no
+  unreferenced view, script, image or library
+- No decision lost with a deleted document — anything worth keeping was moved first
+- `dotnet test` green, with no vacuously-passing test
+- All eight invariants confirmed, each with the file that enforces it
+- `PHASE-PLAN.md`, `04-DOMAIN-MODEL.md` and `README.md` match the code
+- A clone-to-running walkthrough of all three roles with no empty screen and no error, **run
+  after the deletions**
+
+**Verify:** `dotnet build Faed.slnx -warnaserror && dotnet test`, then the Step 9 rehearsal
+
+---
+
 ## Expected result
 
 | | Before | After |
@@ -369,16 +600,3 @@ correctly instead, and note the limitation in the test file.
 | Tests | 0 | 5 |
 | Fields to publish | ~20 across 2 pages | 8 on 1 page |
 | Shop filters | 10 | 4 |
-
----
-
-## Phases 11–13 — design and demo readiness
-
-This file stops at Phase 10 (the functional rebuild). Phases 11–13 — the visual redesign and
-demo readiness — are specified in `docs/DESIGN-BRIEF.md` §9, not here, because they are
-design work, not a `Do` / `Acceptance` / `Verify` engineering spec.
-
-**Current status entering Phase 11:** all five public screens are fully specified in
-`docs/DESIGN-BRIEF.md` §5 (Home, Listing detail, Reserve, Shop grid, Merchant storefront), and
-tokens are locked. Phase 11 is now a mechanical task — apply the tokens and layouts exactly as
-written. There are no remaining design decisions to make in this phase.
