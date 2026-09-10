@@ -131,7 +131,7 @@ public static class DependencyInjection
                 ? $"Connection string 'DefaultConnection' is not configured for the " +
                   $"'{environment.EnvironmentName}' environment. Set the " +
                   "ConnectionStrings__DefaultConnection environment variable to a SQL Server " +
-                  "the application login can reach (DEPLOYMENT.md §2)."
+                  "the application login can reach (docs/DEPLOYMENT.md §2)."
                 : "Connection string 'DefaultConnection' not found. In Development it is set in " +
                   "appsettings.Development.json; override it with user secrets or " +
                   "ConnectionStrings__DefaultConnection.");
@@ -143,7 +143,7 @@ public static class DependencyInjection
                 $"The '{environment.EnvironmentName}' environment is configured with a local " +
                 "development database connection string (SQL Server LocalDB). Configure " +
                 "ConnectionStrings__DefaultConnection with the real database for this " +
-                "environment (DEPLOYMENT.md §2).");
+                "environment (docs/DEPLOYMENT.md §2).");
         }
 
         return connectionString;
