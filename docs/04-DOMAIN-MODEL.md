@@ -1,483 +1,292 @@
 # Domain Model
 
-This is the conceptual entity/relationship model behind the EF Core schema in
-`src/Faed.Web/Models/Entities` and `src/Faed.Web/Data/Configurations`. There is no separate
-ERD diagram file in this repository; this document is the authoritative entity reference.
+The entity/relationship reference for the EF Core schema in `src/Faed.Web/Models/Entities`
+(plus `ApplicationUser` in `src/Faed.Web/Models/Identity`) and its configuration in
+`src/Faed.Web/Data/Configurations`. There is no separate ERD file; this document is the
+authoritative entity reference. It is regenerated from the code, not patched — last
+regenerated in Phase 14 against migration `20260909112228_InitialCreate`.
+
+**Count:** **17 aggregate roots** (16 `DbSet<>` properties on `ApplicationDbContext` plus
+`ApplicationUser`) and **21 mapped EF types** — the 17 roots plus four owned/join types that
+are configured but not exposed as a `DbSet`: `ListingDiscountReason`, `ListingOption`,
+`ListingOptionValue`, `ListingVariantOptionValue`. Twenty files live in `Models/Entities/`;
+`ApplicationUser` is the twenty-first mapped type.
+
+Conventions: every key is a `Guid` `Id` unless stated (`ApplicationUser.Id` is the Identity
+string key). Money is `decimal(18,3)` — JOD has three decimal places. Timestamps are UTC and
+named `...AtUtc`. Rich entities keep collections private behind `IReadOnly` views and expose
+behaviour methods; services orchestrate, they do not hold the rules.
 
 ---
 
-# 1. Identity and merchant verification
+## 1. Identity and merchant
 
-## ApplicationUser
-Extends `IdentityUser`.
+### ApplicationUser  *(aggregate root — Identity)*
+Extends `IdentityUser`. One role per user via ASP.NET Core Identity roles: `Buyer`,
+`Merchant`, `Admin`. Role is never a hand-edited string property.
 
-Fields:
-- `Id`
-- `Email`
-- `PhoneNumber`
-- `CreatedAtUtc`
-- `IsActive`
+- `Id` (string) · `Email` · `PhoneNumber` (Identity)
+- `FirstName` · `LastName` · `FullName` (computed)
+- `CreatedAtUtc` · `IsActive` (default `true`)
 
-Roles use ASP.NET Core Identity:
-- `Buyer`
-- `Merchant`
-- `Admin`
+### MerchantProfile  *(aggregate root)*
+1:1 with `ApplicationUser` (`UserId`, unique, `OnDelete: Restrict`). Rich aggregate owning its
+verification documents.
 
-Do not duplicate role as a hand-edited string property.
+- `Id` · `UserId` · `BusinessName` · `PublicSlug` (unique)
+- `ContactEmail?` · `ContactPhone?`
+- `VerificationStatus` (`MerchantVerificationStatus`, indexed)
+- `SubmittedAtUtc?` · `ReviewedAtUtc?` · `ReviewedByAdminId?` · `RejectionReason?`
+- `CreatedAtUtc` · `UpdatedAtUtc` · `RowVersion` (`[Timestamp]` — two admins deciding at once)
+- Navigation: `Documents` (owned, private `_documents`)
+- Behaviour: `CanSell` (= approved), `IsEditable`, verification decision methods
 
-## MerchantProfile
-1:1 with `ApplicationUser`.
+### MerchantVerificationDocument  *(aggregate root)*
+Uploaded business document. `MerchantProfileId` FK, `OnDelete: Cascade` from the profile.
+No public URL is stored — only the private storage key.
 
-Fields:
-- `Id`
-- `UserId`
-- `BusinessName`
-- `PublicSlug`
-- `VerificationStatus`
-- `SubmittedAtUtc`
-- `ReviewedAtUtc`
-- `ReviewedByAdminId`
-- `RejectionReason`
-- `CreatedAtUtc`
-- `UpdatedAtUtc`
+- `Id` · `MerchantProfileId` · `DocumentType` (`MerchantVerificationDocumentType`)
+- `StorageObjectKey` · `OriginalFileName` · `ContentType` · `SizeBytes`
+- `UploadedAtUtc` · `IsActive`
 
-## MerchantVerificationDocument
-- `Id`
-- `MerchantProfileId`
-- `DocumentType`
-- `StorageObjectKey`
-- `OriginalFileName`
-- `ContentType`
-- `SizeBytes`
-- `UploadedAtUtc`
-- `IsActive`
+### MerchantLocation  *(aggregate root)*
+A merchant's pickup point. `MerchantProfileId` FK, `OnDelete: Cascade`.
 
-Do not store a public document URL.
-
-## MerchantLocation
-- `Id`
-- `MerchantProfileId`
-- `Name`
-- `AddressLine`
-- `Area`
-- `City`
-- `Latitude` nullable
-- `Longitude` nullable
-- `PickupInstructions`
-- `PickupHoursText`
-- `IsActive`
-
-## MerchantDeliveryZone
-- `Id`
-- `MerchantProfileId`
-- `Name`
-- `DeliveryFee` decimal(18,3)
-- `MinimumOrderValue` decimal(18,3) nullable
-- `EstimatedDeliveryText`
-- `IsActive`
+- `Id` · `MerchantProfileId` · `Name` · `AddressLine` · `Area` · `City`
+- `Latitude?` · `Longitude?` (double) · `PickupInstructions?` · `PickupHoursText?`
+- `IsActive` · `CreatedAtUtc` · `UpdatedAtUtc`
 
 ---
 
-# 2. Catalog and taxonomy
+## 2. Subscriptions
 
-## Category
-Hierarchical.
+### SubscriptionPlan  *(aggregate root — seeded reference data)*
+Admin-editable. Seeded: Basic 35/15, Standard 50/40, Pro 80/120.
 
-Fields:
-- `Id`
-- `ParentCategoryId` nullable
-- `Name`
-- `Slug`
-- `IsActive`
-- `SortOrder`
+- `Id` · `Code` (unique) · `Name` · `MonthlyPriceJod` `decimal(18,3)`
+- `ActiveListingQuota` · `HasFeaturedPlacement` · `SortOrder` · `IsActive`
 
-Seed hierarchy example:
+### MerchantSubscription  *(aggregate root)*
+1:1 with `MerchantProfile` (`MerchantProfileId`, unique, `OnDelete: Restrict`). Plan FK
+`OnDelete: Restrict`. Manual billing: an admin records a payment reference and activates
+(`BUSINESS-MODEL.md` §6.4).
 
-```text
-Fashion Overstock
-├── Clothing
-├── Shoes
-└── Bags & Accessories
-```
-
-Lower-level categories can be added as data.
-
-## ConditionGrade
-Reference table:
-- `Id`
-- `Code` (`A`..`D`)
-- `Name`
-- `Description`
-- `SortOrder`
-- `IsActive`
-
-## DiscountReason
-Reference table:
-- `Id`
-- `Code`
-- `Name`
-- `Description`
-- `IsActive`
-
-## Brand
-Optional controlled entity:
-- `Id`
-- `Name`
-- `Slug`
-- `IsActive`
-
-Brand is optional in MVP unless category rules require it.
+- `Id` · `MerchantProfileId` · `SubscriptionPlanId`
+- `Status` (`SubscriptionStatus`) · `StartsAtUtc?` · `ExpiresAtUtc?`
+- `PaymentReference?` · `ActivatedByAdminId?`
+- `CreatedAtUtc` · `UpdatedAtUtc` · `RowVersion` (`[Timestamp]`)
+- Behaviour: `CanPublish` (= `Active`), activate / renew (+1 month) / expire / cancel
 
 ---
 
-# 3. Listing aggregate
+## 3. Catalog and taxonomy
 
-## Listing
-Fields:
-- `Id`
-- `MerchantProfileId`
-- `CategoryId`
-- `BrandId` nullable
-- `Title`
-- `Slug`
-- `Description`
-- `ConditionGradeId`
-- `ReferencePrice` decimal(18,3) nullable
-- `RetailPrice` decimal(18,3) nullable
-- `WholesaleIndicativeUnitPrice` decimal(18,3) nullable
-- `WholesaleMinQuantity` nullable
-- `AllowB2C`
-- `AllowB2B`
-- `AllowMixedVariantB2B`
-- `ReturnPolicyText`
-- `WarrantyText` nullable
-- `IncludedItemsText` nullable
-- `MissingItemsText` nullable
-- `Status`
-- `SubmittedAtUtc` nullable
-- `PublishedAtUtc` nullable
-- `CreatedAtUtc`
-- `UpdatedAtUtc`
+All three are seeded reference data, admin-editable, never physically deleted — deactivate to
+hide from new listings while existing listings keep working.
 
-Do not keep stock totals as authoritative listing fields.
+### Category  *(aggregate root)*
+Hierarchical (`ParentCategoryId?` self-FK, `OnDelete: Restrict`). Seeded root
+`open-box-ex-display` with launch children `small-kitchen-appliances`, `home-cleaning`,
+`power-tools`.
 
-Listing-level totals may be calculated from variants.
+- `Id` · `ParentCategoryId?` · `Name` · `Slug` (unique) · `SortOrder` · `IsActive`
+- Navigation: `Parent`, `Children` (private `_children`) · `IsRoot`
 
-## ListingDiscountReason
-Many-to-many:
-- `ListingId`
-- `DiscountReasonId`
+### ConditionGrade  *(aggregate root — reference table)*
+Codes `A`–`D` (unique); names/descriptions are appliance copy (`CORE.md` §3.3).
 
-## ListingMedia
-- `Id`
-- `ListingId`
-- `StorageObjectKey`
-- `MediaType`
-  - `Product`
-  - `Defect`
-  - `Packaging`
-- `SortOrder`
-- `AltText`
-- `CreatedAtUtc`
+- `Id` · `Code` · `Name` · `Description` · `SortOrder` · `IsActive`
 
-## ListingReferencePriceEvidence
-- `Id`
-- `ListingId`
-- `EvidenceType`
-- `ReferenceUrl` nullable
-- `StorageObjectKey` nullable
-- `Note` nullable
-- `CreatedAtUtc`
+### DiscountReason  *(aggregate root — reference table)*
+Eight seeded reasons; the four used by the condition cards are `Overstock`,
+`PackagingDamage`, `CustomerReturn`, `DisplayItem`.
+
+- `Id` · `Code` (unique) · `Name` · `Description?` · `IsActive`
 
 ---
 
-# 4. Generic listing options and variants
+## 4. Listing aggregate
 
-Use a Shopify-like option/variant model instead of hard-coded `Size` and `Color` columns.
+### Listing  *(aggregate root)*
+Rich domain model. `MerchantProfileId`, `CategoryId`, `ConditionGradeId` FKs, all
+`OnDelete: Restrict` (a listing referenced by an order is never physically deleted). Stock
+totals are **not** authoritative fields — they are summed from variants.
 
-## ListingOption
-Example: `Size`, `Color`.
+- `Id` · `MerchantProfileId` · `CategoryId` · `ConditionGradeId`
+- `Title` · `Slug` (unique) · `Description?` (nullable — optional last field on the form)
+- `ReferencePrice?` · `RetailPrice?` `decimal(18,3)`
+- `WarrantyType` (`WarrantyType`) · `WarrantyMonths?` (1–120)
+- `ReturnPolicyText?` · `IncludedItemsText?` · `MissingItemsText?`
+- `Status` (`ListingStatus`) · `SubmittedAtUtc?` · `PublishedAtUtc?`
+- `HiddenByAdmin` · `HiddenBySubscriptionLapse` — two independent hide flags, both distinct
+  from a merchant's own Pause, so renewal restores lapse-hidden listings automatically
+- `CreatedAtUtc` · `UpdatedAtUtc` · `RowVersion` (`[Timestamp]`)
+- Navigation (all private-backed `IReadOnly`): `Options`, `Variants`, `Media`,
+  `DiscountReasons`, `ReferencePriceEvidence`, `Moderations`
+- Behaviour: `SubmitForReview`, `Approve`, `Reject`, `DescribeSubmissionBlockers`,
+  `SetVariantStock` (quantity-only edit never reopens moderation), `OpenModeration`,
+  `AvailableUnits`, `PendingModeration`, `LatestModeration`
 
-- `Id`
-- `ListingId`
-- `Name`
-- `SortOrder`
+### ListingDiscountReason  *(join type — not a DbSet)*
+Composite key `(ListingId, DiscountReasonId)`. `Listing` side `OnDelete: Cascade`,
+`DiscountReason` side `OnDelete: Restrict`.
 
-## ListingOptionValue
-Examples: `M`, `L`, `Black`, `White`.
+### ListingMedia  *(aggregate root)*
+`ListingId` FK, `OnDelete: Cascade`.
 
-- `Id`
-- `ListingOptionId`
-- `Value`
-- `SortOrder`
+- `Id` · `ListingId` · `MediaType` (`ListingMediaType`: `Product` · `Defect` · `Packaging`)
+- `StorageObjectKey` · `OriginalFileName` · `ContentType` · `SizeBytes`
+- `AltText?` · `SortOrder` · `CreatedAtUtc`
 
-## ListingVariant
-This is the sellable SKU and authoritative stock record.
+### ListingReferencePriceEvidence  *(aggregate root)*
+Evidence for an original price. `ListingId` FK, `OnDelete: Cascade`.
 
-- `Id`
-- `ListingId`
-- `Sku`
-- `InitialQuantity`
-- `AvailableQuantity`
-- `ReservedQuantity`
-- `SoldQuantity`
-- `IsActive`
+- `Id` · `ListingId` · `EvidenceType` (`ReferencePriceEvidenceType`: `Photo` · `Link`)
+- `ReferenceUrl?` · `StorageObjectKey?` · `OriginalFileName?` · `ContentType?` · `Note?`
 - `CreatedAtUtc`
-- `UpdatedAtUtc`
-- `RowVersion` `[Timestamp]`
 
-Recommended check constraints:
-- quantities >= 0.
+### ListingModeration  *(aggregate root — append-only)*
+Every review decision is a new row; a resolved row is never updated or deleted. `ListingId`
+FK, `OnDelete: Cascade`.
 
-## ListingVariantOptionValue
-Join:
-- `ListingVariantId`
-- `ListingOptionValueId`
-
-Unique constraints must prevent duplicate option combinations for one listing.
-
-## InventoryAdjustment
-Audit stock corrections:
-- `Id`
-- `ListingVariantId`
-- `ChangedByUserId`
-- `AdjustmentType`
-- `QuantityDelta`
-- `Reason`
-- `CreatedAtUtc`
+- `Id` · `ListingId` · `SubmittedByMerchantProfileId`
+- `ReasonForReview` · `Status` (`ListingModerationStatus`: `Pending` · `Approved` · `Rejected`)
+- `ReviewedByAdminId?` · `ReviewNote?` · `SubmittedAtUtc` · `ReviewedAtUtc?`
+- `IsPending` · `Resolve(...)` on the open row only
 
 ---
 
-# 5. Listing moderation
+## 5. Listing options and variants
 
-## ListingModeration
-Preserve each review action/version context.
+Kept in the schema, hidden from every UI (`CORE.md` §7). Because an item is one physical
+unit, the listing form creates exactly one variant with a generated SKU; merchants never see
+the words "option", "variant" or "SKU".
 
-Fields:
-- `Id`
-- `ListingId`
-- `SubmittedByMerchantId`
-- `Status`
-  - `Pending`
-  - `Approved`
-  - `Rejected`
-- `ReviewedByAdminId`
-- `ReviewNote`
-- `SubmittedAtUtc`
-- `ReviewedAtUtc`
+### ListingOption  *(entity — not a DbSet)*
+`ListingId` FK `OnDelete: Cascade`. Unique `(ListingId, Name)`.
+- `Id` · `ListingId` · `Name` · `SortOrder` · `Values` (private `_values`)
 
-The implementation may use listing timestamps/version hashes to know whether a material edit requires new moderation.
+### ListingOptionValue  *(entity — not a DbSet)*
+`ListingOptionId` FK `OnDelete: Cascade`. Unique `(ListingOptionId, Value)`.
+- `Id` · `ListingOptionId` · `Value` · `SortOrder`
 
-Do not lose rejection history.
+### ListingVariant  *(aggregate root — the sellable SKU and the one authoritative stock record)*
+`ListingId` FK `OnDelete: Cascade`. Unique `(ListingId, Sku)` and
+`(ListingId, OptionCombinationKey)`.
 
----
+- `Id` · `ListingId` · `Sku` · `OptionCombinationKey`
+- `InitialQuantity` · `AvailableQuantity` · `ReservedQuantity` · `SoldQuantity` (all `>= 0`)
+- `IsActive` · `CreatedAtUtc` · `UpdatedAtUtc`
+- **`RowVersion` (`[Timestamp]`) — the core concurrency token: two reservations must never
+  oversell one unit** (`CLAUDE.md` invariant 1)
+- `IsSellable` (= active and `AvailableQuantity > 0`) · `OptionValues` (private)
 
-# 6. B2C ordering
-
-## Order
-- `Id`
-- `BuyerUserId`
-- `MerchantProfileId`
-- `Status`
-- `FulfillmentType`
-- `MerchantLocationId` nullable
-- `DeliveryZoneId` nullable
-- `DeliveryFeeSnapshot` decimal(18,3)
-- `Subtotal` decimal(18,3)
-- `Total` decimal(18,3)
-- `ReservationExpiresAtUtc` nullable
-- `CreatedAtUtc`
-- `UpdatedAtUtc`
-- `CompletedAtUtc` nullable
-- `RowVersion`
-
-## OrderItem
-- `Id`
-- `OrderId`
-- `ListingId`
-- `ListingVariantId`
-- `Quantity`
-- `UnitPriceSnapshot` decimal(18,3)
-- `LineTotalSnapshot` decimal(18,3)
-- `ListingTitleSnapshot`
-- `VariantSnapshot`
-- `ConditionGradeSnapshot`
-- `DiscountReasonSnapshot`
-
-All OrderItems must belong to the order's merchant.
+### ListingVariantOptionValue  *(join type — not a DbSet)*
+Composite key `(ListingVariantId, ListingOptionValueId)`. Variant side `OnDelete: Cascade`,
+option-value side `OnDelete: NoAction` (breaks the multi-cascade path SQL Server rejects).
 
 ---
 
-# 7. B2B negotiation
+## 6. Transactions
 
-## B2BNegotiation
-- `Id`
-- `ListingId`
-- `SellingMerchantProfileId`
-- `BuyingMerchantProfileId`
-- `Status`
-- `CurrentRevisionNumber`
-- `CreatedAtUtc`
-- `UpdatedAtUtc`
-- `RowVersion`
+### Order  *(aggregate root)*
+Rich aggregate owning its items. `BuyerUserId` and `MerchantProfileId` FKs `OnDelete:
+Restrict`; `MerchantLocationId?` FK `OnDelete: Restrict`. Terminal states deactivate — an
+order is never physically deleted.
 
-## B2BOfferRevision
-Immutable proposal revision:
-- `Id`
-- `B2BNegotiationId`
-- `RevisionNumber`
-- `ProposedByMerchantProfileId`
-- `ProposedUnitPrice` decimal(18,3)
-- `ProposedTotal` decimal(18,3)
-- `Message`
-- `OfferExpiresAtUtc`
-- `CreatedAtUtc`
+- `Id` · `Reference` (6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, unique)
+- `BuyerUserId` · `MerchantProfileId`
+- `Status` (`OrderStatus`) · `FulfillmentType` (`OrderFulfillmentType`) · `MerchantLocationId?`
+- `FulfillmentSnapshot` · `DeliveryAddressText?` · `ContactName` · `ContactPhone` · `BuyerNote?`
+- `Subtotal` · `Total` `decimal(18,3)`
+- `ReservationExpiresAtUtc?` · `StatusReason?`
+- `CreatedAtUtc` · `UpdatedAtUtc` · `ConfirmedAtUtc?` · `CancelledAtUtc?` · `CompletedAtUtc?`
+- `RowVersion` (`[Timestamp]`)
+- `Items` (private `_items`) · `HoldsReservation` · `IsTerminal` · `BuyerCanCancel` ·
+  `MerchantCanCancel` · `TotalUnits`
+- Every Phase-1 order is created as `Pickup`; the platform models no delivery fee, zone or
+  address of its own.
 
-Unique:
-- negotiation + revision number.
+### OrderItem  *(aggregate root — snapshot record)*
+`OrderId` FK `OnDelete: Cascade`; `ListingId` and `ListingVariantId` FKs `OnDelete: Restrict`.
+Unique `(OrderId, ListingVariantId)`. Every snapshot field is `private set` and captured at
+construction — editing a listing never changes a past order (`CLAUDE.md` invariant 2).
 
-## B2BOfferLine
-- `Id`
-- `B2BOfferRevisionId`
-- `ListingVariantId`
-- `Quantity`
+- `Id` · `OrderId` · `ListingId` · `ListingVariantId` · `Quantity`
+- `UnitPriceSnapshot` · `LineTotalSnapshot` `decimal(18,3)`
+- `ListingTitleSnapshot` · `VariantSnapshot` · `ConditionGradeSnapshot` · `DiscountReasonSnapshot?`
 
-The revision total quantity is the sum of lines.
+### Review  *(aggregate root)*
+One per completed order (`OrderId` unique). `ReviewedMerchantProfileId`, `OrderId`,
+`ReviewerUserId` FKs all `OnDelete: Restrict`. No `B2BDealId` and no "exactly one reference"
+constraint — a review is always tied to exactly one order.
 
----
+- `Id` · `ReviewedMerchantProfileId` · `ReviewerUserId` · `OrderId`
+- `Rating` (1–5) · `Comment?` · `CreatedAtUtc`
 
-# 8. B2B accepted deal
-
-## B2BDeal
-Created only after accepted proposal.
-
-- `Id`
-- `B2BNegotiationId`
-- `AcceptedRevisionId`
-- `SellingMerchantProfileId`
-- `BuyingMerchantProfileId`
-- `Status`
-- `AcceptedUnitPriceSnapshot`
-- `SubtotalSnapshot`
-- `ShippingCostSnapshot` nullable
-- `TotalSnapshot`
-- `FulfillmentType`
-- `ShipmentReference` nullable
-- `ReservationExpiresAtUtc`
-- `CreatedAtUtc`
-- `UpdatedAtUtc`
-- `CompletedAtUtc` nullable
-- `RowVersion`
-
-## B2BDealLine
-- `Id`
-- `B2BDealId`
-- `ListingVariantId`
-- `Quantity`
-- `UnitPriceSnapshot`
-- `LineTotalSnapshot`
-- `VariantSnapshot`
+**Merchant response rate has no entity** — it is computed from `Order` statuses and
+timestamps over a rolling 30-day window (`BUSINESS-MODEL.md` §8.4).
 
 ---
 
-# 9. Disputes and reviews
+## 7. Enums
 
-## Dispute
-- `Id`
-- `OrderId` nullable
-- `B2BDealId` nullable
-- `RaisedByUserId`
-- `ReasonCode`
-- `Description`
-- `Status`
-- `AdminResolution`
-- `ResolvedByAdminId` nullable
-- `CreatedAtUtc`
-- `ResolvedAtUtc` nullable
-
-Constraint:
-exactly one of `OrderId` or `B2BDealId` must be set.
-
-## DisputeEvidence
-- `Id`
-- `DisputeId`
-- `StorageObjectKey`
-- `ContentType`
-- `CreatedAtUtc`
-
-## Review
-- `Id`
-- `ReviewedMerchantProfileId`
-- `ReviewerUserId`
-- `OrderId` nullable
-- `B2BDealId` nullable
-- `Rating`
-- `Comment`
-- `CreatedAtUtc`
-
-Constraints:
-- rating 1..5;
-- exactly one transaction reference;
-- one allowed review per reviewer/transaction.
+| Enum | Values |
+|---|---|
+| `MerchantVerificationStatus` | `Draft` · `PendingReview` · `Approved` · `Rejected` · `Suspended` |
+| `MerchantVerificationDocumentType` | `CommercialRegistration` · `TaxRegistration` · `Other` |
+| `SubscriptionStatus` | `PendingActivation` · `Active` · `Expired` · `Cancelled` |
+| `ListingStatus` | `Draft` · `PendingReview` · `Live` · `Rejected` · `Hidden` · `SoldOut` · `Archived` |
+| `ListingModerationStatus` | `Pending` · `Approved` · `Rejected` |
+| `ListingMediaType` | `Product` · `Defect` · `Packaging` |
+| `WarrantyType` | `None` · `ManufacturerWarranty` · `ShopWarranty` |
+| `ReferencePriceEvidenceType` | `Photo` · `Link` |
+| `OrderStatus` | `Pending` · `Confirmed` · `ReadyForPickup` · `OutForDelivery` · `Completed` · `Cancelled` · `NoShow` |
+| `OrderFulfillmentType` | `Pickup` · `MerchantDelivery` |
 
 ---
 
-# 10. Admin audit
+## 8. Delete behaviour
 
-## AdminActionLog
-- `Id`
-- `AdminUserId`
-- `ActionType`
-- `TargetType`
-- `TargetId`
-- `Notes`
-- `CreatedAtUtc`
+Preservation over cascade for transactional history (`CLAUDE.md` invariant 3).
 
-Audit at least:
-- merchant approve/reject/suspend;
-- listing approve/reject/hide;
-- dispute resolution;
-- account moderation.
+- **`Restrict`** — `Listing → MerchantProfile / Category / ConditionGrade`;
+  `Order → Buyer / MerchantProfile / MerchantLocation`;
+  `OrderItem → Listing / ListingVariant`; `Review → MerchantProfile / Order / Reviewer`;
+  `MerchantProfile → ApplicationUser`; `MerchantSubscription → MerchantProfile / SubscriptionPlan`;
+  `Category → parent Category`; `ListingDiscountReason → DiscountReason`.
+- **`Cascade`** — within an aggregate only: `Listing → Media / DiscountReasons /
+  ReferencePriceEvidence / Moderations / Options / Variants`; `ListingOption → Values`;
+  `ListingVariant → OptionValues`; `Order → Items`; `MerchantProfile → Documents / Locations`.
+- **`NoAction`** — `ListingVariantOptionValue → ListingOptionValue`, to break the second
+  cascade path into option values (SQL Server rejects multiple cascade paths).
 
 ---
 
-# 11. Important indexes
+## 9. Indexes
 
-Plan indexes for:
-- `Category(Slug)` unique;
-- `Listing(Slug)` unique;
-- `Listing(Status, CategoryId, PublishedAtUtc)`;
-- `Listing(MerchantProfileId, Status)`;
-- `ListingVariant(ListingId, IsActive)`;
-- `B2BNegotiation(SellingMerchantProfileId, Status)`;
-- `B2BNegotiation(BuyingMerchantProfileId, Status)`;
-- `Order(BuyerUserId, CreatedAtUtc)`;
-- `Order(MerchantProfileId, Status)`;
-- moderation/status queues;
-- merchant public slug.
-
----
-
-# 12. Delete behavior
-
-Prefer preservation over cascading deletion for transactional history.
-
-- Do not cascade-delete completed Orders, Deals, Reviews, Disputes, or audit logs.
-- Archive/deactivate merchants/listings instead of physically deleting business history.
-- Carefully configure FK delete behavior.
+- Unique: `Category(Slug)`, `ConditionGrade(Code)`, `DiscountReason(Code)`,
+  `SubscriptionPlan(Code)`, `Listing(Slug)`, `ListingOption(ListingId, Name)`,
+  `ListingOptionValue(ListingOptionId, Value)`, `ListingVariant(ListingId, Sku)`,
+  `ListingVariant(ListingId, OptionCombinationKey)`, `MerchantProfile(UserId)`,
+  `MerchantProfile(PublicSlug)`, `MerchantSubscription(MerchantProfileId)`,
+  `Order(Reference)`, `OrderItem(OrderId, ListingVariantId)`, `Review(OrderId)`.
+- Query: `Listing(Status, CategoryId, PublishedAtUtc)`, `Listing(MerchantProfileId, Status)`,
+  `ListingVariant(ListingId, IsActive)`, `ListingMedia(ListingId, MediaType, SortOrder)`,
+  `ListingModeration(Status, SubmittedAtUtc)`, `ListingModeration(ListingId)`,
+  `ListingReferencePriceEvidence(ListingId)`, `Category(ParentCategoryId, SortOrder)`,
+  `MerchantProfile(VerificationStatus)`, `MerchantLocation(MerchantProfileId, IsActive)`,
+  `MerchantVerificationDocument(MerchantProfileId)`,
+  `MerchantSubscription(Status, ExpiresAtUtc)`, `Order(BuyerUserId, CreatedAtUtc)`,
+  `Order(MerchantProfileId, Status)`, `Order(Status, ReservationExpiresAtUtc)`,
+  `Review(ReviewedMerchantProfileId, CreatedAtUtc)`.
 
 ---
 
-# 13. Explicitly out of scope
+## 10. Explicitly out of scope
 
-The current schema deliberately does not model:
-- payment transactions;
-- escrow wallets;
-- shipping-provider entities;
-- warehouses;
-- auction bids;
-- subscriptions;
-- commission invoices;
-- ERP sync tables.
-
-These are out of scope for the MVP (see the README's "Known scope limitations").
+The schema deliberately does not model payment transactions, escrow or wallets, balances or
+commission invoices, shipping-provider entities, warehouses, auction bids, disputes,
+B2B negotiations or deals, an admin action log, inventory adjustments, delivery zones, or
+brands. Several of these existed before `faed-core` and were removed in Phases 2–6; the B2B
+design is archived in `docs/B2B-DESIGN.md`.

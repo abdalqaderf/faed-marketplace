@@ -603,7 +603,7 @@ single `git revert` undoes them.
 
 | | Before | After |
 |---|---|---|
-| Entities | 30 | 17 |
+| Entities | 30 | 17 aggregate roots (21 mapped EF types) |
 | C# lines | ~25,600 | ~19,500 |
 | Migrations | 11 | 1 |
 | Tests | 0 | 5 |

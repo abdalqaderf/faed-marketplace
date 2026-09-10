@@ -236,7 +236,9 @@ information the admin needs.
 
 ---
 
-## 6. Entities — seventeen
+## 6. Entities — seventeen aggregate roots
+
+Sixteen `DbSet<>` types plus `ApplicationUser`:
 
 **Identity & merchant** — `ApplicationUser` · `MerchantProfile` ·
 `MerchantVerificationDocument` · `MerchantLocation`
@@ -245,10 +247,14 @@ information the admin needs.
 
 **Catalog** — `Category` · `ConditionGrade` · `DiscountReason`
 
-**Listing** — `Listing` · `ListingDiscountReason` · `ListingMedia` · `ListingVariant` ·
+**Listing** — `Listing` · `ListingMedia` · `ListingVariant` ·
 `ListingReferencePriceEvidence` · `ListingModeration`
 
 **Transactions** — `Order` · `OrderItem` · `Review`
+
+**Four more mapped types** are configured but not exposed as a `DbSet` — the join/owned types
+`ListingDiscountReason`, `ListingOption`, `ListingOptionValue`, `ListingVariantOptionValue` —
+so the schema has **21 mapped EF types** in total. Full reference: `04-DOMAIN-MODEL.md`.
 
 **Merchant response rate needs no entity** — it is computed from `Order` statuses and
 timestamps.
@@ -313,7 +319,7 @@ The pattern already exists (`ReservationExpiryService`) — it is extended, not 
 
 | | Before | After |
 |---|---|---|
-| Entities | 30 | **17** |
+| Entities | 30 | **17** aggregate roots (21 mapped EF types) |
 | C# lines | ~25,600 | ~19,500 |
 | Decisions to publish an item | ~20 | **8** (plus one optional note) |
 | Pages to publish an item | 2 | **1** |
