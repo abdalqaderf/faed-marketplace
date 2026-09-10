@@ -1,5 +1,4 @@
-﻿using System.Text;
-using Faed.Web.Models.Entities;
+using System.Text;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.Common;
@@ -18,29 +17,24 @@ using Microsoft.Extensions.Logging;
 namespace Faed.Web.Data.Seed;
 
 /// <summary>
-/// Deterministic development/demo data set for field validation and portfolio demonstration
+/// Deterministic development/demo data for field validation and portfolio demonstration.
 /// <para>
-/// Every merchant, listing, order and review it creates goes
-/// through the <em>same</em> application services and the <em>same</em> production rules a
-/// real request would. It never writes aggregates directly, never bypasses moderation,
-/// authorization, price integrity or stock concurrency, and never relaxes a validation rule.
-/// The only thing that is "demo-only" is <em>when</em> it runs — Development environment,
-/// explicitly enabled, password supplied out-of-band (see <see cref="DemoDataOptions"/>).
-/// </para>
-/// <para>
-/// <b>Reliability &amp; query pressure.</b> The scenario is built as one linear pass over a
-/// single scope; every lookup is a projected <c>AsNoTracking</c> query (no full table is
-/// loaded); the change tracker is cleared before the transactional scenarios; and the
-/// context's command timeout is raised to five minutes so a query does not abort under the
-/// brief SQL Server LocalDB starvation a full test run can cause.
+/// Every account, listing, order and review it creates goes through the <em>same</em>
+/// application services, and the <em>same</em> production rules, a real request would: a
+/// merchant is verified before it is subscribed and subscribed before it can publish; a
+/// listing is submitted through the one-page form and approved by an admin before it is
+/// public; an order moves state only through <see cref="IOrderService"/>. The seeder never
+/// writes an aggregate directly and never relaxes a validation rule — the only thing that is
+/// "demo-only" is <em>when</em> it runs (Development, explicitly enabled, password supplied
+/// out-of-band; see <see cref="DemoDataOptions"/>). The only direct database use is read-only:
+/// resolving reference-data ids and reading back the slug and variant id of a listing the
+/// service just created.
 /// </para>
 /// <para>
 /// <b>Idempotency &amp; recovery.</b> "Fully seeded" is defined by the final artifact (the
-/// buyer's review). If it is present, <see cref="SeedCoreAsync"/> is a no-op. If a previous
-/// run was interrupted (some demo accounts exist but the review does not),
-/// <see cref="SeedCoreAsync"/> first <em>purges</em> the partial demo data — in
-/// foreign-key-safe order — and then rebuilds it from scratch. Restarting the app is enough
-/// to recover; a manual <c>ef database drop</c> is not required.
+/// buyer's five-star review). If it is present, <see cref="SeedCoreAsync"/> is a no-op. If a
+/// previous run was interrupted, the partial demo data is purged in foreign-key-safe order and
+/// the set is rebuilt from scratch — restarting the app is enough to recover.
 /// </para>
 /// </summary>
 public static class DemoDataSeeder
@@ -49,17 +43,16 @@ public static class DemoDataSeeder
     public const string AdminEmail = "demo-admin@faed.local";
     public const string MerchantAEmail = "merchant-a@faed.local";
     public const string MerchantBEmail = "merchant-b@faed.local";
+    public const string UnsubscribedMerchantEmail = "unsubscribed-merchant@faed.local";
     public const string PendingMerchantEmail = "pending-merchant@faed.local";
     public const string BuyerAEmail = "buyer-a@faed.local";
     public const string BuyerBEmail = "buyer-b@faed.local";
 
     private static readonly string[] DemoEmails =
     [
-        AdminEmail, MerchantAEmail, MerchantBEmail, PendingMerchantEmail, BuyerAEmail, BuyerBEmail,
+        AdminEmail, MerchantAEmail, MerchantBEmail, UnsubscribedMerchantEmail, PendingMerchantEmail,
+        BuyerAEmail, BuyerBEmail,
     ];
-
-    private const int ClearanceOpeningQuantity = 4;
-    private const int LowStockOpeningQuantity = 3;
 
     public static async Task SeedAsync(
         IServiceProvider services,
@@ -148,7 +141,7 @@ public static class DemoDataSeeder
             return SeedState.Empty;
         }
 
-        // The last thing RunAsync does is submit the buyer's 5-star review.
+        // The last thing RunAsync does is submit the buyer's five-star review.
         var complete = await db.Reviews.AsNoTracking()
             .AnyAsync(r => demoUserIds.Contains(r.ReviewerUserId) && r.Rating == 5, cancellationToken);
 
@@ -174,10 +167,15 @@ public static class DemoDataSeeder
         var orderIds = await db.Orders
             .Where(o => merchantIds.Contains(o.MerchantProfileId)).Select(o => o.Id).ToListAsync(cancellationToken);
 
+        // Reviews reference orders; orders reference listings and variants; every one of those
+        // FKs is Restrict, so the dependent rows go first. OrderItem, ListingModeration,
+        // ListingMedia, ListingVariant and MerchantVerificationDocument all cascade from their
+        // aggregate root and need no explicit pass.
         await DeleteAsync(db, db.Reviews.Where(r => merchantIds.Contains(r.ReviewedMerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.Orders.Where(o => orderIds.Contains(o.Id)), cancellationToken);
-        await DeleteAsync(db, db.MerchantLocations.Where(l => merchantIds.Contains(l.MerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.Listings.Where(l => listingIds.Contains(l.Id)), cancellationToken);
+        await DeleteAsync(db, db.MerchantLocations.Where(l => merchantIds.Contains(l.MerchantProfileId)), cancellationToken);
+        await DeleteAsync(db, db.MerchantSubscriptions.Where(s => merchantIds.Contains(s.MerchantProfileId)), cancellationToken);
         await DeleteAsync(db, db.MerchantProfiles.Where(p => merchantIds.Contains(p.Id)), cancellationToken);
 
         foreach (var id in userIds)
@@ -206,6 +204,11 @@ public static class DemoDataSeeder
     /// <summary>One linear build of the demo scenario over a single scope.</summary>
     private sealed class DemoSeedRun
     {
+        private const string BuyerAName = "Layla Haddad";
+        private const string BuyerAPhone = "+962 79 000 0001";
+        private const string BuyerBName = "Omar Nasser";
+        private const string BuyerBPhone = "+962 79 000 0002";
+
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _users;
         private readonly IMerchantVerificationService _verification;
@@ -232,99 +235,146 @@ public static class DemoDataSeeder
             _reviews = sp.GetRequiredService<IReviewService>();
             _subscriptions = sp.GetRequiredService<ISubscriptionService>();
 
-            // A generous command timeout. The seed does not race anything in a real
-            // Development database, but a CI box or a workstation running the whole test
-            // suite can leave SQL Server LocalDB briefly starved; without this a routine
+            // A generous command timeout: a CI box or a workstation running the whole test
+            // suite can leave SQL Server LocalDB briefly starved, and without this a routine
             // query can hit the 30s default and abort the seed.
             _db.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
         }
 
         public async Task RunAsync()
         {
-            var adminId = await CreateUserAsync(AdminEmail, FaedRoles.Admin);
-            var buyerAId = await CreateUserAsync(BuyerAEmail, FaedRoles.Buyer);
-            var buyerBId = await CreateUserAsync(BuyerBEmail, FaedRoles.Buyer);
+            var adminId = await CreateUserAsync(AdminEmail, "Demo", "Admin", FaedRoles.Admin);
+            var buyerAId = await CreateUserAsync(BuyerAEmail, "Layla", "Haddad", FaedRoles.Buyer);
+            var buyerBId = await CreateUserAsync(BuyerBEmail, "Omar", "Nasser", FaedRoles.Buyer);
 
-            var merchantA = await CreateApprovedMerchantAsync(
+            // Two merchants a buyer can actually shop from: verified and subscribed.
+            var kitchenCo = await CreateApprovedMerchantAsync(
                 MerchantAEmail, "Amman Kitchen Co.", "hello@amman-kitchen.example", "+962 6 500 0001", adminId, "Standard");
-            var merchantB = await CreateApprovedMerchantAsync(
+            var petraTools = await CreateApprovedMerchantAsync(
                 MerchantBEmail, "Petra Power Tools", "sales@petra-power-tools.example", "+962 6 500 0002", adminId, "Basic");
+
+            // The two valid states that are neither "shopping now": approved but not yet paying,
+            // and applied but not yet reviewed.
+            var unsubscribed = await CreateApprovedMerchantAsync(
+                UnsubscribedMerchantEmail, "Sahara Appliance Outlet", "team@sahara-outlet.example",
+                "+962 6 500 0004", adminId, planCode: null);
             await CreatePendingMerchantAsync(
                 PendingMerchantEmail, "Rainbow Home Essentials", "info@rainbow-home.example", "+962 6 500 0003");
 
-            await ConfigureFulfillmentAsync(merchantA, "Amman Kitchen Co. — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
-            await ConfigureFulfillmentAsync(merchantB, "Petra Power Tools — Sweifieh", "8 Wakalat St", "Sweifieh");
+            await ConfigureFulfillmentAsync(kitchenCo, "Amman Kitchen Co. — Abdali", "12 Rafiq Al Hariri Ave", "Abdali");
+            await ConfigureFulfillmentAsync(petraTools, "Petra Power Tools — Sweifieh", "8 Wakalat St", "Sweifieh");
 
-            var kettle = await CreateKettleListingAsync(merchantA, adminId);
-            var vacuum = await CreateVacuumListingAsync(merchantA, adminId);
-            await CreateToasterListingAsync(merchantA, adminId);
-            await CreateHandMixerListingAsync(merchantA, adminId);
-            await CreateIronListingAsync(merchantA, adminId);
-            await CreateBlenderListingAsync(merchantA, adminId);
+            // A catalogue across all three categories that uses every condition card.
+            var kettle = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "small-kitchen-appliances", ConditionChoice.Sealed, "Rapid-Boil Electric Kettle",
+                "1.7 L stainless kettle, sealed. We over-ordered for the season — that is the only reason it is discounted.",
+                WarrantyType.ManufacturerWarranty, 12, 12.000m, null, 6, "kettle.png", null));
+            var handMixer = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "small-kitchen-appliances", ConditionChoice.Sealed, "5-Speed Hand Mixer",
+                "Compact hand mixer from the same overstock run. Sealed box, full manufacturer warranty.",
+                WarrantyType.ManufacturerWarranty, 12, 9.500m, null, 3, "hand-mixer.png", null));
+            var toaster = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "small-kitchen-appliances", ConditionChoice.BoxOpenedOrDamaged, "2-Slice Toaster",
+                "The toaster is new and unused; the retail box was opened and re-taped in the warehouse. Photo of the box included.",
+                WarrantyType.ManufacturerWarranty, 24, 14.000m, null, 4, "toaster.png", "toaster-defect.png"));
+            var blender = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "small-kitchen-appliances", ConditionChoice.BoxOpenedOrDamaged, "Countertop Blender",
+                "Shatterproof 1.5 L jug. Unused, but the outer carton was crushed in transit — shown in the photo.",
+                WarrantyType.ManufacturerWarranty, 12, 24.000m, null, 4, "blender.png", "blender-defect.png"));
+            var steamIron = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "home-cleaning", ConditionChoice.CustomerReturn, "Steam Iron",
+                "Returned within the exchange window and never used. Inspected and re-boxed; sold at a discount because it cannot be listed as new.",
+                WarrantyType.ManufacturerWarranty, 6, 13.000m, null, 5, "steam-iron.png", null));
+            var uprightVacuum = await CreateListingAsync(kitchenCo, adminId, new ListingSpec(
+                "home-cleaning", ConditionChoice.ExDisplay, "Bagless Upright Vacuum",
+                "Former showroom unit. Fully working; there is light scuffing on one bottom corner from the display stand, shown in the defect photo.",
+                WarrantyType.ShopWarranty, 3, 45.000m, 79.000m, 2, "upright-vacuum.png", "upright-vacuum-defect.png"));
 
-            await CreateDrillListingAsync(merchantB, adminId);
-            var clearance = await CreateClearanceVacuumListingAsync(merchantB, adminId);
-            var circularSaw = await CreateCircularSawListingAsync(merchantB, adminId);
-            await CreateAngleGrinderListingAsync(merchantB, adminId);
-            await CreateScrewdriverSetListingAsync(merchantB, adminId);
-            await CreateToolBagListingAsync(merchantB, adminId);
+            var handheldVacuum = await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "home-cleaning", ConditionChoice.CustomerReturn, "Handheld Vacuum",
+                "Customer-returned but unused handheld vacuums from the winter range. Inspected and re-boxed. Only a few left.",
+                WarrantyType.None, null, 22.000m, null, 4, "handheld-vacuum.png", null));
+            await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "power-tools", ConditionChoice.BoxOpenedOrDamaged, "Cordless Drill Driver",
+                "18 V drill driver with one battery. Unused; several boxes lost their lids in the warehouse — photo included.",
+                WarrantyType.ManufacturerWarranty, 24, 38.000m, null, 5, "cordless-drill.png", "cordless-drill-defect.png"));
+            await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "power-tools", ConditionChoice.Sealed, "Circular Saw",
+                "165 mm circular saw, sealed. A model we simply over-ordered — nothing wrong with it.",
+                WarrantyType.ManufacturerWarranty, 24, 55.000m, 95.000m, 6, "circular-saw.png", null));
+            await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "power-tools", ConditionChoice.ExDisplay, "Angle Grinder",
+                "Ex-display grinder. Sound and functional; there is a light mark on the housing from the stand, shown in the photo.",
+                WarrantyType.None, null, 19.000m, null, 3, "angle-grinder.png", "angle-grinder-defect.png"));
+            await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "power-tools", ConditionChoice.Sealed, "Precision Screwdriver Set",
+                "20-piece precision set from the overstock run. Sealed.",
+                WarrantyType.None, null, 6.500m, null, 5, "screwdriver-set.png", null));
+            await CreateListingAsync(petraTools, adminId, new ListingSpec(
+                "power-tools", ConditionChoice.CustomerReturn, "Canvas Tool Bag",
+                "Reinforced-base canvas tool bag, returned unused. The printed logo sits slightly off-centre, which does not affect use.",
+                WarrantyType.None, null, 11.000m, null, 6, "tool-bag.png", null));
 
-            // Drop everything the listing build tracked before the transactional scenarios so
-            // the order/negotiation/deal services start against a clean change tracker.
+            // The approved-but-unsubscribed merchant has a draft they cannot publish yet — it is
+            // the plan chooser, not an error, that stands between them and going live.
+            await CreateDraftListingAsync(unsubscribed, new ListingSpec(
+                "small-kitchen-appliances", ConditionChoice.Sealed, "Espresso Machine",
+                "Sealed overstock. Ready to publish once the shop's subscription is active.",
+                WarrantyType.ManufacturerWarranty, 12, 60.000m, null, 2, "kettle.png", null));
+
+            // The listing build tracked a graph per listing; start the order scenarios clean.
             _db.ChangeTracker.Clear();
 
-            // One active B2C order: placed by Buyer A, confirmed by the merchant.
-            var activeOrderId = await PlaceOrderAsync(
-                buyerAId, merchantA, [(kettle.VariantIds[0], 1), (kettle.VariantIds[1], 1)], "Buyer A", "+962 79 000 0001");
-            Ok(await _orders.ConfirmAsync(merchantA.UserId, activeOrderId, _ct), "confirm active demo order");
+            // One order left in each lifecycle state, all pickup (every Phase-1 order is).
+            //
+            // Pending: reserved, waiting on the shop.
+            await PlaceOrderAsync(buyerAId, kitchenCo, kettle, 1, BuyerAName, BuyerAPhone);
 
-            // One completed B2C order: fully fulfilled and confirmed by the buyer.
-            var completedOrderId = await PlaceOrderAsync(
-                buyerBId, merchantA, [(vacuum.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002");
-            Ok(await _orders.ConfirmAsync(merchantA.UserId, completedOrderId, _ct), "confirm completed demo order");
-            Ok(await _orders.MarkReadyForPickupAsync(merchantA.UserId, completedOrderId, _ct), "ready completed demo order");
-            Ok(await _orders.ConfirmReceiptAsync(buyerBId, completedOrderId, _ct), "buyer confirms completed demo order");
+            // Confirmed: the shop accepted it; contact details are now exchanged.
+            var confirmedOrder = await PlaceOrderAsync(buyerBId, kitchenCo, toaster, 1, BuyerBName, BuyerBPhone);
+            Ok(await _orders.ConfirmAsync(kitchenCo.UserId, confirmedOrder, _ct), "confirm the confirmed demo order");
 
-            // One sold-out listing for public sold-out behaviour: a buyer clears the last units.
-            var clearanceOrderId = await PlaceOrderAsync(
-                buyerAId, merchantB, [(clearance.VariantIds[0], ClearanceOpeningQuantity)], "Buyer A", "+962 79 000 0001");
-            Ok(await _orders.ConfirmAsync(merchantB.UserId, clearanceOrderId, _ct), "confirm clearance demo order");
-            Ok(await _orders.MarkReadyForPickupAsync(merchantB.UserId, clearanceOrderId, _ct), "ready clearance demo order");
-            Ok(await _orders.ConfirmReceiptAsync(buyerAId, clearanceOrderId, _ct), "buyer confirms clearance demo order");
+            // Ready for pickup: prepared, waiting for the buyer to collect.
+            var readyOrder = await PlaceOrderAsync(buyerAId, kitchenCo, handMixer, 1, BuyerAName, BuyerAPhone);
+            Ok(await _orders.ConfirmAsync(kitchenCo.UserId, readyOrder, _ct), "confirm the ready demo order");
+            Ok(await _orders.MarkReadyForPickupAsync(kitchenCo.UserId, readyOrder, _ct), "ready the ready demo order");
 
-            // One dispatched delivery order: demonstrates merchant-delivery fulfilment and the
-            // OutForDelivery lifecycle state, left short of completion.
-            var deliveryOrderId = await PlaceDeliveryOrderAsync(
-                buyerBId, [(circularSaw.VariantIds[0], 1)], "Buyer B", "+962 79 000 0002",
-                "14 Al Yarmouk St, Sweifieh, Amman");
-            Ok(await _orders.ConfirmAsync(merchantB.UserId, deliveryOrderId, _ct), "confirm delivery demo order");
-            Ok(await _orders.MarkOutForDeliveryAsync(merchantB.UserId, deliveryOrderId, _ct), "dispatch delivery demo order");
+            // Completed: collected and confirmed by the buyer — this is the order the review hangs on.
+            var completedOrder = await PlaceOrderAsync(buyerBId, kitchenCo, uprightVacuum, 1, BuyerBName, BuyerBPhone);
+            Ok(await _orders.ConfirmAsync(kitchenCo.UserId, completedOrder, _ct), "confirm the completed demo order");
+            Ok(await _orders.MarkReadyForPickupAsync(kitchenCo.UserId, completedOrder, _ct), "ready the completed demo order");
+            Ok(await _orders.ConfirmReceiptAsync(buyerBId, completedOrder, _ct), "buyer confirms receipt of the completed demo order");
 
-            // One review: the buyer leaves a positive review on the completed B2C order.
+            // Cancelled: the buyer changed their mind before the shop confirmed.
+            var cancelledOrder = await PlaceOrderAsync(buyerAId, kitchenCo, steamIron, 1, BuyerAName, BuyerAPhone);
+            Ok(await _orders.CancelMyOrderAsync(buyerAId, cancelledOrder, "Found the same iron locally.", _ct),
+                "cancel the cancelled demo order");
+
+            // No-show: prepared, then the buyer never collected and the shop recorded it.
+            var noShowOrder = await PlaceOrderAsync(buyerBId, kitchenCo, blender, 1, BuyerBName, BuyerBPhone);
+            Ok(await _orders.ConfirmAsync(kitchenCo.UserId, noShowOrder, _ct), "confirm the no-show demo order");
+            Ok(await _orders.MarkReadyForPickupAsync(kitchenCo.UserId, noShowOrder, _ct), "ready the no-show demo order");
+            Ok(await _orders.MarkNoShowAsync(kitchenCo.UserId, noShowOrder, "Buyer did not collect within the window.", _ct),
+                "mark the no-show demo order");
+
+            // A sold-out listing on the other shop: a buyer clears the last units.
+            var soldOutOrder = await PlaceOrderAsync(buyerAId, petraTools, handheldVacuum, 4, BuyerAName, BuyerAPhone);
+            Ok(await _orders.ConfirmAsync(petraTools.UserId, soldOutOrder, _ct), "confirm the sold-out demo order");
+            Ok(await _orders.MarkReadyForPickupAsync(petraTools.UserId, soldOutOrder, _ct), "ready the sold-out demo order");
+            Ok(await _orders.ConfirmReceiptAsync(buyerAId, soldOutOrder, _ct), "buyer confirms receipt of the sold-out demo order");
+
+            // The review — the artifact InspectAsync keys "fully seeded" on.
             Ok(
                 await _reviews.SubmitReviewAsync(buyerBId, new SubmitReviewInput(
-                    completedOrderId, 5,
-                    "Vacuum was exactly as described, including the disclosed scuff. Smooth pickup."), _ct),
-                "submit demo review");
+                    completedOrder, 5,
+                    "Vacuum was exactly as described, including the disclosed scuff. Quick, friendly pickup."), _ct),
+                "submit the demo review");
         }
 
         // ---- Users & merchants -------------------------------------------------------
 
-        private async Task<string> CreateUserAsync(
-    string email,
-    string? role = null)
+        private async Task<string> CreateUserAsync(string email, string firstName, string lastName, string? role = null)
         {
-            var (firstName, lastName) = email switch
-            {
-                AdminEmail => ("Demo", "Admin"),
-                MerchantAEmail => ("Demo", "Merchant A"),
-                MerchantBEmail => ("Demo", "Merchant B"),
-                PendingMerchantEmail => ("Pending", "Merchant"),
-                BuyerAEmail => ("Demo", "Buyer A"),
-                BuyerBEmail => ("Demo", "Buyer B"),
-                _ => ("Demo", "User")
-            };
-
             var user = new ApplicationUser
             {
                 UserName = email,
@@ -337,24 +387,17 @@ public static class DemoDataSeeder
             };
 
             var created = await _users.CreateAsync(user, _password);
-
             if (!created.Succeeded)
             {
-                throw Fail(
-                    $"create user '{email}'",
-                    created.Errors.Select(e => e.Description));
+                throw Fail($"create user '{email}'", created.Errors.Select(e => e.Description));
             }
 
             if (role is not null)
             {
-                var granted =
-                    await _users.AddToRoleAsync(user, role);
-
+                var granted = await _users.AddToRoleAsync(user, role);
                 if (!granted.Succeeded)
                 {
-                    throw Fail(
-                        $"grant '{role}' to '{email}'",
-                        granted.Errors.Select(e => e.Description));
+                    throw Fail($"grant '{role}' to '{email}'", granted.Errors.Select(e => e.Description));
                 }
             }
 
@@ -362,13 +405,16 @@ public static class DemoDataSeeder
         }
 
         private async Task<DemoMerchant> CreateApprovedMerchantAsync(
-            string email, string businessName, string contactEmail, string contactPhone, string adminId, string planCode)
+            string email, string businessName, string contactEmail, string contactPhone, string adminId, string? planCode)
         {
             // No starter role: approving the verification grants the Merchant role, exactly as
             // it would for a real applicant.
-            var userId = await CreateUserAsync(email);
+            var (first, last) = SplitBusinessName(businessName);
+            var userId = await CreateUserAsync(email, first, last);
+
             var profileId = OkValue(
-                await _verification.SaveDraftAsync(userId, new MerchantApplicationInput(businessName, contactEmail, contactPhone), _ct),
+                await _verification.SaveDraftAsync(
+                    userId, new MerchantApplicationInput(businessName, contactEmail, contactPhone), _ct),
                 $"save merchant draft for {businessName}");
 
             Ok(
@@ -379,14 +425,18 @@ public static class DemoDataSeeder
             Ok(await _verification.SubmitForReviewAsync(userId, _ct), $"submit {businessName} for verification");
             Ok(await _verification.ApproveAsync(adminId, profileId, _ct), $"approve {businessName}");
 
-            // Verification before payment (BUSINESS-MODEL.md §7): the plan is chosen and
-            // activated only after approval, exactly like a real merchant's path.
-            var plans = await _subscriptions.GetAvailablePlansAsync(_ct);
-            var plan = plans.SingleOrDefault(p => p.Code == planCode)
-                ?? throw Fail($"choose plan for {businessName}", [$"No active subscription plan with code '{planCode}'."]);
-            Ok(await _subscriptions.ChoosePlanAsync(userId, plan.Id, _ct), $"choose {planCode} plan for {businessName}");
-            Ok(await _subscriptions.ActivateAsync(adminId, profileId, $"DEMO-{planCode.ToUpperInvariant()}-{businessName}", _ct),
-                $"activate {planCode} subscription for {businessName}");
+            if (planCode is not null)
+            {
+                // Verify first, then pay (BUSINESS-MODEL.md §7): the plan is chosen and activated
+                // only after approval, exactly like a real merchant's path.
+                var plans = await _subscriptions.GetAvailablePlansAsync(_ct);
+                var plan = plans.SingleOrDefault(p => p.Code == planCode)
+                    ?? throw Fail($"choose a plan for {businessName}", [$"No active subscription plan with code '{planCode}'."]);
+                Ok(await _subscriptions.ChoosePlanAsync(userId, plan.Id, _ct), $"choose the {planCode} plan for {businessName}");
+                Ok(
+                    await _subscriptions.ActivateAsync(adminId, profileId, $"DEMO-{planCode.ToUpperInvariant()}", _ct),
+                    $"activate the {planCode} subscription for {businessName}");
+            }
 
             return new DemoMerchant(userId, profileId, businessName);
         }
@@ -394,9 +444,11 @@ public static class DemoDataSeeder
         private async Task CreatePendingMerchantAsync(
             string email, string businessName, string contactEmail, string contactPhone)
         {
-            var userId = await CreateUserAsync(email);
+            var (first, last) = SplitBusinessName(businessName);
+            var userId = await CreateUserAsync(email, first, last);
             OkValue(
-                await _verification.SaveDraftAsync(userId, new MerchantApplicationInput(businessName, contactEmail, contactPhone), _ct),
+                await _verification.SaveDraftAsync(
+                    userId, new MerchantApplicationInput(businessName, contactEmail, contactPhone), _ct),
                 $"save merchant draft for {businessName}");
             Ok(
                 await _verification.AddDocumentAsync(userId, new AddVerificationDocumentInput(
@@ -412,401 +464,129 @@ public static class DemoDataSeeder
             Ok(
                 await _store.AddLocationAsync(merchant.UserId, new MerchantLocationInput(
                     locationName, address, area, "Amman", "Ask for the trade counter.", "Sun–Thu 10:00–18:00"), _ct),
-                $"add pickup location for {merchant.BusinessName}");
+                $"add a pickup location for {merchant.BusinessName}");
         }
 
-        // ---- Listings — Amman Kitchen Co. (small kitchen appliances / home & cleaning) ----
+        // ---- Listings ----------------------------------------------------------------
 
-        private async Task<DemoListing> CreateKettleListingAsync(DemoMerchant merchant, string adminId)
+        /// <summary>
+        /// Publishes one listing through the merchant's one-page form (<see cref="IMerchantListingService.SaveListingAsync"/>)
+        /// and approves it in the admin moderation queue — the same two steps a real listing goes
+        /// through before it is public.
+        /// </summary>
+        private async Task<DemoListing> CreateListingAsync(DemoMerchant merchant, string adminId, ListingSpec spec)
         {
-            // Listing 2 — Kettle, Condition A, Overstock, Capacity 1.5L/1.7L/2L × Colour Black/White.
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("A"),
-                "Rapid-Boil Electric Kettle (Overstock)",
-                "End-of-run stock of our best-selling rapid-boil kettle. Sealed and unopened; " +
-                "the only reason for the discount is that we over-ordered for the season.",
-                null, 12.000m,
-                "14-day exchange on unopened units.", WarrantyType.ManufacturerWarranty, 12,
-                "One kettle, boxed.", null, []);
+            var outcome = OkValue(
+                await _listings.SaveListingAsync(merchant.UserId, null, await BuildSubmissionAsync(spec), _ct),
+                $"save listing '{spec.Title}' for {merchant.BusinessName}");
 
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create kettle listing");
-            var capacity = await AddOptionAsync(merchant.UserId, listingId, "Capacity", "1.5L", "1.7L", "2L");
-            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "White");
-            await AddVariantAsync(merchant.UserId, listingId, "KETTLE-BLK-15L", [capacity["1.5L"], colour["Black"]], 40);
-            await AddVariantAsync(merchant.UserId, listingId, "KETTLE-WHT-17L", [capacity["1.7L"], colour["White"]], 25);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tee-front.png", "Boxed black electric kettle, front view");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach kettle discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateVacuumListingAsync(DemoMerchant merchant, string adminId)
-        {
-            // Listing 3 — Vacuum cleaner, Condition D, Display Item, visible cosmetic-defect photo.
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("D"),
-                "Bagless Upright Vacuum — Display Unit",
-                "Former showroom vacuum. Structurally perfect and fully functional; there is light " +
-                "surface scuffing to one bottom corner from the display stand, shown in the defect photo.",
-                null, 55.000m,
-                "Sold as-is; no exchange on clearance display units.", WarrantyType.ShopWarranty, 3,
-                "Vacuum and dust bag.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create vacuum listing");
-            await AddVariantAsync(merchant.UserId, listingId, "VAC-UPRIGHT", [], 3);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "tote-front.png", "Upright vacuum cleaner, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "tote-corner-scuff.png", "Close-up of light scuffing on the bottom corner");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("DisplayItem")] }, _ct),
-                "attach vacuum discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateToasterListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("B"),
-                "Classic 2-Slice Toaster (Superseded Model)",
-                "Last year's colourway of our best-selling 2-slice toaster. Sealed and unopened; the " +
-                "retail box was opened for a photo shoot, which is why it is being cleared at a discount.",
-                null, 28.000m,
-                "14-day exchange on unopened units.", WarrantyType.ManufacturerWarranty, 24,
-                "One toaster, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create toaster listing");
-            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Silver", "Red");
-            await AddVariantAsync(merchant.UserId, listingId, "TOAST-BLK", [colour["Black"]], 10);
-            await AddVariantAsync(merchant.UserId, listingId, "TOAST-SLV", [colour["Silver"]], 18);
-            await AddVariantAsync(merchant.UserId, listingId, "TOAST-RED", [colour["Red"]], 12);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-front.png", "Black 2-slice toaster, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "denim-jacket-detail.png", "Control dial detail");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "denim-jacket-box.png", "Retail box opened for a photo shoot");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("SupersededModel")] }, _ct),
-                "attach toaster discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateHandMixerListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("A"),
-                "5-Speed Hand Mixer — Final Units",
-                "Compact hand mixer from our overstock run. Sealed and unopened; only a handful of " +
-                "units are left after our promotion.",
-                null, 9.500m,
-                "7-day exchange while stock lasts.", WarrantyType.None, null, "One hand mixer, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create hand mixer listing");
-            await AddVariantAsync(merchant.UserId, listingId, "MIXER-STD", [], LowStockOpeningQuantity);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "wool-scarf.png", "5-speed hand mixer, flat lay");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach hand mixer discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateIronListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("C"),
-                "Steam Iron — Customer Return",
-                "Steam iron returned unused within our exchange window. Inspected, re-boxed " +
-                "and in full working order; sold at a discount because it can no longer be sold as new.",
-                null, 14.000m,
-                "Sold as-is; no further exchange on returned units.", WarrantyType.ManufacturerWarranty, 6,
-                "One iron, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create iron listing");
-            await AddVariantAsync(merchant.UserId, listingId, "IRON-STD", [], 15);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-belt.png", "Steam iron, front view");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("CustomerReturn")] }, _ct),
-                "attach iron discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateBlenderListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("small-kitchen-appliances"), await GradeIdAsync("B"),
-                "Heavy-Duty Blender (Packaging Damage)",
-                "Durable countertop blender with a shatterproof jug. Sealed and unused; some " +
-                "retail boxes arrived crushed from the freight pallet, which is why these are discounted.",
-                null, 24.000m,
-                "14-day exchange on unused items.", WarrantyType.ManufacturerWarranty, 12,
-                "One blender; box condition varies.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create blender listing");
-            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black", "Red");
-            await AddVariantAsync(merchant.UserId, listingId, "BLEND-BLK", [colour["Black"]], 20);
-            await AddVariantAsync(merchant.UserId, listingId, "BLEND-RED", [colour["Red"]], 15);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "canvas-backpack.png", "Red countertop blender, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "canvas-backpack-box.png", "Example of a crushed retail box");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("PackagingDamage")] }, _ct),
-                "attach blender discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        // ---- Listings — Petra Power Tools (power tools / home & cleaning) -------------
-
-        private async Task<DemoListing> CreateDrillListingAsync(DemoMerchant merchant, string adminId)
-        {
-            // Listing 1 — Drill, Condition B, Superseded Model + Packaging Damage,
-            // Voltage 12V/18V/20V × Colour Black.
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("power-tools"), await GradeIdAsync("B"),
-                "Cordless Drill Driver (Superseded Model)",
-                "Last year's colourway of our cordless drill driver. Sealed and unused; some boxes " +
-                "are crushed or missing lids from warehouse handling, which is why they are discounted.",
-                null, 45.000m,
-                "14-day exchange on unused units in any condition of box.", WarrantyType.ManufacturerWarranty, 24,
-                "One drill; box condition varies.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create drill listing");
-            var voltage = await AddOptionAsync(merchant.UserId, listingId, "Voltage", "12V", "18V", "20V");
-            var colour = await AddOptionAsync(merchant.UserId, listingId, "Colour", "Black");
-            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-12V", [voltage["12V"], colour["Black"]], 30);
-            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-18V", [voltage["18V"], colour["Black"]], 30);
-            await AddVariantAsync(merchant.UserId, listingId, "DRILL-BLK-20V", [voltage["20V"], colour["Black"]], 20);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "court-low-pair.png", "Cordless drill driver with battery");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Packaging, "court-low-box.png", "Example of a crushed retail box");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("SupersededModel"), await ReasonIdAsync("PackagingDamage")] }, _ct),
-                "attach drill discount reasons");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateClearanceVacuumListingAsync(DemoMerchant merchant, string adminId)
-        {
-            // Listing 4 — a listing that ends up sold out, for public
-            // sold-out behaviour. Opens with a small stock a demo buyer then clears.
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("home-cleaning"), await GradeIdAsync("C"),
-                "Handheld Vacuum — Final Units",
-                "Customer-returned but unused handheld vacuums from our winter range. Inspected and " +
-                "re-boxed. Only a handful of units left.",
-                null, 38.000m,
-                "14-day exchange while stock lasts.", WarrantyType.None, null, "One handheld vacuum, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create clearance vacuum listing");
-            await AddVariantAsync(merchant.UserId, listingId, "VAC-HANDHELD", [], ClearanceOpeningQuantity);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "merino-half-zip.png", "Grey handheld vacuum, flat lay");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("CustomerReturn")] }, _ct),
-                "attach clearance discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateCircularSawListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("power-tools"), await GradeIdAsync("A"),
-                "TrailHead Circular Saw — Overstock",
-                "A model we simply over-ordered for the season. Sealed, unused and boxed; nothing wrong " +
-                "with it, just more stock than we can sell at full price.",
-                null, 42.000m,
-                "14-day exchange on unused units.", WarrantyType.ManufacturerWarranty, 24, "One saw, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create circular saw listing");
-            var bladeSize = await AddOptionAsync(merchant.UserId, listingId, "Blade size", "150mm", "165mm", "185mm");
-            await AddVariantAsync(merchant.UserId, listingId, "SAW-150", [bladeSize["150mm"]], 25);
-            await AddVariantAsync(merchant.UserId, listingId, "SAW-165", [bladeSize["165mm"]], 25);
-            await AddVariantAsync(merchant.UserId, listingId, "SAW-185", [bladeSize["185mm"]], 20);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "running-shoes-pair.png", "TrailHead circular saw");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach circular saw discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateAngleGrinderListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("power-tools"), await GradeIdAsync("D"),
-                "Angle Grinder — Display Unit",
-                "Former showroom angle grinder. Structurally sound and fully functional; there is a light " +
-                "mark on the housing from the display stand, shown in the defect photo.",
-                null, 19.000m,
-                "Sold as-is; no exchange on clearance display units.", WarrantyType.None, null, "One grinder, no box.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create angle grinder listing");
-            await AddVariantAsync(merchant.UserId, listingId, "GRINDER-STD", [], 6);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "leather-sandals-front.png", "Angle grinder, front view");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "leather-sandals-scuff.png", "Close-up of a light mark on the housing");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("DisplayItem")] }, _ct),
-                "attach angle grinder discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateScrewdriverSetListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("power-tools"), await GradeIdAsync("A"),
-                "Precision Screwdriver Set — Final Units",
-                "20-piece precision screwdriver set from our overstock run. Sealed and unopened; only a " +
-                "few sets are left.",
-                null, 6.500m,
-                "7-day exchange while stock lasts.", WarrantyType.None, null, "One set, boxed.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create screwdriver set listing");
-            await AddVariantAsync(merchant.UserId, listingId, "SCREWDRIVER-SET", [], LowStockOpeningQuantity + 2);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "sports-socks.png", "Precision screwdriver set, flat lay");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("Overstock")] }, _ct),
-                "attach screwdriver set discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        private async Task<DemoListing> CreateToolBagListingAsync(DemoMerchant merchant, string adminId)
-        {
-            var details = new ListingDetailsInput(
-                await CategoryIdAsync("power-tools"), await GradeIdAsync("C"),
-                "Canvas Tool Bag — Cosmetic Defect",
-                "Heavy-duty canvas tool bag with reinforced base. New and unused; the " +
-                "printed logo is slightly off-centre, which does not affect use.",
-                null, 11.000m,
-                "7-day exchange on unused units.", WarrantyType.None, null, "One tool bag.", null, []);
-
-            var listingId = OkValue(await _listings.CreateAsync(merchant.UserId, details, _ct), "create tool bag listing");
-            await AddVariantAsync(merchant.UserId, listingId, "TOOLBAG-STD", [], 12);
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Product, "shoe-bag-set.png", "Canvas tool bag, flat lay");
-            await AddImageAsync(merchant.UserId, listingId, ListingMediaType.Defect, "shoe-bag-set-logo.png", "Close-up of the off-centre printed logo");
-            Ok(
-                await _listings.UpdateDetailsAsync(merchant.UserId, listingId,
-                    details with { DiscountReasonIds = [await ReasonIdAsync("CosmeticDefect")] }, _ct),
-                "attach tool bag discount reason");
-            await PublishAsync(merchant.UserId, adminId, listingId);
-
-            return await DescribeListingAsync(listingId);
-        }
-
-        // ---- Listing build helpers ----------------------------------------------------
-
-        private async Task<Dictionary<string, Guid>> AddOptionAsync(
-            string userId, Guid listingId, string name, params string[] values)
-        {
-            Ok(await _listings.AddOptionAsync(userId, listingId, name, _ct), $"add option {name}");
-            var optionId = await _db.Set<ListingOption>().AsNoTracking()
-                .Where(o => o.ListingId == listingId && o.Name == name)
-                .Select(o => o.Id).SingleAsync(_ct);
-
-            foreach (var value in values)
+            if (!outcome.Published)
             {
-                Ok(await _listings.AddOptionValueAsync(userId, listingId, optionId, value, _ct), $"add option value {name}={value}");
+                var why = outcome.GateMessage
+                    ?? string.Join("; ", outcome.Blockers.Select(b => $"{b.Field}: {b.Message}"));
+                throw new InvalidOperationException(
+                    $"Demo seed listing '{spec.Title}' for {merchant.BusinessName} did not publish: {why}");
             }
 
-            return await _db.Set<ListingOptionValue>().AsNoTracking()
-                .Where(v => v.ListingOptionId == optionId)
-                .ToDictionaryAsync(v => v.Value, v => v.Id, _ct);
+            Ok(
+                await _moderation.ApproveAsync(adminId, outcome.ListingId, "Demo data: approved.", _ct),
+                $"approve listing '{spec.Title}'");
+
+            return await DescribeListingAsync(outcome.ListingId);
         }
 
-        private async Task AddVariantAsync(
-            string userId, Guid listingId, string sku, IReadOnlyList<Guid> optionValueIds, int quantity) =>
-            Ok(
-                await _listings.AddVariantAsync(userId, listingId, new AddVariantInput(sku, optionValueIds, quantity), _ct),
-                $"add variant {sku}");
+        /// <summary>Saves a listing that is expected to stay a draft because the publish gate blocks it.</summary>
+        private async Task CreateDraftListingAsync(DemoMerchant merchant, ListingSpec spec)
+        {
+            var outcome = OkValue(
+                await _listings.SaveListingAsync(merchant.UserId, null, await BuildSubmissionAsync(spec), _ct),
+                $"save draft listing '{spec.Title}' for {merchant.BusinessName}");
 
-        private async Task AddImageAsync(
-            string userId, Guid listingId, ListingMediaType type, string fileName, string altText)
+            if (outcome.Published)
+            {
+                throw new InvalidOperationException(
+                    $"Demo seed expected '{spec.Title}' for {merchant.BusinessName} to stay a draft, but it published.");
+            }
+        }
+
+        private async Task<ListingFormSubmission> BuildSubmissionAsync(ListingSpec spec)
+        {
+            var categoryId = await CategoryIdAsync(spec.CategorySlug);
+
+            var productPhotos = new List<IncomingPhoto> { Photo(spec.ProductImage) };
+            var defectPhotos = spec.DefectImage is { } defect
+                ? new List<IncomingPhoto> { Photo(defect) }
+                : [];
+
+            IncomingEvidence? evidence = spec.OriginalPrice is null
+                ? null
+                : new IncomingEvidence(
+                    ReferencePriceEvidenceType.Link, "https://example.com/retail-reference", null);
+
+            return new ListingFormSubmission(
+                spec.Title,
+                spec.Description,
+                categoryId,
+                spec.Condition,
+                AdditionalDiscountReasonIds: [],
+                spec.WarrantyType,
+                spec.WarrantyMonths,
+                spec.Price,
+                spec.OriginalPrice,
+                spec.Quantity,
+                productPhotos,
+                defectPhotos,
+                RemovedPhotoIds: [],
+                evidence);
+        }
+
+        private static IncomingPhoto Photo(string fileName)
         {
             var bytes = DemoAssets.LoadImage(fileName);
-            Ok(
-                await _listings.AddImageAsync(userId, listingId, new AddListingImageInput(
-                    type, new MemoryStream(bytes), fileName, "image/png", bytes.Length, altText), _ct),
-                $"add {type} image {fileName}");
-        }
-
-        private async Task PublishAsync(string userId, string adminId, Guid listingId)
-        {
-            Ok(await _listings.SubmitForReviewAsync(userId, listingId, _ct), "submit listing for review");
-            Ok(await _moderation.ApproveAsync(adminId, listingId, "Demo data: approved.", _ct), "approve listing");
+            return new IncomingPhoto(new MemoryStream(bytes), fileName, "image/png", bytes.Length);
         }
 
         private async Task<DemoListing> DescribeListingAsync(Guid listingId)
         {
-            var slug = await _db.Listings.AsNoTracking().Where(l => l.Id == listingId).Select(l => l.Slug).SingleAsync(_ct);
+            var slug = await _db.Listings.AsNoTracking()
+                .Where(l => l.Id == listingId).Select(l => l.Slug).SingleAsync(_ct);
             var variantIds = await _db.ListingVariants.AsNoTracking()
                 .Where(v => v.ListingId == listingId).OrderBy(v => v.Sku).Select(v => v.Id).ToListAsync(_ct);
             return new DemoListing(listingId, slug, variantIds);
         }
 
-        // ---- Transaction helpers -------------------------------------------------------
+        // ---- Orders ----------------------------------------------------------------
 
         private async Task<Guid> PlaceOrderAsync(
-            string buyerId, DemoMerchant merchant,
-            IReadOnlyList<(Guid VariantId, int Quantity)> lines, string contactName, string contactPhone)
+            string buyerId, DemoMerchant merchant, DemoListing listing, int quantity, string contactName, string contactPhone)
         {
             var settings = await _store.GetSettingsAsync(merchant.UserId, _ct);
             var locationId = settings.Locations.First(l => l.IsActive).Id;
 
             return OkValue(
                 await _orders.PlaceOrderAsync(buyerId, new PlaceOrderInput(
-                    [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
+                    [new OrderLineInput(listing.VariantIds[0], quantity)],
                     OrderFulfillmentType.Pickup, locationId, null, contactName, contactPhone, null), _ct),
-                "place demo order");
+                $"place a demo order for '{listing.Slug}'");
         }
 
-        private async Task<Guid> PlaceDeliveryOrderAsync(
-            string buyerId,
-            IReadOnlyList<(Guid VariantId, int Quantity)> lines, string contactName, string contactPhone,
-            string deliveryAddress)
-        {
-            return OkValue(
-                await _orders.PlaceOrderAsync(buyerId, new PlaceOrderInput(
-                    [.. lines.Select(l => new OrderLineInput(l.VariantId, l.Quantity))],
-                    OrderFulfillmentType.MerchantDelivery, null, deliveryAddress, contactName, contactPhone, null), _ct),
-                "place demo delivery order");
-        }
-
-        // ---- Reference-data lookups ---------------------------------------------------
+        // ---- Reference-data lookups ------------------------------------------------
 
         private Task<Guid> CategoryIdAsync(string slug) =>
             _db.Categories.AsNoTracking().Where(c => c.Slug == slug).Select(c => c.Id).SingleAsync(_ct);
 
-        private Task<Guid> GradeIdAsync(string code) =>
-            _db.ConditionGrades.AsNoTracking().Where(g => g.Code == code).Select(g => g.Id).SingleAsync(_ct);
+        // ---- Helpers -------------------------------------------------------------
 
-        private Task<Guid> ReasonIdAsync(string code) =>
-            _db.DiscountReasons.AsNoTracking().Where(r => r.Code == code).Select(r => r.Id).SingleAsync(_ct);
-
-        // ---- Result guards ----------------------------------------------------------
+        /// <summary>
+        /// A merchant account needs a person's name for Identity. The demo has no separate
+        /// contact person, so the shop name stands in — first token as the first name, the rest
+        /// as the surname.
+        /// </summary>
+        private static (string First, string Last) SplitBusinessName(string businessName)
+        {
+            var parts = businessName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return parts.Length == 2 ? (parts[0], parts[1]) : (businessName, "Merchant");
+        }
 
         private static void Ok(Result result, string what)
         {
@@ -830,16 +610,30 @@ public static class DemoDataSeeder
 
     private readonly record struct DemoListing(Guid Id, string Slug, IReadOnlyList<Guid> VariantIds);
 
+    /// <summary>One listing the demo seed publishes, in the vocabulary of the one-page merchant form.</summary>
+    private sealed record ListingSpec(
+        string CategorySlug,
+        ConditionChoice Condition,
+        string Title,
+        string? Description,
+        WarrantyType WarrantyType,
+        int? WarrantyMonths,
+        decimal Price,
+        decimal? OriginalPrice,
+        int Quantity,
+        string ProductImage,
+        string? DefectImage);
+
     /// <summary>
-    /// Media fixtures for the Development-only demo seed. Product photography is a set of
-    /// small, original flat-illustration PNGs generated locally by
+    /// Media fixtures for the Development-only demo seed. Product and defect photography is a
+    /// set of small, original flat-illustration PNGs generated locally by
     /// <c>tools/demo-images/generate-demo-images.ps1</c> (System.Drawing/GDI+) — nothing is
     /// downloaded or hotlinked, so there is no licensing concern. Each file lives under
     /// <c>Data/Seed/Assets/Images</c> and is copied next to the built application (see the
-    /// <c>Content</c> item in Faed.Web.csproj), so it is reachable from disk at seed time
-    /// whether the app is run with <c>dotnet run</c> or from a built <c>bin</c> output.
+    /// <c>Content</c> item in <c>Faed.Web.csproj</c>), so it is reachable from disk at seed
+    /// time whether the app is run with <c>dotnet run</c> or from a built <c>bin</c> output.
     /// The verification-document PDF stays a tiny generated fixture: it is never shown to
-    /// buyers, so it does not need to look realistic
+    /// buyers, so it does not need to look realistic.
     /// </summary>
     private static class DemoAssets
     {

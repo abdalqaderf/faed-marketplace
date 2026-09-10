@@ -221,11 +221,18 @@ Seeded only in `Development`. Re-running is safe.
 
 ## Demo data
 
-A deterministic, Development-only, password-gated demo set: an admin, two approved and
-subscribed merchants, one merchant awaiting verification, two buyers, a catalog across all
-three launch categories with generated product images, and one example of every order state.
-It is built by calling the same application services a real user would, so nothing bypasses
-moderation, authorization, quota enforcement or stock concurrency.
+A deterministic, Development-only, password-gated demo set: an admin; the four merchant
+states (two approved and subscribed — one Standard, one Basic; one approved but not yet
+subscribed; one awaiting verification); two buyers; a catalog across all three launch
+categories that uses every condition card, with locally generated placeholder product and
+defect photos; one order left in each lifecycle state (pending, confirmed, ready for pickup,
+completed, cancelled, no-show); a sold-out listing; and one review on the completed order.
+
+It is built by calling the same application services a real user would — the merchant
+one-page listing form, admin moderation, the subscription and order services — so nothing
+bypasses moderation, authorization, quota enforcement or stock concurrency. Regenerate the
+placeholder images with `tools/demo-images/generate-demo-images.ps1` if the product line
+changes.
 
 ```bash
 dotnet user-secrets set "Faed:DemoSeed:Enabled" "true"        --project src/Faed.Web
@@ -238,10 +245,13 @@ dotnet run --project src/Faed.Web
 | Email | Role |
 |---|---|
 | `demo-admin@faed.local` | Administrator |
-| `merchant-a@faed.local` | Approved + subscribed merchant |
-| `merchant-b@faed.local` | Approved + subscribed merchant |
+| `merchant-a@faed.local` | Approved + subscribed merchant (Standard plan) |
+| `merchant-b@faed.local` | Approved + subscribed merchant (Basic plan) |
+| `unsubscribed-merchant@faed.local` | Approved, no subscription — sees the plan chooser |
 | `pending-merchant@faed.local` | Awaiting verification |
 | `buyer-a@faed.local`, `buyer-b@faed.local` | Individual buyers |
+
+Every account shares the `Faed:DemoSeed:Password` value.
 
 Re-running never duplicates data. Passwords are set only at account creation — change
 `Faed:DemoSeed:Password` after the fact and the old one keeps working until the database is
