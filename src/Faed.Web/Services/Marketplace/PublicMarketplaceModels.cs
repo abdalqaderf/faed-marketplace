@@ -163,8 +163,7 @@ public sealed record PublicListingDetailView(
 
     /// <summary>
     /// The <see cref="ListingOptionValueView.Id"/>s carried by at least one sellable variant.
-    /// The variant picker greys out — and refuses selection of — any value not in this set,
-    /// both server-side in the view and client-side in <c>listing-detail.js</c>.
+    /// A variant picker would grey out — and refuse selection of — any value not in this set.
     /// <para>
     /// Deliberately a per-value test, never a per-combination one. Disabling a value because
     /// it clashes with the currently selected value in another option group traps the buyer:

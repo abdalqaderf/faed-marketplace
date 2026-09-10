@@ -8047,7 +8047,7 @@ button.faed-quick-filter {
 /* =====================================================================================
    PHASE 12 - public surface (DESIGN-BRIEF.md section 5). The five public screens (Home,
    Shop, Listing detail, Reserve, Merchant storefront) plus the section 5.11 site chrome are
-   built from the fx- components below, ported from the approved /design-previews. Legacy
+   built from the fx- components below, following DESIGN-BRIEF.md section 5. Legacy
    public classes above are left in place but unreferenced by these screens (section 9 -
    faed.css is not audited or refactored). Ink is for acting, rust is for disclosing,
    they never swap (section 5.3).
