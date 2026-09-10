@@ -23,6 +23,12 @@
     The output PNGs are committed, so a normal checkout never runs this script. Run it
     only when the product line in DemoDataSeeder, or a source photo, changes.
 
+    This script renders the master 1000px canvases. The committed files are then optimised
+    for the demo (the defence machine may be on slow Wi-Fi): downscaled to 880px for
+    products / 760px for defects and reduced to a 256-colour palette PNG with dithering,
+    which keeps every file under ~300 KB with no visible loss at display size. After
+    regenerating, re-run that optimisation before committing.
+
 .PARAMETER ApiKey
     A remove.bg API key. Falls back to $env:REMOVE_BG_API_KEY. Only the product cut-outs
     need it; -DefectsOnly skips it entirely.
