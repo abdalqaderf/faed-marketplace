@@ -50,7 +50,7 @@ conditions are not coupled.
 
 **Drafts are available immediately after registration**, before approval and before payment.
 
-### 3.2 Publishing an item — one page, eight fields
+### 3.2 Publishing an item — one page, nine fields
 
 | # | Field | Note |
 |---|---|---|
@@ -62,6 +62,18 @@ conditions are not coupled.
 | 6 | Price | JOD |
 | 7 | Original price | Optional — produces a "save %" badge and requires evidence |
 | 8 | Quantity | Defaults to 1 |
+| 9 | Description | **Optional.** Free text, last on the form |
+
+**Only eight of the nine ask the merchant to decide anything.** The description is an optional
+text box that costs no thought — it is not the kind of field that made the old form confusing.
+
+**Why a description survives the reduction:** the structured fields cannot carry everything a
+buyer needs. The condition card says "Ex-display — light scratches" and the defect photo shows
+one, but *"the scratch is on the back panel, not visible on a counter"* is what actually closes
+the sale — along with the model number, the wattage, and what is in the box. Removing it would
+make a Faed listing thinner than a classifieds post, which inverts the entire premise. It is
+optional because a sealed item may need nothing beyond its title, and forcing prose invites
+"good product" filler.
 
 One button: **Publish**. No draft-then-submit-for-review step — the merchant clicks publish
 and sees "Under review".
@@ -272,7 +284,7 @@ The pattern already exists (`ReservationExpiryService`) — it is extended, not 
 |---|---|---|
 | Entities | 30 | **17** |
 | C# lines | ~25,600 | ~19,500 |
-| Decisions to publish an item | ~20 | **8** |
+| Decisions to publish an item | ~20 | **8** (plus one optional note) |
 | Pages to publish an item | 2 | **1** |
 | Shop filters | 10 | **4** |
 | Lifecycle words shown to merchants | 5 | **2** |

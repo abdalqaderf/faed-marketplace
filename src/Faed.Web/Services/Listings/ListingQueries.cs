@@ -51,20 +51,20 @@ internal static class ListingQueries
             .SingleOrDefaultAsync(cancellationToken);
 
         var reasonIds = listing.DiscountReasons.Select(r => r.DiscountReasonId).ToList();
-        var reasonNames = await db.DiscountReasons
+        var reasonRows = await db.DiscountReasons
             .AsNoTracking()
             .Where(r => reasonIds.Contains(r.Id))
-            .OrderBy(r => r.Name)
-            .Select(r => r.Name)
+            .Select(r => new { r.Id, r.Code, r.Name })
             .ToListAsync(cancellationToken);
-        // Codes are the stable natural key; prefer them over Name for
-        // any logic branch, since an admin renaming a reason's display text must not silently
-        // change behaviour that depends on which reason is selected.
-        var reasonCodes = await db.DiscountReasons
-            .AsNoTracking()
-            .Where(r => reasonIds.Contains(r.Id))
-            .Select(r => r.Code)
-            .ToListAsync(cancellationToken);
+
+        var reasonNames = reasonRows.OrderBy(r => r.Name).Select(r => r.Name).ToList();
+        // Codes are the stable natural key; prefer them over Name for any logic branch, since
+        // an admin renaming a reason's display text must not silently change behaviour that
+        // depends on which reason is selected. Kept in the same order as DiscountReasonIds so a
+        // caller can pair the two positionally.
+        var reasonCodes = reasonIds
+            .Select(id => reasonRows.First(r => r.Id == id).Code)
+            .ToList();
 
         var optionNameByValueId = listing.Options
             .SelectMany(o => o.Values.Select(v => new { v.Id, OptionName = o.Name, v.Value }))

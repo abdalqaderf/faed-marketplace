@@ -26,50 +26,50 @@ public sealed class OrderService(
 
     private readonly OrderingOptions _options = options.Value;
 
-    // ---- Checkout -----------------------------------------------------------------
+    // ---- Reservation -------------------------------------------------------------
 
-    public async Task<Result<CheckoutView>> GetCheckoutAsync(
+    public async Task<Result<ReservationView>> GetReservationAsync(
         string buyerUserId, string listingSlug, CancellationToken cancellationToken = default)
     {
         // Reuse the public read path: it already enforces Live + approved merchant + launch
-        // sector, so a listing the buyer could never see is also one they can never start an
-        // order for.
+        // sector, so a listing the buyer could never see is also one they can never reserve.
         if (await userRoles.IsInRoleAsync(buyerUserId, FaedRoles.Admin, cancellationToken))
         {
-            return Result<CheckoutView>.Forbidden("Administrators cannot place B2C orders.");
+            return Result<ReservationView>.Forbidden("Administrators cannot place B2C orders.");
         }
 
         if (!await CanBuyAsync(buyerUserId, cancellationToken))
         {
-            return Result<CheckoutView>.Forbidden("A Buyer or Merchant account is required to place an order.");
+            return Result<ReservationView>.Forbidden("A Buyer or Merchant account is required to reserve an item.");
         }
 
         var listing = await marketplace.GetListingBySlugAsync(listingSlug, cancellationToken);
         if (listing is null)
         {
-            return Result<CheckoutView>.NotFound("That listing is not available for ordering.");
+            return Result<ReservationView>.NotFound("That listing is not available to reserve.");
         }
 
         if (listing.RetailPrice is not { } unitPrice)
         {
-            return Result<CheckoutView>.Validation("This listing is not available for purchase.");
+            return Result<ReservationView>.Validation("This listing is not available to reserve.");
         }
 
         var lines = listing.Variants
             .Where(v => v.IsActive)
             .OrderBy(v => v.Combination, StringComparer.OrdinalIgnoreCase)
-            .Select(v => new CheckoutLineView(v.Id, v.Combination, unitPrice, v.AvailableQuantity))
+            .Select(v => new ReservationLineView(v.Id, v.Combination, unitPrice, v.AvailableQuantity))
             .ToList();
 
+        // Only the pickup area is shown before the buyer reserves — the full address and the
+        // shop's phone are revealed once the merchant confirms (docs/BUSINESS-MODEL.md §8.7).
         var pickups = await db.MerchantLocations
             .AsNoTracking()
             .Where(l => l.MerchantProfileId == listing.MerchantProfileId && l.IsActive)
             .OrderBy(l => l.Name)
-            .Select(l => new PickupLocationOption(
-                l.Id, l.Name, l.AddressLine + ", " + l.Area + ", " + l.City, l.PickupInstructions, l.PickupHoursText))
+            .Select(l => new ReservationPickupOption(l.Id, l.Name, l.Area))
             .ToListAsync(cancellationToken);
 
-        return Result<CheckoutView>.Success(new CheckoutView(
+        return Result<ReservationView>.Success(new ReservationView(
             listing.Id,
             listing.Title,
             listing.Slug,
@@ -77,7 +77,6 @@ public sealed class OrderService(
             listing.MerchantBusinessName,
             listing.MerchantSlug,
             $"Grade {listing.ConditionCode} — {listing.ConditionName}",
-            listing.DiscountReasonNames,
             lines,
             pickups));
     }
@@ -332,6 +331,7 @@ public sealed class OrderService(
             .OrderByDescending(o => o.CreatedAtUtc)
             .Select(o => new OrderSummaryView(
                 o.Id,
+                o.Reference,
                 o.Status,
                 o.FulfillmentType,
                 db.MerchantProfiles.Where(m => m.Id == o.MerchantProfileId)
@@ -427,6 +427,7 @@ public sealed class OrderService(
             .ThenBy(o => o.CreatedAtUtc)
             .Select(o => new OrderSummaryView(
                 o.Id,
+                o.Reference,
                 o.Status,
                 o.FulfillmentType,
                 o.ContactName,
@@ -510,59 +511,102 @@ public sealed class OrderService(
             merchantUserId, orderId, o => o.Cancel(text, clock.UtcNow), StockEffect.Release, cancellationToken);
     }
 
-    // ---- Expiry sweep -----------------------------------------------------------
+    // ---- Deadline sweeps ------------------------------------------------------
 
-    public async Task<int> ReleaseExpiredReservationsAsync(CancellationToken cancellationToken = default)
-    {
-        var dueIds = await db.Orders
-            .AsNoTracking()
-            .Where(o => o.Status == OrderStatus.Pending
+    public Task<int> ReleaseExpiredReservationsAsync(CancellationToken cancellationToken = default) =>
+        SweepPastDeadlineAsync(
+            due: o => o.Status == OrderStatus.Pending
                 && o.ReservationExpiresAtUtc != null
-                && o.ReservationExpiresAtUtc < clock.UtcNow)
-            .Select(o => o.Id)
-            .ToListAsync(cancellationToken);
+                && o.ReservationExpiresAtUtc < clock.UtcNow,
+            stillDue: o => o.Status == OrderStatus.Pending
+                && o.ReservationExpiresAtUtc is { } expiresAt && expiresAt < clock.UtcNow,
+            transition: o => o.Cancel(
+                "The shop did not respond in time, so the reservation was cancelled — you lost nothing.",
+                clock.UtcNow),
+            label: "expired reservation",
+            cancellationToken);
 
-        var released = 0;
+    public Task<int> ExpireUnhandledConfirmedOrdersAsync(CancellationToken cancellationToken = default)
+    {
+        var cutoff = clock.UtcNow - _options.NoShowWindow;
+        return SweepPastDeadlineAsync(
+            due: o => o.Status == OrderStatus.Confirmed
+                && o.ConfirmedAtUtc != null && o.ConfirmedAtUtc < cutoff,
+            stillDue: o => o.Status == OrderStatus.Confirmed
+                && o.ConfirmedAtUtc is { } confirmedAt && confirmedAt < cutoff,
+            transition: o => o.MarkNoShow(
+                "The order was not prepared for pickup within 48 hours of being confirmed, so the reservation was released.",
+                clock.UtcNow),
+            label: "unhandled confirmed order",
+            cancellationToken);
+    }
+
+    public Task<int> CloseStaleReadyOrdersAsync(CancellationToken cancellationToken = default)
+    {
+        var cutoff = clock.UtcNow - _options.AutoCloseWindow;
+        return SweepPastDeadlineAsync(
+            // No dedicated "became ready" timestamp: an order with no movement since it was
+            // marked ready has UpdatedAtUtc frozen at that moment, which is exactly the clock
+            // this deadline runs against.
+            due: o => (o.Status == OrderStatus.ReadyForPickup || o.Status == OrderStatus.OutForDelivery)
+                && o.UpdatedAtUtc < cutoff,
+            stillDue: o => (o.Status == OrderStatus.ReadyForPickup || o.Status == OrderStatus.OutForDelivery)
+                && o.UpdatedAtUtc < cutoff,
+            transition: o => o.MarkNoShow(
+                "This order was ready for pickup for 72 hours with no collection, so it was closed and the stock released.",
+                clock.UtcNow),
+            label: "stale ready order",
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// The shared shape of every deadline sweep: take the ids past the deadline now, then
+    /// re-load and re-check each one before acting, so a merchant confirmation or cancellation
+    /// landing in the same moment simply wins and the sweep does nothing. Each order moves in
+    /// its own transaction (<see cref="ApplyTransitionAsync"/>), so one failure never blocks
+    /// the rest of the batch.
+    /// </summary>
+    private async Task<int> SweepPastDeadlineAsync(
+        System.Linq.Expressions.Expression<Func<Order, bool>> due,
+        Func<Order, bool> stillDue,
+        Action<Order> transition,
+        string label,
+        CancellationToken cancellationToken)
+    {
+        var dueIds = await db.Orders.AsNoTracking().Where(due).Select(o => o.Id).ToListAsync(cancellationToken);
+
+        var resolved = 0;
         foreach (var id in dueIds)
         {
             DetachTrackedGraph();
 
             var order = await db.Orders
                 .Include(o => o.Items)
-                .SingleOrDefaultAsync(o => o.Id == id && o.Status == OrderStatus.Pending, cancellationToken);
+                .SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
 
-            // Already confirmed or cancelled by someone else since the id list was taken —
-            // idempotent by construction.
-            if (order is null
-                || order.ReservationExpiresAtUtc is not { } expiresAt
-                || expiresAt >= clock.UtcNow)
+            if (order is null || !stillDue(order))
             {
                 continue;
             }
 
-            var outcome = await ApplyTransitionAsync(
-                order,
-                o => o.Cancel("The reservation expired before the merchant confirmed the order.", clock.UtcNow),
-                StockEffect.Release,
-                cancellationToken);
-
+            var outcome = await ApplyTransitionAsync(order, transition, StockEffect.Release, cancellationToken);
             if (outcome.Succeeded)
             {
-                released++;
-                logger.LogInformation("Released expired reservation for order {OrderId}", id);
+                resolved++;
+                logger.LogInformation("Deadline sweep closed {Label} {OrderId}", label, id);
             }
             else if (outcome.ErrorKind == ResultErrorKind.Conflict)
             {
-                // The merchant confirmed it in the same moment; nothing to do.
-                logger.LogInformation("Expired-reservation release for order {OrderId} was superseded", id);
+                // A merchant or buyer action landed in the same moment; nothing to do.
+                logger.LogInformation("Deadline sweep for {Label} {OrderId} was superseded", label, id);
             }
             else
             {
-                logger.LogWarning("Expired-reservation release for order {OrderId} failed: {Error}", id, outcome.Error);
+                logger.LogWarning("Deadline sweep for {Label} {OrderId} failed: {Error}", label, id, outcome.Error);
             }
         }
 
-        return released;
+        return resolved;
     }
 
     // ---- Internals ------------------------------------------------------------
@@ -702,8 +746,17 @@ public sealed class OrderService(
         var merchant = await db.MerchantProfiles
             .AsNoTracking()
             .Where(m => m.Id == order.MerchantProfileId)
-            .Select(m => new { m.BusinessName, m.PublicSlug })
+            .Select(m => new { m.BusinessName, m.PublicSlug, m.ContactPhone })
             .SingleOrDefaultAsync(cancellationToken);
+
+        var pickupArea = order.MerchantLocationId is { } locationId
+            ? await db.MerchantLocations.AsNoTracking()
+                .Where(l => l.Id == locationId).Select(l => l.Area).SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        // The reveal rule: the shop's area is always visible; its full address (carried on the
+        // fulfilment snapshot) and phone only after the merchant confirms.
+        var revealed = order.ConfirmedAtUtc is not null;
 
         var listingSlugs = await db.Listings
             .AsNoTracking()
@@ -726,6 +779,7 @@ public sealed class OrderService(
 
         return new OrderDetailView(
             order.Id,
+            order.Reference,
             order.Status,
             order.StatusReason,
             order.FulfillmentType,
@@ -744,6 +798,8 @@ public sealed class OrderService(
             order.MerchantProfileId,
             merchant?.BusinessName ?? "Merchant",
             merchant?.PublicSlug ?? string.Empty,
+            string.IsNullOrWhiteSpace(pickupArea) ? "Amman" : pickupArea,
+            revealed ? merchant?.ContactPhone : null,
             items);
     }
 

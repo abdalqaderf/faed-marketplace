@@ -15,9 +15,9 @@ namespace Faed.Web.Tests.Services.Ordering;
 
 /// <summary>
 /// PHASE-PLAN.md Phase 1, test 4: an unconfirmed order past its reservation window is
-/// cancelled and its stock released. Exists for Phase 9, which extends
-/// <see cref="ReservationExpiryService"/>'s pattern to two more deadlines — a regression here
-/// would only otherwise surface by hand.
+/// cancelled and its stock released. Extended for Phase 9, whose
+/// <see cref="OrderDeadlineService"/> adds the 48-hour no-show and 72-hour auto-close
+/// deadlines on the same pattern — a regression here would only otherwise surface by hand.
 /// </summary>
 public class ReservationExpiryTests
 {
@@ -28,7 +28,7 @@ public class ReservationExpiryTests
 
         await using var db = new ApplicationDbContext(options);
         var clock = new TestClock(DateTime.UtcNow);
-        var variant = await SeedReservedOrderAsync(db, clock, initialQuantity: 5, reservedQuantity: 2);
+        var (variant, _) = await SeedReservedOrderAsync(db, clock, initialQuantity: 5, reservedQuantity: 2);
 
         var orderService = new OrderService(
             db, new ThrowingMarketplaceService(), new AllowAllUserRoleService(), clock,
@@ -94,9 +94,72 @@ public class ReservationExpiryTests
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
-    /// <summary>Builds a Pending order, past its reservation window, holding stock on one variant.</summary>
-    private static async Task<ListingVariant> SeedReservedOrderAsync(
-        ApplicationDbContext db, TestClock clock, int initialQuantity, int reservedQuantity)
+    [Fact]
+    public async Task ConfirmedOrder_NotHandedOverInTime_BecomesNoShow_AndStockReleased()
+    {
+        var options = CreateOptions();
+        await using var db = new ApplicationDbContext(options);
+        var clock = new TestClock(DateTime.UtcNow);
+
+        var (variant, order) = await SeedReservedOrderAsync(
+            db, clock, initialQuantity: 5, reservedQuantity: 2, reservationExpiresAtUtc: clock.UtcNow.AddHours(12));
+        order.Confirm(clock.UtcNow);
+        await db.SaveChangesAsync();
+
+        var orderService = NewOrderService(db, clock);
+
+        // A minute before the 48-hour deadline: nothing happens.
+        clock.UtcNow = clock.UtcNow.AddHours(48).AddMinutes(-1);
+        Assert.Equal(0, await orderService.ExpireUnhandledConfirmedOrdersAsync());
+
+        // Past it: the order is a no-show and the two reserved units are back on sale.
+        clock.UtcNow = clock.UtcNow.AddMinutes(2);
+        Assert.Equal(1, await orderService.ExpireUnhandledConfirmedOrdersAsync());
+
+        var reloaded = await db.Orders.AsNoTracking().SingleAsync();
+        Assert.Equal(OrderStatus.NoShow, reloaded.Status);
+        var reloadedVariant = await db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variant.Id);
+        Assert.Equal(5, reloadedVariant.AvailableQuantity);
+        Assert.Equal(0, reloadedVariant.ReservedQuantity);
+    }
+
+    [Fact]
+    public async Task ReadyOrder_LeftUncollected_IsAutoClosed_AndStockReleased()
+    {
+        var options = CreateOptions();
+        await using var db = new ApplicationDbContext(options);
+        var clock = new TestClock(DateTime.UtcNow);
+
+        var (variant, order) = await SeedReservedOrderAsync(
+            db, clock, initialQuantity: 5, reservedQuantity: 2, reservationExpiresAtUtc: clock.UtcNow.AddHours(12));
+        order.Confirm(clock.UtcNow);
+        order.MarkReadyForPickup(clock.UtcNow);
+        await db.SaveChangesAsync();
+
+        var orderService = NewOrderService(db, clock);
+
+        clock.UtcNow = clock.UtcNow.AddHours(71);
+        Assert.Equal(0, await orderService.CloseStaleReadyOrdersAsync());
+
+        clock.UtcNow = clock.UtcNow.AddHours(2);
+        Assert.Equal(1, await orderService.CloseStaleReadyOrdersAsync());
+
+        var reloaded = await db.Orders.AsNoTracking().SingleAsync();
+        Assert.Equal(OrderStatus.NoShow, reloaded.Status);
+        var reloadedVariant = await db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variant.Id);
+        Assert.Equal(0, reloadedVariant.ReservedQuantity);
+    }
+
+    private static OrderService NewOrderService(ApplicationDbContext db, TestClock clock) =>
+        new(db, new ThrowingMarketplaceService(), new AllowAllUserRoleService(), clock,
+            Options.Create(new OrderingOptions()), NullLogger<OrderService>.Instance);
+
+    /// <summary>Builds a Pending order holding stock on one variant. The reservation window is
+    /// an hour in the past by default (so the expiry sweep is due); pass a future value to seed
+    /// an order the merchant can still confirm.</summary>
+    private static async Task<(ListingVariant Variant, Order Order)> SeedReservedOrderAsync(
+        ApplicationDbContext db, TestClock clock, int initialQuantity, int reservedQuantity,
+        DateTime? reservationExpiresAtUtc = null)
     {
         const string buyerId = "buyer-user";
         const string merchantUserId = "merchant-user";
@@ -138,12 +201,12 @@ public class ReservationExpiryTests
         var order = new Order(
             buyerId, profile.Id, OrderFulfillmentType.Pickup, Guid.NewGuid(), "Pickup from Test Merchant",
             deliveryAddressText: null, contactName: "Test Buyer", contactPhone: "+962790000000", buyerNote: null,
-            reservationExpiresAtUtc: clock.UtcNow.AddHours(-1), clock.UtcNow);
+            reservationExpiresAtUtc: reservationExpiresAtUtc ?? clock.UtcNow.AddHours(-1), clock.UtcNow);
         order.AddItem(listing.Id, variant.Id, reservedQuantity, 25m, "Test Kettle", "SKU-KETTLE", "A", "Overstock");
         db.Orders.Add(order);
 
         await db.SaveChangesAsync();
-        return variant;
+        return (variant, order);
     }
 
     private sealed class TestClock(DateTime now) : IClock

@@ -4,16 +4,16 @@ namespace Faed.Web.Services.Ordering;
 
 /// <summary>
 /// B2C ordering use cases. Reservation, cancellation,
-/// completion and expiry each run inside an explicit transaction so stock and order state
-/// move together or not at all. Every method re-resolves the
+/// completion and every deadline sweep each run inside an explicit transaction so stock and
+/// order state move together or not at all. Every method re-resolves the
 /// caller's buyer identity or merchant ownership from the database — a guessed order id is
 /// never enough.
 /// </summary>
 public interface IOrderService
 {
-    /// <summary>The single-listing order builder, or a failure when the listing is not
-    /// publicly purchasable.</summary>
-    Task<Result<CheckoutView>> GetCheckoutAsync(
+    /// <summary>The single-listing reservation confirmation, or a failure when the listing is
+    /// not publicly purchasable.</summary>
+    Task<Result<ReservationView>> GetReservationAsync(
         string buyerUserId, string listingSlug, CancellationToken cancellationToken = default);
 
     /// <summary>Reserves stock and creates the order atomically, or fails without side effects.</summary>
@@ -63,9 +63,24 @@ public interface IOrderService
 
     /// <summary>
     /// Releases the reserved stock of every <see cref="Models.Enums.OrderStatus.Pending"/> order
-    /// whose reservation window has elapsed and cancels it. Safe to call repeatedly — an order
-    /// already released is not processed again. Returns the number of
-    /// orders released.
+    /// whose reservation window has elapsed and cancels it, telling the buyer the shop did not
+    /// respond. Safe to call repeatedly — an order already released is not processed again.
+    /// Returns the number of orders released.
     /// </summary>
     Task<int> ReleaseExpiredReservationsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records a no-show and releases the stock of every <see cref="Models.Enums.OrderStatus.Confirmed"/>
+    /// order the merchant has not prepared for handover within the no-show window (48 h).
+    /// Idempotent. Returns the number of orders closed.
+    /// </summary>
+    Task<int> ExpireUnhandledConfirmedOrdersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Closes as a no-show, and releases the stock of, every order left in
+    /// <see cref="Models.Enums.OrderStatus.ReadyForPickup"/> or
+    /// <see cref="Models.Enums.OrderStatus.OutForDelivery"/> with no further movement past the
+    /// auto-close window (72 h). Idempotent. Returns the number of orders closed.
+    /// </summary>
+    Task<int> CloseStaleReadyOrdersAsync(CancellationToken cancellationToken = default);
 }

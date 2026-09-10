@@ -30,6 +30,16 @@ public interface IMerchantListingService
     Task<Result<Guid>> CreateAsync(
         string userId, ListingDetailsInput input, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Applies one submit of the merchant's one-page listing form: creates the listing (when
+    /// <paramref name="listingId"/> is null) or updates it, sets the single auto-generated
+    /// variant's stock from the quantity field, adds and removes photos, records original-price
+    /// evidence, and — when nothing blocks it — submits the listing for review. The listing is
+    /// saved as a draft rather than lost when a per-field blocker or the publish gate stops it.
+    /// </summary>
+    Task<Result<SaveListingOutcome>> SaveListingAsync(
+        string userId, Guid? listingId, ListingFormSubmission submission, CancellationToken cancellationToken = default);
+
     Task<Result> UpdateDetailsAsync(
         string userId, Guid listingId, ListingDetailsInput input, CancellationToken cancellationToken = default);
 

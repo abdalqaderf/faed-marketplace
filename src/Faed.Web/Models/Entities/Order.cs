@@ -30,10 +30,10 @@ public class Order
 
     /// <summary>
     /// Storage ceiling for the human-readable fulfilment description. Sized generously above
-    /// the largest string the checkout can build from the maximum-length
+    /// the largest string a reservation can build from the maximum-length
     /// <see cref="MerchantLocation"/> fields (name + address + area + city + hours +
     /// instructions ≈ 1.4k); the constructor truncates rather than rejecting, so no valid
-    /// merchant data can make checkout fail (regression: a long-but-valid pickup location).
+    /// merchant data can stop a buyer reserving (regression: a long-but-valid pickup location).
     /// </summary>
     public const int MaxFulfillmentSnapshotLength = 2000;
 
@@ -114,7 +114,7 @@ public class Order
 
     public Guid? MerchantLocationId { get; private set; }
 
-    /// <summary>Human-readable fulfilment description captured at checkout (location or delivery details).</summary>
+    /// <summary>Human-readable pickup-location description captured when the buyer reserved.</summary>
     public string FulfillmentSnapshot { get; private set; } = null!;
 
     public string? DeliveryAddressText { get; private set; }
@@ -281,9 +281,16 @@ public class Order
         Touch(nowUtc);
     }
 
+    /// <summary>
+    /// Records that the handover never happened and releases the stock. Valid from any state
+    /// the merchant has already accepted: <see cref="OrderStatus.Confirmed"/> (the 48-hour
+    /// sweep, when the order was never prepared) through <see cref="OrderStatus.ReadyForPickup"/>
+    /// and <see cref="OrderStatus.OutForDelivery"/> (the 72-hour sweep, or a buyer who did not
+    /// collect what was prepared).
+    /// </summary>
     public void MarkNoShow(string reason, DateTime nowUtc)
     {
-        if (Status is not (OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery))
+        if (Status is not (OrderStatus.Confirmed or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery))
         {
             throw new DomainException($"An order in status {Status} cannot be marked as a no-show.");
         }
@@ -326,7 +333,7 @@ public class Order
     /// <summary>
     /// As <see cref="Require"/>, but a value over the limit is truncated instead of rejected.
     /// Used for server-composed descriptive snapshots whose length depends on how much
-    /// (valid) free text the merchant entered — those must never block a checkout.
+    /// (valid) free text the merchant entered — those must never block a reservation.
     /// </summary>
     private static string RequireThenTruncate(string value, string field, int maxLength)
     {

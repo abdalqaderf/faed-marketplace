@@ -1,36 +1,65 @@
 @model MerchantOrderDetailPageModel
 @{
     var order = Model.Order;
-    ViewData["Title"] = $"Order — {order.ContactName}";
+    ViewData["Title"] = $"Order #{order.Reference}";
+    var firstItem = order.Items.Count > 0 ? order.Items[0].ListingTitle : "your item";
+    var whatsApp = order.ContactRevealed
+        ? WhatsAppLink.Build(order.ContactPhone, $"Hi, about your Faed reservation of {firstItem}. Order #{order.Reference}")
+        : null;
+    var steps = new (string Label, bool Reached)[]
+    {
+        ("Reserved", true),
+        ("Confirmed", order.Status is OrderStatus.Confirmed or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed),
+        ("Ready", order.Status is OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed),
+        ("Collected", order.Status == OrderStatus.Completed),
+    };
 }
 
 <div class="faed-page faed-page--wide">
     <partial name="_MerchantSubnav" model="@("Orders")" />
 
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
-        <a asp-action="Index">B2C orders</a>
+        <a asp-action="Index">Orders</a>
         <span aria-hidden="true">/</span>
-        <span>@AmmanTime.FormatDateTime(order.CreatedAtUtc)</span>
+        <span>#@order.Reference</span>
     </nav>
 
     <div class="faed-page__header">
         <div>
-            <h1 class="faed-page__title">Order @order.Id.ToString()[..8]</h1>
-            <p class="faed-page__subtitle">
-                Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) ·
-                @OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)
-            </p>
+            <h1 class="faed-page__title">Order #@order.Reference</h1>
+            <p class="faed-page__subtitle">Reserved @AmmanTime.FormatDateTime(order.CreatedAtUtc) · pickup, cash on collection</p>
         </div>
         <div class="faed-page__actions">
             <span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span>
         </div>
     </div>
 
+    <ol class="faed-order-progress" aria-label="Order progress">
+        @{ var stepNumber = 0; }
+        @foreach (var step in steps)
+        {
+            stepNumber++;
+            <li class="@(step.Reached ? "is-reached" : "")"><span>@stepNumber</span><strong>@step.Label</strong></li>
+        }
+    </ol>
+
     @if (order.Status == OrderStatus.Pending && order.ReservationExpiresAtUtc is { } expires)
     {
         <div class="faed-alert faed-alert--info" role="status">
-            Stock is reserved for this order until about @AmmanTime.FormatDateTime(expires). Confirm it before then,
-            or it is cancelled automatically and the stock is released.
+            The item is held for this buyer until about @AmmanTime.FormatDateTime(expires). Confirm before then,
+            or the reservation is cancelled automatically and the stock released.
+        </div>
+    }
+    else if (order.Status == OrderStatus.Confirmed)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            Prepare this order for pickup within 48 hours of confirming, or it is recorded as a no-show and the stock released.
+        </div>
+    }
+    else if (order.Status == OrderStatus.ReadyForPickup)
+    {
+        <div class="faed-alert faed-alert--info" role="status">
+            If the buyer does not collect within 72 hours, this order is closed as a no-show and the stock released.
         </div>
     }
     @if (!string.IsNullOrEmpty(order.StatusReason) && order.Status is OrderStatus.Cancelled or OrderStatus.NoShow)
@@ -72,25 +101,35 @@
     </div>
 
     <div class="faed-panel">
-        <h2 class="faed-panel__title">Buyer &amp; fulfilment</h2>
+        <h2 class="faed-panel__title">Buyer &amp; pickup</h2>
         <dl class="faed-details">
-            <dt>Contact</dt>
-            <dd>@order.ContactName · @order.ContactPhone</dd>
-            <dt>Method</dt>
-            <dd>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</dd>
-            <dt>Details</dt>
+            <dt>Buyer</dt>
+            <dd>@order.ContactName</dd>
+            <dt>Phone</dt>
+            <dd>
+                @if (order.ContactRevealed)
+                {
+                    @order.ContactPhone
+                }
+                else
+                {
+                    <span class="faed-field__hint">Revealed once you confirm the order.</span>
+                }
+            </dd>
+            <dt>Pickup point</dt>
             <dd>@order.FulfillmentSnapshot</dd>
-            @if (!string.IsNullOrWhiteSpace(order.DeliveryAddressText))
-            {
-                <dt>Delivery address</dt>
-                <dd>@order.DeliveryAddressText</dd>
-            }
             @if (!string.IsNullOrWhiteSpace(order.BuyerNote))
             {
                 <dt>Buyer note</dt>
                 <dd>@order.BuyerNote</dd>
             }
         </dl>
+        @if (whatsApp is not null)
+        {
+            <a class="faed-btn faed-btn--ghost faed-whatsapp-btn" href="@whatsApp" target="_blank" rel="noopener">
+                @FaedIcon.Render("chat", "faed-icon") Message the buyer on WhatsApp
+            </a>
+        }
     </div>
 
     @if (order.MerchantCanConfirm || order.MerchantCanMarkReadyForPickup || order.MerchantCanMarkOutForDelivery

@@ -1,4 +1,5 @@
-﻿using Faed.Web.Models.Enums;
+﻿using Faed.Web.Models.Entities;
+using Faed.Web.Models.Enums;
 
 namespace Faed.Web.Services.Listings;
 
@@ -13,7 +14,7 @@ public sealed record ListingDetailsInput(
     Guid CategoryId,
     Guid ConditionGradeId,
     string Title,
-    string Description,
+    string? Description,
     decimal? ReferencePrice,
     decimal? RetailPrice,
     string? ReturnPolicyText,
@@ -124,7 +125,7 @@ public sealed record ListingDetailView(
     string MerchantBusinessName,
     string Title,
     string Slug,
-    string Description,
+    string? Description,
     Guid CategoryId,
     string CategoryName,
     Guid ConditionGradeId,
@@ -152,7 +153,7 @@ public sealed record ListingDetailView(
     IReadOnlyList<ListingImageView> Media,
     IReadOnlyList<ListingEvidenceView> ReferencePriceEvidence,
     IReadOnlyList<ListingModerationView> Moderations,
-    IReadOnlyList<string> SubmissionBlockers)
+    IReadOnlyList<SubmissionBlocker> SubmissionBlockers)
 {
     public int AvailableUnits => Variants.Where(v => v.IsActive).Sum(v => v.AvailableQuantity);
 
@@ -189,11 +190,59 @@ public sealed record ModerationQueueItem(
 
 public sealed record CatalogChoice(Guid Id, string Label);
 
-/// <summary>The DB-driven choices a listing form offers. Nothing here is hard-coded.</summary>
+/// <summary>
+/// The DB-driven choices the one-page listing form offers. Categories are shown as cards; the
+/// condition question is the four fixed <see cref="ConditionPresets"/> cards, not reference
+/// data. <see cref="AdditionalDiscountReasons"/> backs the optional "Add another reason" link
+/// for advanced merchants — it is every active reason a condition card does not already imply.
+/// Nothing here is hard-coded.
+/// </summary>
 public sealed record ListingReferenceData(
     IReadOnlyList<CatalogChoice> Categories,
-    IReadOnlyList<CatalogChoice> ConditionGrades,
-    IReadOnlyList<CatalogChoice> DiscountReasons);
+    IReadOnlyList<CatalogChoice> AdditionalDiscountReasons);
+
+/// <summary>A photo the merchant just uploaded on the listing form, buffered by the caller.</summary>
+public sealed record IncomingPhoto(Stream Content, string FileName, string ContentType, long LengthBytes);
+
+/// <summary>Evidence for the optional original price: a link, an uploaded file, or both.</summary>
+public sealed record IncomingEvidence(
+    ReferencePriceEvidenceType EvidenceType, string? ReferenceUrl, IncomingPhoto? File);
+
+/// <summary>
+/// Everything one submit of the merchant's one-page listing form carries. The service turns
+/// it into a complete, submitted-for-review listing in a single unit of work: details, the
+/// condition card's grade + reasons, one auto-generated variant for the quantity, the photos,
+/// and the original-price evidence.
+/// </summary>
+public sealed record ListingFormSubmission(
+    string Title,
+    string? Description,
+    Guid CategoryId,
+    ConditionChoice Condition,
+    IReadOnlyList<Guid> AdditionalDiscountReasonIds,
+    WarrantyType WarrantyType,
+    int? WarrantyMonths,
+    decimal? Price,
+    decimal? OriginalPrice,
+    int Quantity,
+    IReadOnlyList<IncomingPhoto> NewProductPhotos,
+    IReadOnlyList<IncomingPhoto> NewDefectPhotos,
+    IReadOnlyList<Guid> RemovedPhotoIds,
+    IncomingEvidence? OriginalPriceEvidence);
+
+/// <summary>
+/// The result of saving the one-page listing form. The listing is always persisted (a merchant
+/// may build a draft before verification), so <see cref="ListingId"/> is set whenever the save
+/// itself succeeded. <see cref="Published"/> is true once it is live or awaiting review;
+/// otherwise it stayed a draft because of <see cref="Blockers"/> (per-field problems) or
+/// <see cref="GateMessage"/> (verification / subscription / quota).
+/// </summary>
+public sealed record SaveListingOutcome(
+    Guid ListingId,
+    ListingStatus Status,
+    bool Published,
+    IReadOnlyList<SubmissionBlocker> Blockers,
+    string? GateMessage);
 
 /// <summary>Which listings a queue or list should return.</summary>
 public enum MerchantListingFilter

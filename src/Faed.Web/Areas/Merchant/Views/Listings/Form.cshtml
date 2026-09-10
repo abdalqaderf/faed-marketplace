@@ -1,0 +1,246 @@
+@model ListingFormPageModel
+@{
+    var m = Model.Form;
+    var rd = Model.ReferenceData;
+    var listing = Model.Listing;
+    var editing = Model.IsEdit;
+    ViewData["Title"] = editing ? listing!.Title : "New listing";
+
+    var canEdit = !editing || listing!.AcceptsMaterialEdit;
+    var revealsDefect = ConditionPresets.All.Where(p => p.RevealsDefectPhoto).Select(p => p.Choice).ToHashSet();
+    var showDefect = (m.Condition is { } c && revealsDefect.Contains(c)) || (listing?.DefectPhotos.Count > 0);
+    var published = editing && listing!.Status is ListingStatus.Live or ListingStatus.SoldOut or ListingStatus.PendingReview;
+
+    (string Cls, string Msg)? notice = !editing ? null : listing!.Status switch
+    {
+        ListingStatus.Rejected when listing.LatestDecision is not null =>
+            ("error", $"An admin sent this back: {listing.LatestDecision.ReviewNote}"),
+        ListingStatus.PendingReview => ("info", "It's under review — you can't change it until an admin decides."),
+        ListingStatus.Hidden when listing.HiddenByAdmin =>
+            ("error", "An admin paused this listing. Contact Faed support to bring it back."),
+        ListingStatus.Hidden => ("info", "Paused — it isn't in the shop right now."),
+        ListingStatus.Live => ("success", "Live in the shop."),
+        ListingStatus.SoldOut => ("info", "Out of stock — set a quantity to bring it back."),
+        _ => ((string, string)?)null,
+    };
+
+    void RemovableThumbs(IReadOnlyList<Faed.Web.Services.Listings.ListingImageView> photos, string fallbackAlt)
+    {
+        <div class="faed-thumb-grid mb-2">
+            @foreach (var photo in photos)
+            {
+                <label class="faed-thumb">
+                    <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? fallbackAlt)" loading="lazy" />
+                    <span class="faed-thumb__remove"><input type="checkbox" name="Form.RemovePhotoIds" value="@photo.Id" /> Remove</span>
+                </label>
+            }
+        </div>
+    }
+}
+
+<div class="faed-page">
+    <partial name="_MerchantSubnav" model="@("Listings")" />
+
+    <div class="faed-page__header">
+        <div>
+            <h1 class="faed-page__title">@(editing ? listing!.Title : "New listing")</h1>
+            <p class="faed-page__subtitle">One page. Fill it in, then publish — an admin reviews it before it goes live.</p>
+        </div>
+        @if (editing)
+        {
+            <div class="faed-page__actions">
+                <span class="@ListingStatusDisplay.BadgeClass(listing!.Status)">@ListingStatusDisplay.Label(listing.Status)</span>
+            </div>
+        }
+    </div>
+
+    @if (notice is { } n)
+    {
+        <div class="faed-alert faed-alert--@n.Cls" role="status">@n.Msg</div>
+    }
+
+    @if (!canEdit)
+    {
+        <div class="faed-panel"><a class="faed-btn faed-btn--ghost" asp-action="Index">Back to listings</a></div>
+    }
+    else
+    {
+        <form class="faed-panel" asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@listing?.Id"
+              method="post" enctype="multipart/form-data" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation-summary-errors mb-3"></div>
+
+            <div class="faed-field">
+                <span class="faed-field__label">Photos</span>
+                <span class="faed-field__hint">The first photo is the cover. JPG or PNG.</span>
+                @if (editing && listing!.ProductPhotos.Count > 0) { RemovableThumbs(listing.ProductPhotos, listing.Title); }
+                <input class="faed-input" type="file" name="Form.Photos" multiple accept=".jpg,.jpeg,.png" />
+                <span class="faed-field__error" asp-validation-for="Form.Photos"></span>
+            </div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="Form.Title">Title</label>
+                <input class="faed-input" asp-for="Form.Title" placeholder="e.g. Rapid-Boil Electric Kettle" />
+                <span class="faed-field__error" asp-validation-for="Form.Title"></span>
+            </div>
+
+            <fieldset class="faed-field faed-fieldset-reset">
+                <legend class="faed-field__label">Category</legend>
+                <div class="faed-choice-grid">
+                    @foreach (var category in rd.Categories)
+                    {
+                        <label class="faed-choice-card">
+                            <input type="radio" asp-for="Form.CategoryId" value="@category.Id" />
+                            <span class="faed-choice-card__mark"></span>
+                            <span><strong>@category.Label</strong></span>
+                        </label>
+                    }
+                </div>
+                <span class="faed-field__error" asp-validation-for="Form.CategoryId"></span>
+            </fieldset>
+
+            <fieldset class="faed-field faed-fieldset-reset">
+                <legend class="faed-field__label">What's the condition?</legend>
+                <div class="faed-choice-grid">
+                    @foreach (var preset in ConditionPresets.All)
+                    {
+                        <label class="faed-choice-card">
+                            <input type="radio" asp-for="Form.Condition" value="@preset.Choice"
+                                   data-reveals-defect="@preset.RevealsDefectPhoto.ToString().ToLowerInvariant()" />
+                            <span class="faed-choice-card__mark"></span>
+                            <span><strong>@preset.Heading</strong><small>@preset.Blurb</small></span>
+                        </label>
+                    }
+                </div>
+                <span class="faed-field__error" asp-validation-for="Form.Condition"></span>
+                @if (rd.AdditionalDiscountReasons.Count > 0)
+                {
+                    <details class="faed-optional mt-2">
+                        <summary>Add another reason</summary>
+                        <div class="faed-checkbox-group mt-2">
+                            @foreach (var reason in rd.AdditionalDiscountReasons)
+                            {
+                                <label class="faed-checkbox-row">
+                                    <input type="checkbox" name="Form.ExtraReasonIds" value="@reason.Id"
+                                           @(m.ExtraReasonIds.Contains(reason.Id) ? "checked" : "") />
+                                    <span>@reason.Label</span>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+            </fieldset>
+
+            <div class="faed-field" id="defect-field" @(showDefect ? null : "hidden")>
+                <span class="faed-field__label">Photo of the scratch or box</span>
+                @if (editing && listing!.DefectPhotos.Count > 0) { RemovableThumbs(listing.DefectPhotos, "Disclosed defect"); }
+                <input class="faed-input" type="file" name="Form.DefectPhoto" accept=".jpg,.jpeg,.png" />
+                <span class="faed-field__error" asp-validation-for="Form.DefectPhoto"></span>
+            </div>
+
+            <div class="faed-form-grid">
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.WarrantyType">Warranty</label>
+                    <select class="faed-select" asp-for="Form.WarrantyType">
+                        @foreach (var type in Enum.GetValues<WarrantyType>())
+                        {
+                            <option value="@type">@ListingStatusDisplay.WarrantyTypeLabel(type)</option>
+                        }
+                    </select>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.WarrantyMonths">Warranty length (months, optional)</label>
+                    <input class="faed-input" type="number" min="1" max="120" asp-for="Form.WarrantyMonths" />
+                    <span class="faed-field__error" asp-validation-for="Form.WarrantyMonths"></span>
+                </div>
+
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.Price">Price (JOD)</label>
+                    <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.Price" />
+                    <span class="faed-field__error" asp-validation-for="Form.Price"></span>
+                </div>
+                <div class="faed-field">
+                    <label class="faed-field__label" asp-for="Form.Quantity">Quantity</label>
+                    <input class="faed-input" type="number" min="0" asp-for="Form.Quantity" />
+                    <span class="faed-field__error" asp-validation-for="Form.Quantity"></span>
+                </div>
+            </div>
+
+            <div class="faed-field faed-optional">
+                <label class="faed-field__label" asp-for="Form.OriginalPrice">Original price (JOD) — optional</label>
+                <span class="faed-field__hint">Shows buyers a "save %" badge. Needs a photo or link to back it up.</span>
+                <input class="faed-input" type="number" step="0.001" min="0" asp-for="Form.OriginalPrice" />
+                <span class="faed-field__error" asp-validation-for="Form.OriginalPrice"></span>
+                <div id="evidence-field" class="faed-form-grid mt-2" @(m.OriginalPrice is not null ? null : "hidden")>
+                    <div class="faed-field">
+                        <label class="faed-field__label" asp-for="Form.OriginalPriceLink">Link to the original price</label>
+                        <input class="faed-input" asp-for="Form.OriginalPriceLink" placeholder="https://..." />
+                        <span class="faed-field__error" asp-validation-for="Form.OriginalPriceLink"></span>
+                    </div>
+                    <div class="faed-field">
+                        <span class="faed-field__label">…or a photo of it</span>
+                        <input class="faed-input" type="file" name="Form.OriginalPriceEvidence" accept=".jpg,.jpeg,.png,.pdf" />
+                    </div>
+                    @if (editing && listing!.ReferencePriceEvidence.Count > 0)
+                    {
+                        <p class="faed-field__hint faed-field--full">Evidence already on file: @listing.ReferencePriceEvidence.Count item(s).</p>
+                    }
+                </div>
+            </div>
+
+            <div class="faed-field">
+                <label class="faed-field__label" asp-for="Form.Description">Anything else the buyer should know? (optional)</label>
+                <span class="faed-field__hint">Model and specs, what's in the box, where the mark is.</span>
+                <textarea class="faed-input" asp-for="Form.Description" rows="3"></textarea>
+                <span class="faed-field__error" asp-validation-for="Form.Description"></span>
+            </div>
+
+            <div class="faed-merchant-form-actions">
+                <button type="submit" class="faed-btn faed-btn--primary">@(published ? "Save changes" : "Publish")</button>
+                <a class="faed-btn faed-btn--ghost" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+
+        @if (editing)
+        {
+            <div class="faed-page__actions mt-3">
+                @if (listing!.Status is ListingStatus.Live or ListingStatus.SoldOut)
+                {
+                    <form asp-action="Pause" asp-route-id="@listing.Id" method="post" class="d-inline">
+                        <button type="submit" class="faed-btn faed-btn--ghost">Pause</button>
+                    </form>
+                }
+                @if (listing.Status == ListingStatus.Hidden && !listing.HiddenByAdmin)
+                {
+                    <form asp-action="Resume" asp-route-id="@listing.Id" method="post" class="d-inline">
+                        <button type="submit" class="faed-btn faed-btn--ghost">Resume</button>
+                    </form>
+                }
+                <form asp-action="Delete" asp-route-id="@listing.Id" method="post" class="d-inline"
+                      onsubmit="return confirm('Delete this listing? Buyers won\'t see it again.');">
+                    <button type="submit" class="faed-btn faed-btn--danger">Delete</button>
+                </form>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var q = function (s) { return document.querySelector(s); };
+            var defect = document.getElementById('defect-field');
+            var evidence = document.getElementById('evidence-field');
+            var hasDefectPhotos = @((editing && listing!.DefectPhotos.Count > 0).ToString().ToLowerInvariant());
+            function sync() {
+                var card = q('input[name="Form.Condition"]:checked');
+                if (defect) defect.hidden = !(hasDefectPhotos || (card && card.dataset.revealsDefect === 'true'));
+                var op = q('input[name="Form.OriginalPrice"]');
+                if (evidence) evidence.hidden = !(op && op.value);
+            }
+            document.querySelectorAll('input[name="Form.Condition"], input[name="Form.OriginalPrice"]')
+                .forEach(function (el) { el.addEventListener('input', sync); });
+            sync();
+        })();
+    </script>
+}

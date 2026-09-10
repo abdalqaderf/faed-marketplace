@@ -90,6 +90,7 @@
                             }
                         </strong>
                         <small>@(Model.MerchantIsVerified ? "Business identity reviewed by Faed" : "View merchant storefront")</small>
+                        <small class="faed-merchant-summary__response">@MerchantResponseDisplay.Summary(Model.MerchantResponse)</small>
                     </span>
                     <span class="faed-merchant-summary__arrow" aria-hidden="true">@FaedIcon.Render("arrow-right", "faed-icon")</span>
                 </a>
@@ -197,16 +198,16 @@
                             }
                             else
                             {
-                                <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Checkout" asp-action="Index"
-                                   asp-route-slug="@Model.Slug">Order this item</a>
+                                <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Reservation" asp-action="Index"
+                                   asp-route-slug="@Model.Slug">Reserve</a>
                             }
                         </div>
 
                         <div class="faed-fulfillment-grid">
                             <div>
-                                <span class="faed-fulfillment-grid__label">Fulfillment</span>
-                                <strong>Pickup or merchant delivery</strong>
-                                <small>Choose the available option at checkout.</small>
+                                <span class="faed-fulfillment-grid__label">How it works</span>
+                                <strong>Reserve online, pay cash at pickup</strong>
+                                <small>The shop confirms within 12 hours, then shares the pickup address.</small>
                             </div>
                         </div>
                             </div>
@@ -280,7 +281,11 @@
                                         </div>
                                     </div>
                                     <div class="faed-listing-section__body faed-listing-description">
-                                        <p>@Model.Description</p>
+                                        <p>
+                                            @(string.IsNullOrWhiteSpace(Model.Description)
+                                                ? "The seller left no extra notes. The condition, warranty and photos above are the full disclosure."
+                                                : Model.Description)
+                                        </p>
                                     </div>
                                 </section>
 

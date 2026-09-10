@@ -77,6 +77,7 @@ public static class FaedIcon
             ["pin"] = "<path d='M12 20.8s6.4-5.5 6.4-10.1a6.4 6.4 0 1 0-12.8 0c0 4.6 6.4 10.1 6.4 10.1Z'/><circle cx='12' cy='10.5' r='2.4'/>",
             ["truck"] = "<path d='M3.6 6.4h9.8v9.9H3.6z'/><path d='M13.4 9.7h3.3l2.7 2.9v3.7h-6z'/><circle cx='7.2' cy='18' r='1.7'/><circle cx='16.6' cy='18' r='1.7'/>",
             ["mail"] = "<rect x='3.6' y='5.4' width='16.8' height='13.2' rx='2'/><path d='m4.6 6.9 7.4 5.3 7.4-5.3'/>",
+            ["chat"] = "<path d='M20 12a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-5.1A7.5 7.5 0 1 1 20 12Z'/>",
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Faed.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260909105043_InitialCreate")]
+    [Migration("20260909112228_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -138,7 +138,6 @@ namespace Faed.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 

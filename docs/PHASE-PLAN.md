@@ -59,7 +59,9 @@ support concurrency tokens. Test that `OrderService` handles `DbUpdateConcurrenc
 correctly instead, and note the limitation in the test file.
 
 **Acceptance**
-- `dotnet test` passes with 4 tests
+- `dotnet test` is green and all four themes above are covered. The count is not the criterion —
+  splitting a theme into several focused `[Fact]`s is better than one blob, because the failure
+  message then names the actual broken rule
 - Tests exercise services and entities, not controllers-over-HTTP
 
 **Verify:** `dotnet test`
@@ -205,6 +207,12 @@ correctly instead, and note the limitation in the test file.
   pause the rest, then notify the merchant
 - `SubscriptionExpiryService` (hosted): move `Active` past `ExpiresAtUtc` to `Expired` and hide
   that merchant's listings — hidden, never archived
+- **Renewal restores automatically.** Add a `HiddenBySubscriptionLapse` flag to `Listing`,
+  mirroring the existing `HiddenByAdmin` pattern, so a lapse-hide is distinguishable from a
+  merchant's own Pause. On activation, un-hide those listings newest-first up to the plan
+  quota and leave the rest paused. `BUSINESS-MODEL.md` §6.5 promises renewal is one click; a
+  merchant with 40 listings must not click Restore 40 times. The column is free while Phase 7
+  still rebuilds the migration from scratch
 - Merchant page: current plan, quota usage, how to pay, plan chooser
 - Admin page: activate a month, extend, cancel, with a payment reference
 - **Reorder onboarding:** verification is submitted and approved *before* a plan is chosen.
@@ -212,16 +220,27 @@ correctly instead, and note the limitation in the test file.
 - Add a fifth test: a merchant at quota cannot publish, and can after pausing one
 
 **Acceptance**
+- Renewing after a lapse brings listings back without the merchant restoring them one by one
 - A merchant who is approved but unsubscribed sees the plan chooser, not an error page
 - A merchant who is subscribed but unverified cannot publish
 - Downgrading from Pro to Basic with 120 live listings leaves exactly 15 live
-- `dotnet test` passes with 5 tests
+- `dotnet test` is green and the quota rule is covered
 
 **Verify:** `dotnet build Faed.slnx && dotnet test`
 
 ---
 
 ## Phase 7 — One clean migration
+
+> **Before this phase — schema freeze check.** This is the last moment a new column is free.
+> Confirm `Listing` carries `HiddenBySubscriptionLapse` (Phase 6). If it does not, finish that
+> first: after `InitialCreate` it costs a migration of its own.
+>
+> **Also before this phase:** back-fill the four Phase 1 tests. They were never written, so Phases
+> 2–5 ran without them. They cannot protect deletions that already happened, but tests 2 and 4
+> are the regression guards for Phases 8 and 9, which are the riskiest work left. Rewrite
+> test 3 against current behaviour — an unapproved merchant now *can* build drafts; the publish
+> gate is three checks.
 
 **Goal:** replace eleven migrations of history with a single truthful schema.
 
@@ -247,7 +266,9 @@ correctly instead, and note the limitation in the test file.
 **Goal:** two pages and five sections → one page and eight fields.
 
 **Do**
-- `ListingFormModel`: 17 properties → 8 (see `CORE.md` §3.2)
+- `ListingFormModel`: 17 properties → 9 (see `CORE.md` §3.2) — eight decision fields plus an
+  optional `Description`, placed last. Make `Listing.Description` nullable in the entity and its
+  configuration, and regenerate `InitialCreate` in place; nothing is released
 - Merge `Views/Listings/Create.cshtml` and `Workspace.cshtml` into one page under 250 lines
 - Build the four condition cards; one click sets `ConditionGradeId` **and**
   `DiscountReasonIds`. Put the mapping in one small class, `ConditionPresets`
@@ -264,7 +285,7 @@ correctly instead, and note the limitation in the test file.
 - One **Publish** button; afterwards the listing shows "Under review"
 
 **Acceptance**
-- Publishing an item takes one page and eight inputs
+- Publishing an item takes one page; only eight inputs ask for a decision
 - The words "variant", "SKU", "condition grade", "discount reason" appear nowhere in the
   merchant UI
 - Choosing "Ex-display" without a defect photo blocks publishing, inline

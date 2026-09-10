@@ -51,18 +51,19 @@ public static class DependencyInjection
         // Anonymous-safe public marketplace browsing.
         services.AddScoped<IPublicMarketplaceService, PublicMarketplaceService>();
 
-        // B2C ordering: reservation, fulfilment and the reservation-expiry sweep
+        // B2C ordering: reservation, fulfilment, the deadline sweeps and merchant response rate
         services.AddOptions<OrderingOptions>()
             .Bind(configuration.GetSection(OrderingOptions.SectionName));
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IMerchantStoreService, MerchantStoreService>();
+        services.AddScoped<IMerchantResponseService, MerchantResponseService>();
 
         // The background sweep is not hosted under the "Testing" environment: the web
-        // integration tests drive expiry deterministically through IOrderService and a fake
-        // clock, and a live timer racing them would make those assertions flaky
+        // integration tests drive the deadlines deterministically through IOrderService and a
+        // fake clock, and a live timer racing them would make those assertions flaky
         if (!environment.IsEnvironment("Testing"))
         {
-            services.AddHostedService<ReservationExpiryService>();
+            services.AddHostedService<OrderDeadlineService>();
         }
 
         // Post-transaction trust: merchant reviews left after a completed order.
