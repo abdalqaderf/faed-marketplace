@@ -133,7 +133,8 @@
     </div>
 
     @if (order.MerchantCanConfirm || order.MerchantCanMarkReadyForPickup || order.MerchantCanMarkOutForDelivery
-        || order.MerchantCanComplete || order.MerchantCanMarkNoShow || order.MerchantCanCancel)
+        || order.MerchantCanComplete || order.MerchantCanMarkNoShow || order.MerchantCanCancel
+        || order.MerchantCanRecordLateCollection)
     {
         <div class="faed-panel">
             <h2 class="faed-panel__title">Update this order</h2>
@@ -163,6 +164,17 @@
                     </form>
                 }
             </div>
+
+            @if (order.MerchantCanRecordLateCollection)
+            {
+                <p class="faed-field__hint faed-action-spaced">
+                    This order was closed as a no-show. If the buyer did collect and pay, record it here —
+                    the stock is booked as sold and the buyer can leave a review.
+                </p>
+                <form asp-action="ActuallyCollected" asp-route-id="@order.Id" method="post">
+                    <button type="submit" class="faed-btn faed-btn--primary">The buyer actually collected this</button>
+                </form>
+            }
 
             @if (order.MerchantCanMarkNoShow)
             {

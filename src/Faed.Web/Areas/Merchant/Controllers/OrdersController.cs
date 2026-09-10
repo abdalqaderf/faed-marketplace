@@ -73,6 +73,11 @@ public sealed class OrdersController(IOrderService orders) : Controller
             "Order completed. Reserved stock has been recorded as sold.");
 
     [HttpPost]
+    public Task<IActionResult> ActuallyCollected(Guid id, CancellationToken cancellationToken) =>
+        ActAsync(id, () => orders.MarkActuallyCollectedAsync(User.RequireUserId(), id, cancellationToken),
+            "Order recorded as collected. The stock is now sold and the buyer can leave a review.");
+
+    [HttpPost]
     public Task<IActionResult> NoShow(Guid id, string? reason, CancellationToken cancellationToken) =>
         ActAsync(id, () => orders.MarkNoShowAsync(
             User.RequireUserId(), id, reason ?? string.Empty, cancellationToken),

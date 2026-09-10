@@ -301,6 +301,28 @@ public class Order
         Touch(nowUtc);
     }
 
+    /// <summary>
+    /// Recovers a <see cref="OrderStatus.NoShow"/> order whose sale did in fact happen — the
+    /// merchant took the cash but never opened the dashboard, so the 48- or 72-hour sweep
+    /// closed it. Moves it to <see cref="OrderStatus.Completed"/>; the caller re-confirms the
+    /// sale so the buyer's review unlocks exactly as after a normal completion. The platform
+    /// is repairing a record, not inventing a transaction (docs/PHASE-PLAN.md Phase 9).
+    /// </summary>
+    public void RecordLateCollection(DateTime nowUtc)
+    {
+        if (Status is not OrderStatus.NoShow)
+        {
+            throw new DomainException(
+                $"Only a no-show order can be marked as actually collected; this one is {Status}.");
+        }
+
+        Status = OrderStatus.Completed;
+        StatusReason = null;
+        CompletedAtUtc = nowUtc;
+        ReservationExpiresAtUtc = null;
+        Touch(nowUtc);
+    }
+
     private void RequireStatus(OrderStatus expected, string verb)
     {
         if (Status != expected)

@@ -3,8 +3,10 @@ using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Models.Identity;
 using Faed.Web.Services.Abstractions;
+using Faed.Web.Services.Common;
 using Faed.Web.Services.Marketplace;
 using Faed.Web.Services.Ordering;
+using Faed.Web.Services.Trust;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -148,6 +150,70 @@ public class ReservationExpiryTests
         Assert.Equal(OrderStatus.NoShow, reloaded.Status);
         var reloadedVariant = await db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variant.Id);
         Assert.Equal(0, reloadedVariant.ReservedQuantity);
+    }
+
+    [Fact]
+    public async Task NoShowOrder_MarkedActuallyCollected_BecomesCompleted_AndUnlocksReview()
+    {
+        var options = CreateOptions();
+        await using var db = new ApplicationDbContext(options);
+        var clock = new TestClock(DateTime.UtcNow);
+
+        var (variant, order) = await SeedReservedOrderAsync(
+            db, clock, initialQuantity: 5, reservedQuantity: 2, reservationExpiresAtUtc: clock.UtcNow.AddHours(12));
+        order.Confirm(clock.UtcNow);
+        await db.SaveChangesAsync();
+
+        var orderService = NewOrderService(db, clock);
+
+        // The 48-hour sweep closes it as a no-show and puts the two units back on sale.
+        clock.UtcNow = clock.UtcNow.AddHours(49);
+        Assert.Equal(1, await orderService.ExpireUnhandledConfirmedOrdersAsync());
+        Assert.Equal(OrderStatus.NoShow, (await db.Orders.AsNoTracking().SingleAsync()).Status);
+
+        // The sale did happen — the merchant just never opened the dashboard. Recover it.
+        var recovered = await orderService.MarkActuallyCollectedAsync("merchant-user", order.Id);
+        Assert.True(recovered.Succeeded);
+
+        var reloadedOrder = await db.Orders.AsNoTracking().SingleAsync();
+        Assert.Equal(OrderStatus.Completed, reloadedOrder.Status);
+        Assert.NotNull(reloadedOrder.CompletedAtUtc);
+
+        var reloadedVariant = await db.ListingVariants.AsNoTracking().SingleAsync(v => v.Id == variant.Id);
+        Assert.Equal(2, reloadedVariant.SoldQuantity);
+        Assert.Equal(0, reloadedVariant.ReservedQuantity);
+        Assert.Equal(3, reloadedVariant.AvailableQuantity);
+
+        // The buyer's review now unlocks exactly as after a normal completion.
+        var reviews = new ReviewService(
+            db, new AllowAllUserRoleService(), clock, NullLogger<ReviewService>.Instance);
+        var review = await reviews.SubmitReviewAsync(
+            "buyer-user", new SubmitReviewInput(order.Id, 5, "Collected and paid — all fine."));
+        Assert.True(review.Succeeded);
+    }
+
+    [Fact]
+    public async Task MarkActuallyCollected_ByABuyer_IsForbidden_AndLeavesTheNoShow()
+    {
+        var options = CreateOptions();
+        await using var db = new ApplicationDbContext(options);
+        var clock = new TestClock(DateTime.UtcNow);
+
+        var (_, order) = await SeedReservedOrderAsync(
+            db, clock, initialQuantity: 5, reservedQuantity: 2, reservationExpiresAtUtc: clock.UtcNow.AddHours(12));
+        order.Confirm(clock.UtcNow);
+        await db.SaveChangesAsync();
+
+        var orderService = NewOrderService(db, clock);
+        clock.UtcNow = clock.UtcNow.AddHours(49);
+        await orderService.ExpireUnhandledConfirmedOrdersAsync();
+
+        // "buyer-user" is not an approved merchant, so the merchant-only recovery is refused.
+        var result = await orderService.MarkActuallyCollectedAsync("buyer-user", order.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(ResultErrorKind.Forbidden, result.ErrorKind);
+        Assert.Equal(OrderStatus.NoShow, (await db.Orders.AsNoTracking().SingleAsync()).Status);
     }
 
     private static OrderService NewOrderService(ApplicationDbContext db, TestClock clock) =>

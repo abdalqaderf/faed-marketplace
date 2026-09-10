@@ -498,6 +498,11 @@ public sealed class OrderService(
             merchantUserId, orderId, o => o.MarkNoShow(text, clock.UtcNow), StockEffect.Release, cancellationToken);
     }
 
+    public Task<Result> MarkActuallyCollectedAsync(
+        string merchantUserId, Guid orderId, CancellationToken cancellationToken = default) =>
+        MerchantTransitionAsync(
+            merchantUserId, orderId, o => o.RecordLateCollection(clock.UtcNow), StockEffect.RecoverSale, cancellationToken);
+
     public Task<Result> CancelAsMerchantAsync(
         string merchantUserId, Guid orderId, string reason, CancellationToken cancellationToken = default)
     {
@@ -616,6 +621,9 @@ public sealed class OrderService(
         None = 0,
         Release = 1,
         ConfirmSale = 2,
+
+        /// <summary>Re-take units that went back on sale at no-show and book them as sold.</summary>
+        RecoverSale = 3,
     }
 
     private async Task<Result> MerchantTransitionAsync(
@@ -689,13 +697,22 @@ public sealed class OrderService(
                         return Result.Conflict("A variant on this order could not be found.");
                     }
 
-                    if (effect == StockEffect.Release)
+                    switch (effect)
                     {
-                        variant.ReleaseReservation(quantity, clock.UtcNow);
-                    }
-                    else
-                    {
-                        variant.ConfirmSale(quantity, clock.UtcNow);
+                        case StockEffect.Release:
+                            variant.ReleaseReservation(quantity, clock.UtcNow);
+                            break;
+                        case StockEffect.RecoverSale:
+                            // The units went back on sale when the order became a no-show.
+                            // Re-take them and book the sale; if another buyer has since
+                            // reserved them, Reserve throws and the recovery is refused as a
+                            // conflict rather than overselling.
+                            variant.Reserve(quantity, clock.UtcNow);
+                            variant.ConfirmSale(quantity, clock.UtcNow);
+                            break;
+                        default:
+                            variant.ConfirmSale(quantity, clock.UtcNow);
+                            break;
                     }
                 }
             }

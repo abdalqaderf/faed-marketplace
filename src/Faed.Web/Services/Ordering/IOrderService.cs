@@ -58,6 +58,14 @@ public interface IOrderService
     Task<Result> MarkNoShowAsync(
         string merchantUserId, Guid orderId, string reason, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Recovers a <see cref="Models.Enums.OrderStatus.NoShow"/> order the sale for which did
+    /// happen: moves it to <see cref="Models.Enums.OrderStatus.Completed"/>, re-books the sale,
+    /// and unlocks the buyer's review — the same path a normal completion takes.
+    /// </summary>
+    Task<Result> MarkActuallyCollectedAsync(
+        string merchantUserId, Guid orderId, CancellationToken cancellationToken = default);
+
     Task<Result> CancelAsMerchantAsync(
         string merchantUserId, Guid orderId, string reason, CancellationToken cancellationToken = default);
 

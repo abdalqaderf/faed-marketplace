@@ -132,6 +132,9 @@ public sealed record OrderDetailView(
     public bool MerchantCanMarkNoShow =>
         Status is OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery;
 
+    /// <summary>A no-show whose sale actually happened can be repaired to Completed.</summary>
+    public bool MerchantCanRecordLateCollection => Status == OrderStatus.NoShow;
+
     public bool MerchantCanCancel => Status is OrderStatus.Pending or OrderStatus.Confirmed
         or OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery;
 }
