@@ -3,24 +3,7 @@
     ViewData["Title"] = "Shop";
 }
 
-<div class="faed-page faed-page--wide faed-shop-page">
-    <header class="faed-page__header faed-shop-header">
-        <div>
-            <p class="faed-kicker">Verified marketplace · Current launch</p>
-            <h1 class="faed-page__title">Shop the marketplace</h1>
-            <p class="faed-page__subtitle">
-                Browse the current open-box and ex-display appliances launch from verified merchants,
-                with condition and discount context made clear before you buy.
-            </p>
-        </div>
-        <div class="faed-shop-header__trust" aria-label="Marketplace disclosure standard">
-            <span class="faed-shop-header__trust-mark" aria-hidden="true">@FaedIcon.Render("check", "faed-icon")</span>
-            <span>
-                <strong>Reviewed before publication</strong>
-                <small>Condition and discount reason stay separate.</small>
-            </span>
-        </div>
-    </header>
-
+<div class="fx-wrap fx-main">
+    <h1 class="fx-page-title">Shop</h1>
     <partial name="_ShopBrowse" model="Model" />
 </div>

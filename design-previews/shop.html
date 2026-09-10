@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faed — Shop (Phase 11 preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Archivo+Narrow:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/preview.css">
+</head>
+<body>
+
+<header class="pv-site-header">
+  <div class="pv-wrap pv-site-header__inner">
+    <a class="pv-wordmark" href="index.html">Faed</a>
+    <nav class="pv-site-nav">
+      <a href="shop.html">Shop</a>
+      <a href="#">Sell on Faed</a>
+      <a href="#">Sign in</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-wrap">
+    <h1 style="font-size:26px;margin-bottom:20px;">Shop</h1>
+
+    <!-- §5.7 — one row: search first, then Category / Condition / Price, then Sort trailing -->
+    <div class="pv-filters">
+      <label class="pv-search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#16181A" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>
+        <input type="search" placeholder="Search appliances and tools" value="">
+      </label>
+      <select class="pv-select" aria-label="Category">
+        <option>Category — all</option>
+        <option>Small Kitchen Appliances</option>
+        <option>Home &amp; Cleaning</option>
+        <option>Power Tools &amp; Workshop</option>
+      </select>
+      <select class="pv-select" aria-label="Condition">
+        <option>Condition — any</option>
+        <option>Sealed</option>
+        <option>Box opened or damaged</option>
+        <option>Customer return</option>
+        <option>Ex-display</option>
+      </select>
+      <select class="pv-select" aria-label="Price">
+        <option>Price — any</option>
+        <option>20 – 50 JD</option>
+        <option>50 – 100 JD</option>
+        <option>100 – 150 JD</option>
+      </select>
+      <div class="pv-sort">
+        <span class="pv-sort__label">Sort</span>
+        <select class="pv-select" aria-label="Sort">
+          <option>Newest</option>
+          <option>Price low&ndash;high</option>
+          <option>Price high&ndash;low</option>
+        </select>
+      </div>
+    </div>
+    <p class="pv-result-count">42 items</p>
+
+    <div class="pv-grid pv-grid--3" id="pv-shop-grid" style="margin-top:20px;"></div>
+  </div>
+</main>
+
+<footer class="pv-site-footer">
+  <div class="pv-wrap pv-site-footer__inner">
+    <span class="pv-wordmark">Faed</span>
+    <span class="pv-site-footer__line">Open-box and ex-display appliances and power tools &middot; Amman &middot; reserve online, pay cash at pickup</span>
+  </div>
+</footer>
+
+<script src="assets/cards.js"></script>
+<script>faedRenderGrid("pv-shop-grid", 12);</script>
+</body>
+</html>

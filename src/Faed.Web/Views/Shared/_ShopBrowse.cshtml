@@ -14,16 +14,6 @@
         return path + Microsoft.AspNetCore.Http.QueryString.Create(pairs);
     }
 
-    string FilterHrefWithout(params string[] keys)
-    {
-        var values = new Dictionary<string, string?>(filters.ToFilterRouteValues(), StringComparer.OrdinalIgnoreCase);
-        foreach (var key in keys)
-        {
-            values.Remove(key);
-        }
-        return BuildHref(values);
-    }
-
     string PageHref(int page)
     {
         var values = new Dictionary<string, string?>(filters.ToFilterRouteValues(), StringComparer.OrdinalIgnoreCase)
@@ -33,250 +23,119 @@
         return BuildHref(values);
     }
 
-    string FacetLabel(IReadOnlyList<FacetOption> options, string? value, string fallback)
-        => options.FirstOrDefault(option => string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase))?.Label ?? fallback;
-
-    var categoryLabel = string.IsNullOrWhiteSpace(filters.Category)
-        ? "Category"
-        : FacetLabel(facets.Categories, filters.Category, filters.Category!);
-    var conditionLabel = string.IsNullOrWhiteSpace(filters.Condition)
-        ? "Condition"
-        : FacetLabel(facets.Conditions, filters.Condition, filters.Condition!);
-
-    var priceLabel = filters.MinPrice is null && filters.MaxPrice is null
-        ? "Price"
-        : filters.MinPrice is { } min && filters.MaxPrice is { } max
-            ? $"JOD {min:0.###}–{max:0.###}"
-            : filters.MinPrice is { } onlyMin
-                ? $"From JOD {onlyMin:0.###}"
-                : $"Up to JOD {filters.MaxPrice!.Value:0.###}";
-
-    var firstPage = Math.Max(1, result.Page - 2);
-    var lastPage = Math.Min(result.TotalPages, firstPage + 4);
-    firstPage = Math.Max(1, lastPage - 4);
+    var priceValue = filters.MinPrice is { } mn && filters.MaxPrice is { } mx
+        ? $"{mn:0}-{mx:0}"
+        : filters.MinPrice is { } onlyMin
+            ? $"{onlyMin:0}-"
+            : "";
 }
 
 <section class="faed-shop-browse" aria-label="@(isStore ? "Store listings" : "Marketplace listings")">
-    <form method="get" action="@path" class="faed-shop-search" role="search">
-        @foreach (var pair in filters.ToFilterRouteValues())
+    <form method="get" action="@path" class="fx-filters" role="search">
+        <label class="fx-search">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>
+            <span class="visually-hidden">@(isStore ? "Search this store" : "Search the marketplace")</span>
+            <input type="search" name="Q" value="@filters.Q" placeholder="Search appliances and tools"
+                   maxlength="@ShopFilterModel.MaxSearchTextLength" />
+        </label>
+
+        @if (!isStore)
         {
-            if (pair.Key != "Q" && !string.IsNullOrEmpty(pair.Value))
+            <select class="fx-select" name="Category" aria-label="Category" onchange="this.form.submit()">
+                <option value="">Category — all</option>
+                @foreach (var option in facets.Categories)
+                {
+                    <option value="@option.Value" selected="@(string.Equals(filters.Category, option.Value, StringComparison.OrdinalIgnoreCase))">@option.Label</option>
+                }
+            </select>
+        }
+
+        <select class="fx-select" name="Condition" aria-label="Condition" onchange="this.form.submit()">
+            <option value="">Condition — any</option>
+            @foreach (var option in facets.Conditions)
             {
-                <input type="hidden" name="@pair.Key" value="@pair.Value" />
+                <option value="@option.Value" selected="@(string.Equals(filters.Condition, option.Value, StringComparison.OrdinalIgnoreCase))">@option.Label</option>
             }
-        }
-        <label class="visually-hidden" for="shop-search-input">@(isStore ? "Search this store" : "Search marketplace listings")</label>
-        <span class="faed-shop-search__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false"><path d="m21 20-4.7-4.7a7.4 7.4 0 1 0-1 1L20 21l1-1ZM5.5 10.5a5 5 0 1 1 10 0 5 5 0 0 1-10 0Z" fill="currentColor" /></svg>
-        </span>
-        <input class="faed-shop-search__input" type="search" id="shop-search-input" name="Q" value="@filters.Q"
-               placeholder="@(isStore ? "Search this store" : "Search products or keywords")" maxlength="@ShopFilterModel.MaxSearchTextLength" />
-        @if (!string.IsNullOrWhiteSpace(filters.Q))
-        {
-            <a class="faed-shop-search__clear" href="@FilterHrefWithout("Q")" aria-label="Clear search">@FaedIcon.Render("close", "faed-icon")</a>
-        }
-        <button class="faed-btn faed-btn--primary faed-shop-search__submit" type="submit">Search</button>
+        </select>
+
+        <select class="fx-select" aria-label="Price" onchange="fxApplyPrice(this)">
+            <option value="">Price — any</option>
+            <option value="20-50" selected="@(priceValue == "20-50")">20 – 50 JD</option>
+            <option value="50-100" selected="@(priceValue == "50-100")">50 – 100 JD</option>
+            <option value="100-150" selected="@(priceValue == "100-150")">100 – 150 JD</option>
+            <option value="150-" selected="@(priceValue == "150-")">150 JD and up</option>
+        </select>
+        <input type="hidden" name="MinPrice" value="@(filters.MinPrice?.ToString("0", System.Globalization.CultureInfo.InvariantCulture))" />
+        <input type="hidden" name="MaxPrice" value="@(filters.MaxPrice?.ToString("0", System.Globalization.CultureInfo.InvariantCulture))" />
+
+        <div class="fx-sort">
+            <span class="fx-sort__label">Sort</span>
+            <select class="fx-select" name="Sort" aria-label="Sort listings" onchange="this.form.submit()">
+                <option value="@ShopSort.Newest" selected="@(filters.Sort == ShopSort.Newest)">Newest</option>
+                <option value="@ShopSort.PriceLowToHigh" selected="@(filters.Sort == ShopSort.PriceLowToHigh)">Price low–high</option>
+                <option value="@ShopSort.PriceHighToLow" selected="@(filters.Sort == ShopSort.PriceHighToLow)">Price high–low</option>
+            </select>
+        </div>
     </form>
 
-    <div class="faed-shop-toolbar">
-        <form method="get" action="@path" class="faed-quick-filters" aria-label="Filters">
-            @foreach (var pair in filters.ToFilterRouteValues())
-            {
-                if (pair.Key is not ("Category" or "Condition" or "MinPrice" or "MaxPrice") && !string.IsNullOrEmpty(pair.Value))
-                {
-                    <input type="hidden" name="@pair.Key" value="@pair.Value" />
-                }
-            }
-
-            <label class="faed-quick-filter faed-quick-filter--select">
-                <span class="visually-hidden">Category</span>
-                <select name="Category" onchange="this.form.submit()" aria-label="Filter by category">
-                    <option value="" selected="@string.IsNullOrWhiteSpace(filters.Category)">Category</option>
-                    @foreach (var option in facets.Categories)
-                    {
-                        <option value="@option.Value" selected="@(filters.Category == option.Value)">@option.Label</option>
-                    }
-                </select>
-                @FaedIcon.Render("chevron-down", "faed-icon faed-quick-filter__chevron")
-            </label>
-
-            <label class="faed-quick-filter faed-quick-filter--select">
-                <span class="visually-hidden">Condition</span>
-                <select name="Condition" onchange="this.form.submit()" aria-label="Filter by condition">
-                    <option value="" selected="@string.IsNullOrWhiteSpace(filters.Condition)">Condition</option>
-                    @foreach (var option in facets.Conditions)
-                    {
-                        <option value="@option.Value" selected="@(filters.Condition == option.Value)">@option.Label</option>
-                    }
-                </select>
-                @FaedIcon.Render("chevron-down", "faed-icon faed-quick-filter__chevron")
-            </label>
-
-            <div class="dropdown faed-price-filter">
-                <button class="faed-quick-filter dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <span>@priceLabel</span>
-                </button>
-                <div class="dropdown-menu faed-price-filter__menu">
-                    <p class="faed-price-filter__title">Price range</p>
-                    <div class="faed-filter-price-row">
-                        <label>
-                            <span>Minimum</span>
-                            <input class="faed-input" type="number" min="0" step="0.001" name="MinPrice" value="@filters.MinPrice" placeholder="0" />
-                        </label>
-                        <span class="faed-price-filter__dash" aria-hidden="true">–</span>
-                        <label>
-                            <span>Maximum</span>
-                            <input class="faed-input" type="number" min="0" step="0.001" name="MaxPrice" value="@filters.MaxPrice" placeholder="Any" />
-                        </label>
-                    </div>
-                    <div class="faed-price-filter__actions">
-                        @if (filters.MinPrice is not null || filters.MaxPrice is not null)
-                        {
-                            <a href="@FilterHrefWithout("MinPrice", "MaxPrice")">Clear</a>
-                        }
-                        <button class="faed-btn faed-btn--primary faed-btn--sm" type="submit">Apply price</button>
-                    </div>
-                </div>
-            </div>
-        </form>
-
-        <form method="get" action="@path" class="faed-shop-sort">
-            @foreach (var pair in filters.ToFilterRouteValues())
-            {
-                if (pair.Key != "Sort" && !string.IsNullOrEmpty(pair.Value))
-                {
-                    <input type="hidden" name="@pair.Key" value="@pair.Value" />
-                }
-            }
-            <label for="sort-select">Sort</label>
-            <select class="faed-select" id="sort-select" name="Sort" onchange="this.form.submit()" aria-label="Sort listings">
-                <option value="@ShopSort.Newest" selected="@(filters.Sort == ShopSort.Newest)">Newest</option>
-                <option value="@ShopSort.PriceLowToHigh" selected="@(filters.Sort == ShopSort.PriceLowToHigh)">Price: low to high</option>
-                <option value="@ShopSort.PriceHighToLow" selected="@(filters.Sort == ShopSort.PriceHighToLow)">Price: high to low</option>
-            </select>
-        </form>
-    </div>
-
-    <div class="faed-results-context">
-        <p class="faed-results-context__count">
-            <strong>@result.TotalCount</strong> @(result.TotalCount == 1 ? "listing" : "listings")
-            @if (!string.IsNullOrWhiteSpace(filters.Q))
-            {
-                <span>for “@filters.Q”</span>
-            }
-        </p>
-
-        @if (filters.HasActiveFilters)
-        {
-            <div class="faed-active-filters" aria-label="Active filters">
-                @if (!string.IsNullOrWhiteSpace(filters.Q))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Q")" aria-label="Remove search filter @filters.Q"><span>Search: @filters.Q</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(filters.Category))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Category")" aria-label="Remove category filter @categoryLabel"><span>@categoryLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(filters.Condition))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Condition")" aria-label="Remove condition filter @conditionLabel"><span>@conditionLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                @if (filters.MinPrice is not null || filters.MaxPrice is not null)
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("MinPrice", "MaxPrice")" aria-label="Remove price filter @priceLabel"><span>@priceLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                <a class="faed-active-filters__clear" href="@path">Clear all</a>
-            </div>
-        }
-    </div>
+    <p class="fx-result-count">@result.TotalCount item@(result.TotalCount == 1 ? "" : "s")</p>
 
     @if (!result.HasResults)
     {
-        <div class="faed-empty faed-shop-empty">
-            <div class="faed-shop-empty__mark" aria-hidden="true">@FaedIcon.Render("search", "faed-icon")</div>
+        <div class="fx-empty" style="margin-top:20px;">
             @if (filters.HasActiveFilters)
             {
-                <div class="faed-empty__title">No listings match these choices</div>
-                <p>Remove a filter, widen the price range, or start again with all current stock.</p>
-                <a class="faed-btn faed-btn--primary" href="@path">Clear filters</a>
+                <div class="fx-empty__title">Nothing matches these filters</div>
+                <p>Widen the price range, clear the condition, or search again.</p>
+                <a class="fx-btn fx-btn--ghost" href="@path">Clear filters</a>
+            }
+            else if (isStore)
+            {
+                <div class="fx-empty__title">No live listings right now</div>
+                <p>This shop has nothing published at the moment. Browse the rest of the marketplace instead.</p>
+                <a class="fx-btn fx-btn--ghost" asp-controller="Shop" asp-action="Index">Open the shop</a>
             }
             else
             {
-                <div class="faed-empty__title">No listings are live here yet</div>
-                <p>Approved merchants are getting their stock ready. Check back soon.</p>
+                <div class="fx-empty__title">Nothing is live yet</div>
+                <p>Verified merchants are getting their first open-box and ex-display stock ready. Check back soon.</p>
             }
         </div>
     }
     else
     {
-        <div class="faed-product-grid faed-shop-product-grid">
+        <div class="fx-grid @(isStore ? "fx-grid--4" : "fx-grid--3")" style="margin-top:20px;">
             @foreach (var item in result.Items)
             {
                 <partial name="_ListingCard" model="item" />
             }
         </div>
 
-        <div class="faed-pagination-shell faed-shop-pagination">
-            <p class="faed-pagination__summary">
-                Showing @(((result.Page - 1) * result.PageSize) + 1)&ndash;@Math.Min(result.Page * result.PageSize, result.TotalCount) of @result.TotalCount listings
-            </p>
-
-            @if (result.TotalPages > 1)
-            {
-                <nav class="faed-pagination" aria-label="Shop results pagination">
+        @if (result.TotalPages > 1)
+        {
+            <nav class="fx-section-head" aria-label="Pagination" style="margin-top:28px;">
+                <span class="fx-condition-note">Page @result.Page of @result.TotalPages</span>
+                <span>
                     @if (result.Page > 1)
                     {
-                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page - 1)" rel="prev">@FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")<span>Previous</span></a>
+                        <a class="fx-section-head__link" href="@PageHref(result.Page - 1)" rel="prev">&larr; Previous</a>
                     }
-                    else
-                    {
-                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true">@FaedIcon.Render("arrow-left", "faed-icon faed-pagination__icon")<span>Previous</span></span>
-                    }
-
-                    <span class="faed-pagination__mobile-status" aria-current="page">Page @result.Page of @result.TotalPages</span>
-
-                    <span class="faed-pagination__pages" aria-label="Page numbers">
-                        @if (firstPage > 1)
-                        {
-                            <a class="faed-pagination__link faed-pagination__link--page" href="@PageHref(1)" aria-label="Page 1">1</a>
-                            @if (firstPage > 2)
-                            {
-                                <span class="faed-pagination__ellipsis" aria-hidden="true">…</span>
-                            }
-                        }
-
-                        @for (var pageNumber = firstPage; pageNumber <= lastPage; pageNumber++)
-                        {
-                            if (pageNumber == result.Page)
-                            {
-                                <span class="faed-pagination__link faed-pagination__link--page is-current" aria-current="page">@pageNumber</span>
-                            }
-                            else
-                            {
-                                <a class="faed-pagination__link faed-pagination__link--page" href="@PageHref(pageNumber)" aria-label="Page @pageNumber">@pageNumber</a>
-                            }
-                        }
-
-                        @if (lastPage < result.TotalPages)
-                        {
-                            @if (lastPage < result.TotalPages - 1)
-                            {
-                                <span class="faed-pagination__ellipsis" aria-hidden="true">…</span>
-                            }
-                            <a class="faed-pagination__link faed-pagination__link--page" href="@PageHref(result.TotalPages)" aria-label="Page @result.TotalPages">@result.TotalPages</a>
-                        }
-                    </span>
-
                     @if (result.Page < result.TotalPages)
                     {
-                        <a class="faed-pagination__link faed-pagination__link--edge" href="@PageHref(result.Page + 1)" rel="next"><span>Next</span>@FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")</a>
+                        <a class="fx-section-head__link" href="@PageHref(result.Page + 1)" rel="next" style="margin-left:16px;">Next &rarr;</a>
                     }
-                    else
-                    {
-                        <span class="faed-pagination__link faed-pagination__link--edge is-disabled" aria-disabled="true"><span>Next</span>@FaedIcon.Render("arrow-right", "faed-icon faed-pagination__icon")</span>
-                    }
-                </nav>
-            }
-        </div>
+                </span>
+            </nav>
+        }
     }
 </section>
+
+<script>
+    function fxApplyPrice(select) {
+        var form = select.form;
+        var parts = (select.value || "").split("-");
+        form.MinPrice.value = parts[0] || "";
+        form.MaxPrice.value = (parts.length > 1 ? parts[1] : "") || "";
+        form.submit();
+    }
+</script>

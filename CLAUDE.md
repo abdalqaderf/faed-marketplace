@@ -110,6 +110,10 @@ docs/
 
 ## UI principles
 
+`docs/DESIGN-BRIEF.md` is the authority on colour, type and the visual system from Phase 11
+onward — tokens, the ink/rust colour rule, and the condition-stamp treatment are locked there.
+Read it before touching any Razor view or `faed.css` in Phase 11 or 12.
+
 - The merchant listing form is **one page**: eight decision fields plus an optional
   description, last. Do not split it or add sections.
 - Merchants never see the words "variant", "SKU", "condition grade" or "discount reason".

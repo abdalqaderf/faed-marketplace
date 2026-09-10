@@ -1,347 +1,188 @@
-﻿@model PublicListingDetailView
+@model PublicListingDetailView
 @{
     ViewData["Title"] = Model.Title;
 
-    var variantsJson = System.Text.Json.JsonSerializer.Serialize(Model.Variants.Select(v => new
-    {
-        options = v.Options.Select(o => new { option = o.Option, value = o.Value }),
-        sellable = v.IsSellable,
-        quantity = v.AvailableQuantity,
-    })).Replace("</", "<\\/");
+    var photos = Model.ProductPhotos;
+    var hero = photos.Count > 0 ? photos[0] : null;
+    var isNewSeller = MerchantResponseDisplay.IsNewSeller(Model.MerchantResponse);
 
-    var onlyVariant = Model.Options.Count == 0 ? Model.Variants.FirstOrDefault() : null;
-    var hasPolicyDetails = !string.IsNullOrWhiteSpace(Model.IncludedItemsText)
-        || !string.IsNullOrWhiteSpace(Model.MissingItemsText)
-        || !string.IsNullOrWhiteSpace(Model.ReturnPolicyText)
-        || Model.WarrantyType != WarrantyType.None;
+    var warrantyLabel = Model.WarrantyType == WarrantyType.None
+        ? "No warranty"
+        : ListingStatusDisplay.WarrantyTypeLabel(Model.WarrantyType)
+          + (Model.WarrantyMonths is { } m ? $" · {m} month{(m == 1 ? "" : "s")}" : "");
+
+    var merchantInitials = string.Concat(Model.MerchantBusinessName
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+    if (merchantInitials.Length == 0) { merchantInitials = "F"; }
 }
 
-<div class="faed-page faed-page--wide faed-listing-page">
-    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
-        <a asp-controller="Shop" asp-action="Index">Shop</a>
-        <span aria-hidden="true">/</span>
-        <a asp-controller="Shop" asp-action="Index" asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a>
-        <span aria-hidden="true">/</span>
+<div class="fx-wrap fx-main">
+    <nav class="fx-breadcrumb" aria-label="Breadcrumb">
+        <a asp-controller="Home" asp-action="Index">Faed</a> <span aria-hidden="true">/</span>
+        <a asp-controller="Shop" asp-action="Index" asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a> <span aria-hidden="true">/</span>
         <span aria-current="page">@Model.Title</span>
     </nav>
 
-    <div class="faed-listing-layout">
-        <section class="faed-gallery" aria-label="Product gallery">
-            @if (Model.ProductPhotos.Count > 0)
-            {
-                var hero = Model.ProductPhotos[0];
-                <div class="faed-gallery__stage">
-                    <img class="faed-gallery__hero" data-gallery-hero src="/listing-images/@hero.Id"
-                         alt="@(hero.AltText ?? Model.Title)" />
-                    <span class="faed-gallery__count">@Model.ProductPhotos.Count photo@(Model.ProductPhotos.Count == 1 ? ""       : "s")</span>
-                </div>
-                @if (Model.ProductPhotos.Count > 1)
+    <div class="fx-detail">
+        <div class="fx-gallery">
+            <div class="fx-photo" id="fx-hero">
+                @if (hero is not null)
                 {
-                    <div class="faed-gallery__thumbs" role="group" aria-label="Choose product photo">
-                        @{
-                            var photoIndex = 0;
-                        }
-                        @foreach (var photo in Model.ProductPhotos)
-                        {
-                            photoIndex++;
-                            <button type="button" class="faed-gallery__thumb @(photo.Id == hero.Id ? "is-active" : "")"
-                                    data-gallery-thumb data-full-src="/listing-images/@photo.Id"
-                                    data-full-alt="@(photo.AltText ?? Model.Title)" aria-current="@(photo.Id == hero.Id)"
-                                    aria-label="@(photo.AltText ?? $"Photo {photoIndex}")">
-                                <img src="/listing-images/@photo.Id" alt="" loading="lazy" />
-                            </button>
-                        }
-                    </div>
+                    <img src="/listing-images/@hero.Id" alt="@(hero.AltText ?? Model.Title)" />
                 }
+                else
+                {
+                    <span class="fx-photo__empty" aria-hidden="true">No product photo yet</span>
+                }
+                @* §5.4 — one condition stamp per screen, in the primary photo corner. *@
+                @ConditionStamp.Render(Model.ConditionCode, large: true)
+            </div>
+            @if (photos.Count > 1)
+            {
+                <div class="fx-gallery__thumbs" role="group" aria-label="Choose product photo">
+                    @for (var i = 0; i < photos.Count; i++)
+                    {
+                        var photo = photos[i];
+                        <button type="button" class="fx-gallery__thumb @(i == 0 ? "is-active" : "")"
+                                data-full-src="/listing-images/@photo.Id" data-full-alt="@(photo.AltText ?? Model.Title)">
+                            <img src="/listing-images/@photo.Id" alt="" loading="lazy" />
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="fx-info">
+            <span class="fx-info__meta">@Model.CategoryName &middot; Listed @AmmanTime.FormatDate(Model.PublishedAtUtc)</span>
+            <h1 class="fx-info__title">@Model.Title</h1>
+
+            @* §5.4 supporting text — plain-language condition name and reason, secondary colour, not a badge. *@
+            <p class="fx-condition-note">@Model.ConditionName — @Model.ConditionDescription</p>
+
+            <a class="fx-merchant-card" asp-controller="Store" asp-action="Index" asp-route-slug="@Model.MerchantSlug">
+                <span class="fx-avatar fx-avatar--sm" aria-hidden="true">@merchantInitials</span>
+                <span class="fx-merchant-card__body">
+                    <span class="fx-merchant-card__name">
+                        @Model.MerchantBusinessName
+                        @if (isNewSeller)
+                        {
+                            <span class="fx-outline-badge">New seller</span>
+                        }
+                        else if (Model.MerchantIsVerified)
+                        {
+                            <span class="fx-outline-badge">Verified</span>
+                        }
+                    </span>
+                    @if (!isNewSeller)
+                    {
+                        <span class="fx-merchant-card__rate">@MerchantResponseDisplay.Summary(Model.MerchantResponse)</span>
+                    }
+                </span>
+                <span class="fx-merchant-card__arrow" aria-hidden="true">&rarr;</span>
+            </a>
+
+            <div class="fx-price fx-price--lg">
+                @if (Model.RetailPrice is { } price)
+                {
+                    <span class="fx-price__now">@price.ToString("0.000") JD</span>
+                    @if (Model.HasValidReferencePrice)
+                    {
+                        <span class="fx-price__was">@Model.ReferencePrice!.Value.ToString("0.000") JD</span>
+                        <span class="fx-price__off">@Model.DiscountPercent% off</span>
+                    }
+                }
+                else
+                {
+                    <span class="fx-price__now">Price on request</span>
+                }
+            </div>
+
+            @if (Model.IsSoldOut)
+            {
+                <span class="fx-btn fx-btn--block is-disabled" aria-disabled="true">Sold out</span>
             }
             else
             {
-                <div class="faed-gallery__hero faed-gallery__hero--placeholder" role="img"
-                     aria-label="No product photo available">
-                    <span class="faed-gallery__placeholder-mark" aria-hidden="true">F</span>
-                    <span>No product photo yet</span>
-                </div>
+                <a class="fx-btn fx-btn--block" asp-area="Buyer" asp-controller="Reservation" asp-action="Index" asp-route-slug="@Model.Slug">Reserve</a>
             }
-        </section>
+            <p class="fx-cta-hint">
+                Reserving holds this item for 12 hours. If the shop doesn’t confirm in that time, the
+                reservation is cancelled and you’re notified. Payment is cash at the shop.
+            </p>
 
-        <section class="faed-listing-info" aria-label="Listing information">
-            <div class="faed-listing-info__intro">
-                <div class="faed-listing-info__meta">
-                    <a asp-controller="Shop" asp-action="Index"
-                       asp-route-Category="@Model.CategorySlug">@Model.CategoryName</a>
-                    <span aria-hidden="true">·</span>
-                    <span>Reviewed listing</span>
-                </div>
-                <h1 class="faed-listing-info__title">@Model.Title</h1>
+            <div class="fx-reveal-note">
+                The shop’s full address, pickup hours and phone number are shown once it confirms your reservation.
             </div>
 
-            <a class="faed-merchant-summary" asp-controller="Store" asp-action="Index"
-               asp-route-slug="@Model.MerchantSlug">
-                <span class="faed-merchant-summary__mark" aria-hidden="true">@Model.MerchantBusinessName.Substring(0,
-                                        1).ToUpperInvariant()</span>
-                    <span class="faed-merchant-summary__copy">
-                        <span class="faed-merchant-summary__label">Sold by</span>
-                        <strong>
-                            @Model.MerchantBusinessName
-                            @if (Model.MerchantIsVerified)
-                            {
-                                <span class="faed-verified" title="Verified merchant"
-                                      aria-label="Verified merchant">&#10003;</span>
-                            }
-                        </strong>
-                        <small>@(Model.MerchantIsVerified ? "Business identity reviewed by Faed" : "View merchant storefront")</small>
-                        <small class="faed-merchant-summary__response">@MerchantResponseDisplay.Summary(Model.MerchantResponse)</small>
-                    </span>
-                    <span class="faed-merchant-summary__arrow" aria-hidden="true">@FaedIcon.Render("arrow-right", "faed-icon")</span>
-                </a>
-
-                <div class="faed-listing-price-row">
-                    <div class="faed-price faed-price--lg">
-                        <span class="faed-price__current">
-                            @if (Model.RetailPrice is { } price)
-                            {
-                                @($"JOD {price:0.000}")
-                            }
-                            else
-                            {
-                                <text>Price on request</text>
-                            }
-                        </span>
-                        @if (Model.HasValidReferencePrice)
-                        {
-                            <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
-                            <span class="faed-price__discount">@(Model.DiscountPercent)% lower</span>
-                        }
-                    </div>
+            <dl class="fx-facts">
+                <div><dt>Warranty</dt><dd>@warrantyLabel</dd></div>
+                <div>
+                    <dt>Original price</dt>
+                    <dd>@(Model.ReferencePrice is { } refPrice ? $"{refPrice:0.000} JD" : "Not stated")</dd>
                 </div>
+                <div><dt>Quantity</dt><dd>@Model.AvailableUnits available</dd></div>
+                <div><dt>Listed</dt><dd>@AmmanTime.FormatDate(Model.PublishedAtUtc)</dd></div>
+            </dl>
+        </div>
+    </div>
 
-                <div class="faed-disclosure-grid" aria-label="Condition and discount disclosure">
-                    <article class="faed-disclosure-card">
-                        <span class="faed-disclosure-card__label">Condition</span>
-                        <strong>Grade @Model.ConditionCode · @Model.ConditionName</strong>
-                        <p>@Model.ConditionDescription</p>
-                    </article>
-                    <article class="faed-disclosure-card">
-                        <span class="faed-disclosure-card__label">Why discounted</span>
-                        <strong>
-                            @if (Model.DiscountReasonNames.Count > 0)
-                            {
-                                @string.Join(" + ", Model.DiscountReasonNames)
-                            }
-                            else
-                            {
-                                <text>Not specified</text>
-                            }
-                        </strong>
-                        <p>Shown separately from physical condition so the reason for the lower price stays clear.</p>
-                    </article>
-                </div>
-
-                <div class="faed-purchase-panel">
-                    <div class="faed-purchase-panel__heading">
-                        <div>
-                            <span>Choose your item</span>
-                            <small>Availability is checked at variant level.</small>
+    @if (Model.HasDisclosedIssues)
+    {
+        @* §5.6 — defect photos are never cut out: real background, rust DEFECT tag. *@
+        <section class="fx-detail-section">
+            <h2>Disclosed condition</h2>
+            <p class="fx-detail-section__prose" style="margin-bottom:18px;">Photos of this exact unit, taken by the shop — not catalogue images.</p>
+            <div class="fx-defect-grid">
+                @foreach (var photo in Model.DefectPhotos)
+                {
+                    <figure class="fx-defect">
+                        <div class="fx-defect__frame">
+                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Disclosed defect")" loading="lazy" />
+                            <span class="fx-defect__tag">DEFECT</span>
                         </div>
-                        <span
-                            class="faed-purchase-panel__stock @(Model.IsSoldOut ? "is-out" : Model.IsLowStock ? "is-low" : "is-in")">
-                            @(Model.IsSoldOut ? "Sold out" : Model.IsLowStock ? "Low stock" : "Available")
-                        </span>
-                    </div>
-
-                    @if (Model.Options.Count > 0)
-                    {
-                        <div class="faed-variant-picker" data-variant-picker>
-                            @foreach (var option in Model.Options)
-                            {
-                                <div class="faed-variant-group">
-                                    <span class="faed-variant-group__label" id="option-label-@option.Id">@option.Name</span>
-                                    <div class="faed-chip-list" data-option-name="@option.Name" role="group"
-                                         aria-labelledby="option-label-@option.Id">
-                                        @foreach (var value in option.Values)
-                                        {
-                                            var valueIsSellable = Model.SellableOptionValueIds.Contains(value.Id);
-                                            <button type="button"
-                                                    class="faed-chip faed-chip--selectable@(valueIsSellable ? "" : " is-unavailable")"
-                                                    data-value="@value.Value" aria-pressed="false"
-                                                    aria-disabled="@(valueIsSellable ? "false" : "true")">@value.Value</button>
-                                        }
-                                    </div>
-                                </div>
-                            }
+                        <figcaption>@(photo.AltText ?? "Disclosed defect on this unit.")</figcaption>
+                    </figure>
+                }
+                @foreach (var photo in Model.PackagingPhotos)
+                {
+                    <figure class="fx-defect">
+                        <div class="fx-defect__frame">
+                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Packaging condition")" loading="lazy" />
+                            <span class="fx-defect__tag">DEFECT</span>
                         </div>
-                    }
+                        <figcaption>@(photo.AltText ?? "Packaging condition.")</figcaption>
+                    </figure>
+                }
+            </div>
+        </section>
+    }
 
-                    <p class="faed-availability @(Model.IsSoldOut ? "faed-availability--out" : Model.IsLowStock ? "faed-availability--low" : "faed-availability--in-stock")"
-                       data-variant-status aria-live="polite">
-                        @if (Model.Options.Count > 0)
-                        {
-                            <text>Select @Model.Options.Count option@(Model.Options.Count == 1 ? "" : "s") to see
-                                availability.</text>
-                            }
-                    else if (onlyVariant is { IsSellable: true } sellable)
-                            {
-                                @(sellable.AvailableQuantity <= 3 ? $"Only {sellable.AvailableQuantity} left." : "In stock.")
-                            }
-                            else
-                            {
-                                <text>Sold out.</text>
-                            }
-                        </p>
+    @* decision log #6 — description is a full-width text section below the photo/price block. *@
+    <section class="fx-detail-section">
+        <h2>Description</h2>
+        <p class="fx-detail-section__prose">
+            @(string.IsNullOrWhiteSpace(Model.Description)
+                ? "The shop left no extra notes. The condition, warranty and photos above are the full disclosure."
+                : Model.Description)
+        </p>
+    </section>
+</div>
 
-                        <script type="application/json" id="listing-variants-data">@Html.Raw(variantsJson)</script>
-
-                        <div class="faed-cta-row faed-listing-cta-row">
-                            @if (Model.IsSoldOut)
-                            {
-                                <button type="button" class="faed-btn faed-btn--primary" disabled aria-disabled="true">Sold out</button>
-                            }
-                            else
-                            {
-                                <a class="faed-btn faed-btn--primary" asp-area="Buyer" asp-controller="Reservation" asp-action="Index"
-                                   asp-route-slug="@Model.Slug">Reserve</a>
-                            }
-                        </div>
-
-                        <div class="faed-fulfillment-grid">
-                            <div>
-                                <span class="faed-fulfillment-grid__label">How it works</span>
-                                <strong>Reserve online, pay cash at pickup</strong>
-                                <small>The shop confirms within 12 hours, then shares the pickup address.</small>
-                            </div>
-                        </div>
-                            </div>
-                        </section>
-                    </div>
-
-                    @if (Model.HasDisclosedIssues)
-                    {
-                        <section class="faed-listing-section faed-evidence-section" aria-labelledby="listing-evidence-title">
-                            <div class="faed-listing-section__header">
-                                <div>
-                                    <p class="faed-kicker">See it before you decide</p>
-                                    <h2 id="listing-evidence-title">Condition &amp; disclosed issues</h2>
-                                    <p>Merchant-supplied evidence stays close to the buying decision so defects or packaging issues are not
-                                        buried.</p>
-                                    </div>
-                                    <span class="faed-evidence-section__count">@(Model.DefectPhotos.Count + Model.PackagingPhotos.Count)
-                                        evidence photo@((Model.DefectPhotos.Count + Model.PackagingPhotos.Count) == 1 ? "" : "s")</span>
-                                    </div>
-
-                                    <div class="faed-evidence-groups">
-                                        @if (Model.DefectPhotos.Count > 0)
-                                        {
-                                            <div class="faed-evidence-group">
-                                                <div class="faed-evidence-group__heading">
-                                                    <h3>Defect photos</h3>
-                                                    <span>@Model.DefectPhotos.Count</span>
-                                                </div>
-                                                <div class="faed-evidence-grid">
-                                                    @foreach (var photo in Model.DefectPhotos)
-                                                    {
-                                                        <figure class="faed-evidence-card">
-                                                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Disclosed defect")"
-                                                                 loading="lazy" />
-                                                            <figcaption>Disclosed defect</figcaption>
-                                                        </figure>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-
-                                        @if (Model.PackagingPhotos.Count > 0)
-                                        {
-                                            <div class="faed-evidence-group">
-                                                <div class="faed-evidence-group__heading">
-                                                    <h3>Packaging photos</h3>
-                                                    <span>@Model.PackagingPhotos.Count</span>
-                                                </div>
-                                                <div class="faed-evidence-grid">
-                                                    @foreach (var photo in Model.PackagingPhotos)
-                                                    {
-                                                        <figure class="faed-evidence-card">
-                                                            <img src="/listing-images/@photo.Id" alt="@(photo.AltText ?? "Packaging condition")"
-                                                                 loading="lazy" />
-                                                            <figcaption>Packaging condition</figcaption>
-                                                        </figure>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </section>
-                            }
-
-                            <div class="faed-listing-content-grid @(hasPolicyDetails ? "" : "faed-listing-content-grid--single")">
-                                <section class="faed-listing-section" aria-labelledby="listing-description-title">
-                                    <div class="faed-listing-section__header">
-                                        <div>
-                                            <p class="faed-kicker">Product information</p>
-                                            <h2 id="listing-description-title">Description</h2>
-                                        </div>
-                                    </div>
-                                    <div class="faed-listing-section__body faed-listing-description">
-                                        <p>
-                                            @(string.IsNullOrWhiteSpace(Model.Description)
-                                                ? "The seller left no extra notes. The condition, warranty and photos above are the full disclosure."
-                                                : Model.Description)
-                                        </p>
-                                    </div>
-                                </section>
-
-                                @if (hasPolicyDetails)
-                                {
-                                    <section class="faed-listing-section" aria-labelledby="listing-policies-title">
-                                        <div class="faed-listing-section__header">
-                                            <div>
-                                                <p class="faed-kicker">Before you buy</p>
-                                                <h2 id="listing-policies-title">Details &amp; policies</h2>
-                                            </div>
-                                        </div>
-                                        <div class="faed-listing-section__body">
-                                            <dl class="faed-listing-detail-list">
-                                                @if (!string.IsNullOrWhiteSpace(Model.IncludedItemsText))
-                                                {
-                                                    <div>
-                                                        <dt>What's included</dt>
-                                                        <dd>@Model.IncludedItemsText</dd>
-                                                    </div>
-                                                }
-                                                @if (!string.IsNullOrWhiteSpace(Model.MissingItemsText))
-                                                {
-                                                    <div>
-                                                        <dt>What's missing</dt>
-                                                        <dd>@Model.MissingItemsText</dd>
-                                                    </div>
-                                                }
-                                                @if (!string.IsNullOrWhiteSpace(Model.ReturnPolicyText))
-                                                {
-                                                    <div>
-                                                        <dt>Return policy</dt>
-                                                        <dd>@Model.ReturnPolicyText</dd>
-                                                    </div>
-                                                }
-                                                @if (Model.WarrantyType != WarrantyType.None)
-                                                {
-                                                    <div>
-                                                        <dt>Warranty</dt>
-                                                        <dd>
-                                                            @ListingStatusDisplay.WarrantyTypeLabel(Model.WarrantyType)
-                                                            @if (Model.WarrantyMonths is { } months)
-                                                            {
-                                                                @($" — {months} month{(months == 1 ? "" : "s")}")
-                                                            }
-                                                        </dd>
-                                                    </div>
-                                                }
-                                            </dl>
-                                        </div>
-                                    </section>
-                                }
-                            </div>
-
-                        </div>
-
-                        @section Scripts {
-                            <script src="~/js/listing-detail.js" asp-append-version="true"></script>
-                        }
+@section Scripts {
+    <script>
+        (function () {
+            var hero = document.getElementById("fx-hero");
+            if (!hero) { return; }
+            var img = hero.querySelector("img");
+            document.querySelectorAll(".fx-gallery__thumb").forEach(function (thumb) {
+                thumb.addEventListener("click", function () {
+                    if (!img) { return; }
+                    img.src = thumb.getAttribute("data-full-src");
+                    img.alt = thumb.getAttribute("data-full-alt") || "";
+                    document.querySelectorAll(".fx-gallery__thumb").forEach(function (t) { t.classList.remove("is-active"); });
+                    thumb.classList.add("is-active");
+                });
+            });
+        })();
+    </script>
+}

@@ -302,13 +302,26 @@ correctly instead, and note the limitation in the test file.
 - Remove all cart-and-payment language from views and copy, including any delivery choice —
   every Phase-1 order is `Pickup`
 - `ShopFilterModel`: 10 filters → 4 (category, condition, price range, text). Delete the
-  advanced-filter drawer
+  advanced-filter drawer. **Sort stays** — Newest · Price low–high · Price high–low. It is not a
+  filter, and without it the response rate has nothing to act on. Default order is newest first
+  with response rate as the tie-breaker among same-day listings
 - **Contact reveal:** before `Confirmed` the buyer sees the shop's area only; after, the full
   address, map link, pickup hours and phone
 - **WhatsApp button** on the order page for both sides — a `wa.me` link with a pre-filled
   message including the order reference. No API, no package
-- Extend the background services: 12 h confirm, 48 h no-show, 72 h auto-close, each with its
-  own message to the buyer
+- Extend the background services: 12 h `Pending` → `Cancelled`; 48 h `Confirmed` → `NoShow`;
+  72 h `ReadyForPickup`/`OutForDelivery` with no movement → **`NoShow`**, not `Completed`.
+  The platform never asserts a sale it did not witness: a wrong `Completed` marks live stock as
+  sold and lets a buyer review a purchase that never happened, permanently polluting the
+  reputation layer, while a wrong `NoShow` merely returns stock to sale — visible and
+  recoverable. Each sweep carries its own message to the buyer
+- **Show each deadline to the person it binds.** The reserve page already states the shop's
+  12 h confirmation window; the confirmed-order page must state the buyer's 48 h collection
+  deadline as an absolute date and time ("Collect by Thursday, 6 PM"), not a duration. Before
+  this, the buyer was never told their own deadline and met it only as a `NoShow` notice
+- Add a merchant action **"Actually collected"** on a `NoShow` order, moving it to `Completed`.
+  The sale usually did happen and the merchant simply never opened the dashboard; this repairs
+  the record and unlocks the review without the platform inventing a transaction
 - **Response rate:** rolling 30 days, confirmed-before-deadline ÷ received, plus a bucketed
   median response time. Below 5 orders show a "New seller" badge instead. Display on the
   storefront and under each listing, and factor it into catalogue ordering
@@ -356,3 +369,16 @@ correctly instead, and note the limitation in the test file.
 | Tests | 0 | 5 |
 | Fields to publish | ~20 across 2 pages | 8 on 1 page |
 | Shop filters | 10 | 4 |
+
+---
+
+## Phases 11–13 — design and demo readiness
+
+This file stops at Phase 10 (the functional rebuild). Phases 11–13 — the visual redesign and
+demo readiness — are specified in `docs/DESIGN-BRIEF.md` §9, not here, because they are
+design work, not a `Do` / `Acceptance` / `Verify` engineering spec.
+
+**Current status entering Phase 11:** all five public screens are fully specified in
+`docs/DESIGN-BRIEF.md` §5 (Home, Listing detail, Reserve, Shop grid, Merchant storefront), and
+tokens are locked. Phase 11 is now a mechanical task — apply the tokens and layouts exactly as
+written. There are no remaining design decisions to make in this phase.

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faed — Home (Phase 11 preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Archivo+Narrow:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/preview.css">
+</head>
+<body>
+
+<header class="pv-site-header">
+  <div class="pv-wrap pv-site-header__inner">
+    <a class="pv-wordmark" href="index.html">Faed</a>
+    <nav class="pv-site-nav">
+      <a href="shop.html">Shop</a>
+      <a href="#">Sell on Faed</a>
+      <a href="#">Sign in</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="pv-hero">
+    <div class="pv-wrap">
+      <div class="pv-hero__mark">Faed</div>
+      <p class="pv-hero__tag">Open-box and ex-display appliances and power tools in Amman. Every listing shows its condition and why the price dropped. Reserve online, inspect and pay cash at pickup.</p>
+    </div>
+  </section>
+
+  <div class="pv-wrap">
+    <div class="pv-cat-grid">
+      <a class="pv-cat-card" href="shop.html">
+        <svg viewBox="0 0 64 64" fill="none" stroke="#16181A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 30h30l-3 20H17z"/><path d="M44 34c6 0 8 4 8 8"/><path d="M22 30l4-8h12l4 8"/></svg>
+        <span class="pv-cat-card__name">Small Kitchen Appliances</span>
+        <span class="pv-cat-card__count">38 items</span>
+      </a>
+      <a class="pv-cat-card" href="shop.html">
+        <svg viewBox="0 0 64 64" fill="none" stroke="#16181A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="40" r="12"/><path d="M34 34l14-16"/><path d="M44 14h8v8"/><circle cx="24" cy="40" r="4"/></svg>
+        <span class="pv-cat-card__name">Home &amp; Cleaning</span>
+        <span class="pv-cat-card__count">21 items</span>
+      </a>
+      <a class="pv-cat-card" href="shop.html">
+        <svg viewBox="0 0 64 64" fill="none" stroke="#16181A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 22h22v14H16z"/><path d="M38 26h12v6H38z"/><path d="M22 36l-4 12h8l2-12"/><path d="M18 22v-4h10v4"/></svg>
+        <span class="pv-cat-card__name">Power Tools &amp; Workshop</span>
+        <span class="pv-cat-card__count">29 items</span>
+      </a>
+    </div>
+
+    <div class="pv-section-head">
+      <h2>Newest on Faed</h2>
+      <a class="pv-section-head__link" href="shop.html">Browse the shop &rarr;</a>
+    </div>
+    <div class="pv-grid pv-grid--3" id="pv-home-grid"></div>
+  </div>
+</main>
+
+<footer class="pv-site-footer">
+  <div class="pv-wrap pv-site-footer__inner">
+    <span class="pv-wordmark">Faed</span>
+    <span class="pv-site-footer__line">Open-box and ex-display appliances and power tools &middot; Amman &middot; reserve online, pay cash at pickup</span>
+  </div>
+</footer>
+
+<script src="assets/cards.js"></script>
+<script>faedRenderGrid("pv-home-grid", 9);</script>
+</body>
+</html>

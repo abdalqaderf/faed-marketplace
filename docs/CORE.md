@@ -162,11 +162,15 @@ card, so the user hesitates and leaves.
 The page becomes a three-line confirmation:
 
 > **Reserve this item**
-> Pickup from: Amman Appliances, Wasfi Al-Tal St.
+> Pickup from Amman Appliances — Abdali, Amman. Full address and phone shown once the shop confirms
 > Expires in 12 hours if the shop doesn't confirm · Pay cash at the shop
 > `[ Reserve ]`
 
-### 4.2 Filters — four only
+The first line names the shop's **area** only — the street address, pickup hours and phone
+number are revealed after the merchant confirms (`BUSINESS-MODEL.md` §8.7). Before that the
+buyer knows which part of Amman to plan around, not the door.
+
+### 4.2 Filters — four, plus one sort control
 
 | Kept | Removed | Reason |
 |---|---|---|
@@ -177,13 +181,40 @@ The page becomes a three-line confirmation:
 
 The advanced-filter drawer is removed — meaningless for a catalogue of dozens of items.
 
-### 4.3 Order reference
+**Sort is not a filter and stays.** Three options: Newest · Price low–high · Price high–low.
+A discount marketplace without "cheapest first" fails its own buyers, and removing sort would
+leave the merchant response rate (§4.5) with nothing to act on.
+
+**Default order: newest first, with response rate as the tie-breaker** among listings published
+the same day. Explainable in one sentence, and it gives the response rate real weight instead of
+making it a decorative number.
+
+### 4.3 The three clocks — and who each one is for
+
+| Window | Runs on | On expiry |
+|---|---|---|
+| **12 h** | **The merchant, to confirm** | Cancelled · stock released · buyer told the shop did not respond |
+| **48 h** | **The buyer, to collect** — starts at confirmation | `NoShow` · stock returns to sale |
+| **72 h** | A `ReadyForPickup` order with no movement | `NoShow` · stock returns to sale |
+
+Stock is held from the moment of reservation and stays held through the whole chain; it is
+released only on `Cancelled` or `NoShow`.
+
+The 12 h window protects the **buyer** from a silent shop. The 48 h window protects the
+**merchant** from a reservation that ties up a one-off item forever.
+
+**Both deadlines must be visible to the person they bind.** The reserve page states the shop's
+12 h window before the buyer commits; the confirmed-order page states the buyer's collection
+deadline as a date and time, not a duration — *"Collect by Thursday, 6 PM"*. Until Phase 9 the
+buyer was never told their own deadline and learned it only from a `NoShow` notice.
+
+### 4.4 Order reference
 
 Six characters from an unambiguous alphabet (`ABCDEFGHJKMNPQRSTUVWXYZ23456789` — no I, L, O,
 0 or 1), displayed as `#FA7K2M`. Unique index. It has to be read aloud over the phone and typed
 into WhatsApp, so confusable characters are excluded by design.
 
-### 4.4 Reviews
+### 4.5 Reviews
 
 Available only after a completed order, once per order. A merchant's reputation accumulates
 only through real transactions on the platform.
@@ -286,7 +317,7 @@ The pattern already exists (`ReservationExpiryService`) — it is extended, not 
 | C# lines | ~25,600 | ~19,500 |
 | Decisions to publish an item | ~20 | **8** (plus one optional note) |
 | Pages to publish an item | 2 | **1** |
-| Shop filters | 10 | **4** |
+| Shop filters | 10 | **4** (sort control unchanged) |
 | Lifecycle words shown to merchants | 5 | **2** |
 | Steps to a first draft | register + documents + wait | **register, then create** |
 | Longest a buyer can wait | unbounded | **12 hours** |

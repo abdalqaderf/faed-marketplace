@@ -6,102 +6,108 @@
     var chooseVariant = sellable.Count > 1;
     var chooseLocation = view.PickupLocations.Count > 1;
     var onlyLocation = view.PickupLocations.Count == 1 ? view.PickupLocations[0] : null;
+    var lowestPrice = sellable.Count > 0 ? sellable.Min(l => l.UnitPrice) : 0m;
 }
 
-<div class="faed-page faed-buyer-page faed-reserve-page">
-    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
-        <a asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
-        <span aria-hidden="true">/</span>
-        <a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@view.ListingSlug">@view.ListingTitle</a>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">Reserve</span>
-    </nav>
+<div class="fx-wrap fx-main">
+    <div class="fx-reserve">
+        <nav class="fx-breadcrumb" aria-label="Breadcrumb">
+            <a asp-area="" asp-controller="Shop" asp-action="Index">Shop</a> <span aria-hidden="true">/</span>
+            <a asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@view.ListingSlug">@view.ListingTitle</a> <span aria-hidden="true">/</span>
+            <span aria-current="page">Reserve</span>
+        </nav>
 
-    <header class="faed-buyer-heading">
-        <div>
-            <p class="faed-kicker">Hold it for pickup</p>
-            <h1>Reserve this item</h1>
-        </div>
-    </header>
-
-    @if (!view.CanReserve)
-    {
-        <section class="faed-buyer-blocked" role="alert">
-            <p>This item can't be reserved right now — it's either sold out or the shop has no pickup point set up.</p>
-            <a class="faed-btn faed-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@view.ListingSlug">Back to the listing</a>
-        </section>
-    }
-    else
-    {
-        <form asp-action="Index" method="post" class="faed-reserve-form">
-            <input type="hidden" asp-for="Form.ListingSlug" />
-            <div asp-validation-summary="ModelOnly" class="faed-alert faed-alert--error" role="alert"></div>
-
-            <section class="faed-reserve-summary">
-                <h2>@view.ListingTitle</h2>
-                <p>@view.ConditionLabel · JOD @sellable.Min(l => l.UnitPrice).ToString("0.000") · sold by @view.MerchantBusinessName</p>
-            </section>
-
-            @if (chooseVariant)
-            {
-                <fieldset class="faed-field">
-                    <legend class="faed-field__label">Which one?</legend>
-                    @foreach (var line in sellable)
-                    {
-                        <label class="faed-choice-card">
-                            <input type="radio" asp-for="Form.VariantId" value="@line.VariantId" />
-                            <span><strong>@line.Combination</strong> <small>JOD @line.UnitPrice.ToString("0.000")</small></span>
-                        </label>
-                    }
-                    <span asp-validation-for="Form.VariantId" class="faed-field__error"></span>
-                </fieldset>
-            }
-            else
-            {
-                <input type="hidden" asp-for="Form.VariantId" value="@sellable[0].VariantId" />
-            }
-
-            @if (chooseLocation)
-            {
-                <fieldset class="faed-field">
-                    <legend class="faed-field__label">Pick up from</legend>
-                    @foreach (var location in view.PickupLocations)
-                    {
-                        <label class="faed-choice-card">
-                            <input type="radio" asp-for="Form.MerchantLocationId" value="@location.Id" />
-                            <span><strong>@location.Name</strong> <small>@location.Area</small></span>
-                        </label>
-                    }
-                    <span asp-validation-for="Form.MerchantLocationId" class="faed-field__error"></span>
-                </fieldset>
-            }
-            else if (onlyLocation is not null)
-            {
-                <input type="hidden" asp-for="Form.MerchantLocationId" value="@onlyLocation.Id" />
-                <p class="faed-reserve-pickup">Pickup from: <strong>@onlyLocation.Name</strong>, @onlyLocation.Area</p>
-            }
-
-            <div class="faed-reserve-contact-grid">
-                <div class="faed-field">
-                    <label class="faed-field__label" for="Form_ContactName">Your name</label>
-                    <input class="faed-input" asp-for="Form.ContactName" autocomplete="name" />
-                    <span asp-validation-for="Form.ContactName" class="faed-field__error"></span>
-                </div>
-                <div class="faed-field">
-                    <label class="faed-field__label" for="Form_ContactPhone">Your phone</label>
-                    <input class="faed-input" asp-for="Form.ContactPhone" autocomplete="tel" inputmode="tel" />
-                    <span asp-validation-for="Form.ContactPhone" class="faed-field__error"></span>
-                </div>
-                <div class="faed-field faed-reserve-contact-grid__wide">
-                    <label class="faed-field__label" for="Form_BuyerNote">Note for the shop <span class="faed-optional">Optional</span></label>
-                    <textarea class="faed-input" asp-for="Form.BuyerNote" rows="2"></textarea>
+        @if (!view.CanReserve)
+        {
+            <div class="fx-empty">
+                <div class="fx-empty__title">This item can’t be reserved right now</div>
+                <p>It’s either sold out or the shop has no pickup point set up yet.</p>
+                <a class="fx-btn fx-btn--ghost" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@view.ListingSlug">Back to the item</a>
+            </div>
+        }
+        else
+        {
+            <div class="fx-reserve__item">
+                <div>
+                    <div class="fx-reserve__item-name">@view.ListingTitle</div>
+                    <div class="fx-price"><span class="fx-price__now">@lowestPrice.ToString("0.000") JD</span></div>
                 </div>
             </div>
 
-            <p class="faed-reserve-terms">Expires in 12 hours if the shop doesn't confirm · Pay cash at the shop</p>
-            <button type="submit" class="faed-btn faed-btn--primary">Reserve</button>
-        </form>
-    }
+            <h1>Reserve this item</h1>
+
+            <ul class="fx-reserve__lines">
+                <li>
+                    Pickup from @view.MerchantBusinessName@(onlyLocation is not null ? $" — {onlyLocation.Area}" : "").
+                    The full address and phone number are shown once the shop confirms.
+                </li>
+                <li>Expires in 12 hours if the shop doesn’t confirm. You’ll be told either way.</li>
+                <li>Pay cash at the shop when you collect. Faed never handles payment.</li>
+            </ul>
+
+            <form asp-action="Index" method="post">
+                <input type="hidden" asp-for="Form.ListingSlug" />
+                <div asp-validation-summary="ModelOnly" class="fx-field__error" role="alert"></div>
+
+                @if (chooseVariant)
+                {
+                    <fieldset class="fx-field">
+                        <legend class="fx-field__label">Which one?</legend>
+                        @foreach (var line in sellable)
+                        {
+                            <label class="fx-choice">
+                                <input type="radio" asp-for="Form.VariantId" value="@line.VariantId" />
+                                <span><strong>@line.Combination</strong> <small>@line.UnitPrice.ToString("0.000") JD</small></span>
+                            </label>
+                        }
+                        <span asp-validation-for="Form.VariantId" class="fx-field__error"></span>
+                    </fieldset>
+                }
+                else
+                {
+                    <input type="hidden" asp-for="Form.VariantId" value="@sellable[0].VariantId" />
+                }
+
+                @if (chooseLocation)
+                {
+                    <fieldset class="fx-field">
+                        <legend class="fx-field__label">Pick up from</legend>
+                        @foreach (var location in view.PickupLocations)
+                        {
+                            <label class="fx-choice">
+                                <input type="radio" asp-for="Form.MerchantLocationId" value="@location.Id" />
+                                <span><strong>@location.Name</strong> <small>@location.Area</small></span>
+                            </label>
+                        }
+                        <span asp-validation-for="Form.MerchantLocationId" class="fx-field__error"></span>
+                    </fieldset>
+                }
+                else if (onlyLocation is not null)
+                {
+                    <input type="hidden" asp-for="Form.MerchantLocationId" value="@onlyLocation.Id" />
+                }
+
+                <div class="fx-field">
+                    <label class="fx-field__label" for="Form_ContactName">Your name</label>
+                    <input class="fx-input" asp-for="Form.ContactName" autocomplete="name" />
+                    <span asp-validation-for="Form.ContactName" class="fx-field__error"></span>
+                </div>
+                <div class="fx-field">
+                    <label class="fx-field__label" for="Form_ContactPhone">Your phone</label>
+                    <input class="fx-input" asp-for="Form.ContactPhone" autocomplete="tel" inputmode="tel" />
+                    <span asp-validation-for="Form.ContactPhone" class="fx-field__error"></span>
+                </div>
+                <div class="fx-field">
+                    <label class="fx-field__label" for="Form_BuyerNote">Note for the shop <span class="fx-optional">Optional</span></label>
+                    <textarea class="fx-input" asp-for="Form.BuyerNote" rows="2"></textarea>
+                </div>
+
+                <button type="submit" class="fx-btn fx-btn--block">Reserve</button>
+            </form>
+
+            <a class="fx-reserve__back" asp-area="" asp-controller="Listing" asp-action="Details" asp-route-slug="@view.ListingSlug">&larr; Back to the item</a>
+        }
+    </div>
 </div>
 
 @section Scripts {

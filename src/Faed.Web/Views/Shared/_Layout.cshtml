@@ -18,19 +18,31 @@
     var navbarSearchQuery = string.IsNullOrEmpty(area) && controller.Equals("Shop", StringComparison.OrdinalIgnoreCase)
         ? Context.Request.Query["Q"].ToString()
         : string.Empty;
+    // Reserve is a public, fully-redesigned screen (DESIGN-BRIEF.md §5.4a) even though its
+    // controller sits under Areas/Buyer. Folder location is a routing convenience, not a
+    // signal for the layout class — it renders with faed-public-page, never a workspace class.
+    var isReservePage = area.Equals("Buyer", StringComparison.OrdinalIgnoreCase)
+        && controller.Equals("Reservation", StringComparison.OrdinalIgnoreCase);
     var bodyClass = isIdentity
         ? isAuthPage
             ? "faed-identity-page faed-auth-page"
             : isIdentityManagePage
                 ? "faed-identity-page faed-account-settings-page"
                 : "faed-identity-page faed-identity-state-page"
-        : !string.IsNullOrEmpty(area)
-            ? $"faed-workspace-page faed-{area.ToLowerInvariant()}-page"
-            : "faed-public-page";
+        : isReservePage
+            ? "faed-public-page"
+            : !string.IsNullOrEmpty(area)
+                ? $"faed-workspace-page faed-{area.ToLowerInvariant()}-page"
+                : "faed-public-page";
 
     var isHome = string.IsNullOrEmpty(area) && controller.Equals("Home", StringComparison.OrdinalIgnoreCase);
     var isShopping = string.IsNullOrEmpty(area)
         && (controller is "Shop" or "Listing" or "Store");
+
+    // Phase 12 — the five public screens (Home, Shop, Listing detail, Merchant storefront,
+    // Reserve) carry the DESIGN-BRIEF.md §5.11 site chrome: wordmark left, three plain ink
+    // links right, and a one-line footer. Workspaces and identity keep their own chrome.
+    var isPublicSurface = (string.IsNullOrEmpty(area) && (isHome || isShopping)) || isReservePage;
     var isSignedIn = User.Identity?.IsAuthenticated == true;
     var isAdmin = User.IsInRole(FaedRoles.Admin);
     var isMerchant = User.IsInRole(FaedRoles.Merchant);
@@ -42,6 +54,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Faed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Archivo+Narrow:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/faed.css" asp-append-version="true" />
@@ -50,6 +65,31 @@
 <body class="@bodyClass">
     <a class="faed-skip-link" href="#main-content">Skip to main content</a>
 
+@if (isPublicSurface)
+{
+    <header class="fx-site-header">
+        <div class="fx-wrap fx-site-header__inner">
+            <a class="fx-wordmark" asp-area="" asp-controller="Home" asp-action="Index">Faed</a>
+            <nav class="fx-site-nav" aria-label="Main navigation">
+                <a asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
+                <a asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Sell on Faed</a>
+                @if (isSignedIn)
+                {
+                    <form method="post" asp-area="Identity" asp-page="/Account/Logout"
+                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                        <button type="submit">Sign out</button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                }
+            </nav>
+        </div>
+    </header>
+}
+else
+{
     <header class="faed-site-header">
         <nav class="navbar navbar-expand-lg faed-navbar" aria-label="Main navigation">
             <div class="faed-shell faed-navbar__inner">
@@ -130,6 +170,7 @@
             </div>
         </nav>
     </header>
+}
 
     <main id="main-content" role="main" tabindex="-1">
         @{
@@ -204,6 +245,17 @@
         }
     </main>
 
+@if (isPublicSurface)
+{
+    <footer class="fx-site-footer">
+        <div class="fx-wrap fx-site-footer__inner">
+            <span class="fx-wordmark">Faed</span>
+            <span class="fx-site-footer__line">Open-box and ex-display appliances and power tools &middot; Amman &middot; reserve online, pay cash at pickup</span>
+        </div>
+    </footer>
+}
+else
+{
     <footer class="faed-site-footer">
         <div class="faed-shell faed-site-footer__grid">
             <div class="faed-site-footer__brand">
@@ -257,6 +309,7 @@
             <span>Marketplace &middot; Amman, Jordan</span>
         </div>
     </footer>
+}
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

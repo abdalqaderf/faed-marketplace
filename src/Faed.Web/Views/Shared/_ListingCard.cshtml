@@ -1,7 +1,10 @@
 @model ListingCardView
+@{
+    var conditionName = Model.ConditionName;
+}
 
-<article class="faed-product-card">
-    <a class="faed-product-card__media" asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug"
+<article class="fx-card">
+    <a class="fx-photo" asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug"
        aria-label="View @Model.Title">
         @if (Model.PrimaryImageId is { } imageId)
         {
@@ -9,69 +12,40 @@
         }
         else
         {
-            <span class="faed-product-card__no-photo" aria-hidden="true">No photo yet</span>
+            <span class="fx-photo__empty" aria-hidden="true">No photo yet</span>
         }
-
-        <span class="faed-product-card__condition-badge">Grade @Model.ConditionCode · @Model.ConditionName</span>
-
-        @if (Model.HasValidReferencePrice)
-        {
-            <span class="faed-product-card__discount">@(Model.DiscountPercent)% lower</span>
-        }
-
-        @if (Model.IsSoldOut)
-        {
-            <span class="faed-product-card__stock faed-product-card__stock--out">Sold out</span>
-        }
-        else if (Model.IsLowStock)
-        {
-            <span class="faed-product-card__stock faed-product-card__stock--low">Low stock</span>
-        }
+        @* §5.4 — one condition stamp per screen, in the photo corner. Rust here is disclosure, not action. *@
+        @ConditionStamp.Render(Model.ConditionCode)
     </a>
 
-    <div class="faed-product-card__body">
-        <div class="faed-product-card__eyebrow">@Model.CategoryName</div>
+    <div class="fx-card__body">
+        @* §5.4 supporting text: plain-language condition name, secondary colour, not a second badge. *@
+        <span class="fx-condition-note">@conditionName</span>
 
-        <h3 class="faed-product-card__title">
+        <h3 class="fx-card__title">
             <a asp-controller="Listing" asp-action="Details" asp-route-slug="@Model.Slug">@Model.Title</a>
         </h3>
 
-        <a class="faed-product-card__merchant" asp-controller="Store" asp-action="Index"
-           asp-route-slug="@Model.MerchantSlug">
-            @if (Model.MerchantIsVerified)
-            {
-                <span class="faed-verified" aria-hidden="true">@FaedIcon.Render("check", "faed-icon")</span>
-                <span class="visually-hidden">Verified merchant.</span>
-            }
-            <span>@Model.MerchantBusinessName</span>
-        </a>
+        <a class="fx-card__merchant" asp-controller="Store" asp-action="Index" asp-route-slug="@Model.MerchantSlug">@Model.MerchantBusinessName</a>
 
-        <div class="faed-product-card__price-row">
-            <div class="faed-price faed-price--sm" aria-label="Price">
-                <span class="faed-price__current">
-                    @if (Model.EffectivePrice is { } price)
-                    {
-                        @($"JOD {price:0.000}")
-                    }
-                    else
-                    {
-                        <text>Price on request</text>
-                    }
-                </span>
+        <div class="fx-price">
+            @if (Model.EffectivePrice is { } price)
+            {
+                <span class="fx-price__now">@price.ToString("0.000") JD</span>
                 @if (Model.HasValidReferencePrice)
                 {
-                    <span class="faed-price__reference">JOD @Model.ReferencePrice!.Value.ToString("0.000")</span>
+                    <span class="fx-price__was">@Model.ReferencePrice!.Value.ToString("0.000") JD</span>
+                    <span class="fx-price__off">@Model.DiscountPercent% off</span>
                 }
-            </div>
+            }
+            else
+            {
+                <span class="fx-price__now">Price on request</span>
+            }
         </div>
 
-        @if (!string.IsNullOrEmpty(Model.PrimaryDiscountReasonName))
-        {
-            <p class="faed-product-card__reason">
-                <span>Why discounted</span>
-                @Model.PrimaryDiscountReasonName@(Model.HasMoreReasons ? " + more" : "")
-            </p>
-        }
-
+        <span class="fx-card__stock">
+            @(Model.IsSoldOut ? "Sold out" : $"{Model.AvailableUnits} available")
+        </span>
     </div>
 </article>
