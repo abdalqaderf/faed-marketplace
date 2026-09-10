@@ -453,6 +453,32 @@ Static pre-checks (in place of driving every screen):
 
 ---
 
+## Findings surfaced during the fix pass
+
+Recorded per the Phase 14 rule "if any step reveals something the audit missed, add it to the
+report and tell me rather than deciding it yourself."
+
+### NEW-1 — the public listing option/variant view surface is dead since the Phase 11/12 rebuild
+
+*Files:* `Services/Marketplace/PublicMarketplaceModels.cs` (`SellableOptionValueIds`, and the
+`Options` / `PublicListingOptionView` collection it reads), `Services/Marketplace/PublicMarketplaceService.cs:204,244,266`
+(builds `listing.Options` into the view model), `Views/Listing/Details.cshtml`.
+
+The rebuilt listing-detail page has **no variant picker**: it shows "Quantity — N available"
+and a single Reserve button, matching `CORE.md` §3.7 (one physical unit, one automatic
+variant, never shown to the buyer). `SellableOptionValueIds` is computed but referenced
+nowhere; `PublicListingView.Options` is populated by a query `Include(l => l.Options)` and
+projected into `PublicListingOptionView`, but no view renders it. The `listing-detail.js`
+reference in the doc comment (MEDIUM-5) was the visible tip; the picker logic behind it is
+gone. Discovered while fixing the MEDIUM-5 dangling comment.
+
+*Proposed fix:* delete `SellableOptionValueIds`, the `Options` projection, `PublicListingOptionView`,
+and the `Include(l => l.Options).ThenInclude(o => o.Values)` in `PublicMarketplaceService`.
+The `ListingOption*` entities stay in the schema (`CORE.md` §7). Not applied — needs your call,
+as it is beyond the "fix the dangling reference" scope of the Step 5 deletion commit.
+
+---
+
 ## Rules preserved from `plan.md` before deletion
 
 `plan.md` (the pre-`faed-core` "Final UI/UX Production Polish Plan") was scanned line by line
