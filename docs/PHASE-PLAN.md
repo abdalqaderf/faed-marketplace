@@ -467,6 +467,14 @@ that matters — an untracked local file is not the panel's problem, a tracked o
 | `docs/DEPLOYMENT.md` | keep **only if** it still matches reality — otherwise fix it or delete it |
 | `docs/COMMITS-AND-COMMENTS.md` | referenced by `CLAUDE.md` |
 | `docs/AUDIT-PHASE-14.md` | this phase's own report |
+| `docs/DESIGN-BRIEF.md` | holds locked visual decisions — the `--faed-*` tokens, the ink/rust colour rule, the condition-stamp treatment — that no other doc restates |
+| `docs/DEMO-SCRIPT.md` | the screen-by-screen script Step 9 checks the live app against |
+| `docs/CREDITS.md` | CC-BY / CC-BY-SA attribution for the demo photos — a licence term, not documentation |
+| `tools/demo-images/` | the provenance trail (sources + `manifest.json` + generator) that `docs/CREDITS.md` points at |
+
+A keep-list is a **proposal to be checked against the code**, never an authority over it: if a
+file the list omits turns out to be referenced and required, the omission is the defect — amend
+the list, do not delete the file.
 
 Anything else — a stale `plan.md`, numbered design documents from the pre-`faed-core` era
 (`docs/01-*`, `docs/02-*`, `docs/03-*`, `05-*` …), `NOTES.md`, `CHANGELOG.md`, `TASKS.md`,
@@ -576,9 +584,10 @@ single `git revert` undoes them.
 - `dotnet build Faed.slnx -warnaserror` passes
 - Exactly one migration plus the snapshot; a probe migration comes out empty
 - The Step 4 greps return only hits justified in writing
-- **`git ls-files` lists no file that cannot be justified**: no `.md` outside the keep-list, no
-  build output, no backup or duplicate, no editor dropping, no design-phase artefact, no
-  unreferenced view, script, image or library
+- **`git ls-files` lists no file that cannot be justified**: no `.md` outside the keep-list
+  (which now carries `DESIGN-BRIEF.md`, `DEMO-SCRIPT.md`, `CREDITS.md` and `tools/demo-images/`,
+  each referenced and required), no build output, no backup or duplicate, no editor dropping, no
+  design-phase artefact, no unreferenced view, script, image or library
 - No decision lost with a deleted document — anything worth keeping was moved first
 - `dotnet test` green, with no vacuously-passing test
 - All eight invariants confirmed, each with the file that enforces it
