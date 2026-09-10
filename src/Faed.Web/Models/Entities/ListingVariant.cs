@@ -163,6 +163,22 @@ public class ListingVariant
         }
     }
 
+    /// <summary>
+    /// Replaces the available-to-sell quantity with the merchant's latest count from the
+    /// listing form. Reserved and sold units are left alone — they are commitments, not shelf
+    /// stock — so this is not a way to unwind an order.
+    /// </summary>
+    internal void SetOnHandQuantity(int available, DateTime nowUtc)
+    {
+        if (available < 0)
+        {
+            throw new DomainException("Quantity cannot be negative.");
+        }
+
+        AvailableQuantity = available;
+        UpdatedAtUtc = nowUtc;
+    }
+
     public void Deactivate(DateTime nowUtc)
     {
         IsActive = false;

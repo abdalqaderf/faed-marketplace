@@ -27,6 +27,19 @@
                     <strong>@Model.Merchant.LiveListingCount</strong>
                     <small>@(Model.Merchant.LiveListingCount == 1 ? "active listing" : "active listings")</small>
                 </div>
+                <div>
+                    <span>Responsiveness</span>
+                    @if (MerchantResponseDisplay.IsNewSeller(Model.Merchant.Response))
+                    {
+                        <strong>New seller</strong>
+                        <small>Not enough orders yet for a response rate</small>
+                    }
+                    else
+                    {
+                        <strong>@Model.Merchant.Response.ResponseRatePercent%</strong>
+                        <small>@MerchantResponseDisplay.TimeLabel(Model.Merchant.Response.MedianResponse)</small>
+                    }
+                </div>
                 @if (Model.Reviews is { Summary.HasReviews: true })
                 {
                     <div>

@@ -33,7 +33,10 @@ Broken? That missing information is what kills the sale.
 
 Every listing carries, mandatorily:
 
-1. A **disclosed condition** from four fixed options — no free-text description
+1. A **disclosed condition** chosen from four fixed options — the condition itself is never
+   free prose ("good condition, light use"). A listing may still carry an optional description
+   for what structure cannot express: the model, the wattage, what is in the box, where the
+   mark sits
 2. A **discount reason**, derived from the condition
 3. A **defect photo** when the condition discloses a physical imperfection
 4. **Admin review** before it becomes publicly visible

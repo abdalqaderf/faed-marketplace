@@ -3,21 +3,15 @@ using Faed.Web.Models.Entities;
 using Faed.Web.Models.Enums;
 using Faed.Web.Services.Abstractions;
 using Faed.Web.Services.Listings;
+using Faed.Web.Services.Ordering;
 using Microsoft.EntityFrameworkCore;
 
 namespace Faed.Web.Services.Marketplace;
 
 /// <inheritdoc />
-public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublicMarketplaceService
+public sealed class PublicMarketplaceService(
+    IApplicationDbContext db, IMerchantResponseService responses) : IPublicMarketplaceService
 {
-    // Generic listing options are merchant-authored per listing;
-    // there is no shared "Size"/"Colour" reference table to filter against. These are the
-    // names the seeded launch categories' merchants are expected to use
-    // — matched case-insensitively via
-    // the database's default collation, same as every other catalog lookup in this service.
-    private static readonly string[] SizeOptionNames = ["Size"];
-    private static readonly string[] ColorOptionNames = ["Colour", "Color"];
-
     public async Task<HomePageView> GetHomePageAsync(CancellationToken cancellationToken = default)
     {
         var launchCategoryIds = await GetLaunchSectorCategoryIdsAsync(cancellationToken);
@@ -105,18 +99,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             unresolved |= gradeId is null;
         }
 
-        Guid? reasonId = null;
-        if (!string.IsNullOrWhiteSpace(query.DiscountReasonCode))
-        {
-            reasonId = await db.DiscountReasons
-                .AsNoTracking()
-                .Where(r => r.Code == query.DiscountReasonCode && r.IsActive)
-                .Select(r => (Guid?)r.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            unresolved |= reasonId is null;
-        }
-
-        var facets = await GetFacetsAsync(merchantId, launchCategoryIds, cancellationToken);
+        var facets = await GetFacetsAsync(launchCategoryIds, cancellationToken);
         var pageSize = Math.Clamp(query.PageSize <= 0 ? ShopQuery.DefaultPageSize : query.PageSize, 1, ShopQuery.MaxPageSize);
         var page = Math.Max(query.Page, 1);
 
@@ -142,29 +125,6 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             baseQuery = baseQuery.Where(l => l.ConditionGradeId == gid);
         }
 
-        if (reasonId is { } rid)
-        {
-            baseQuery = baseQuery.Where(l => l.DiscountReasons.Any(dr => dr.DiscountReasonId == rid));
-        }
-
-        // Variant-aware, not listing-aware: a size/colour filter must be satisfied by a single
-        // sellable variant (active, in stock) that carries the requested value(s) together — not
-        // merely by the values existing somewhere on the listing's option lists. Otherwise a
-        // "Red" + "XL" filter would match a listing that only stocks Red/M and Blue/XL, whose
-        // requested SKU cannot actually be bought (faed-commerce-ux "do not imply stock exists
-        // at listing level when the selected SKU is unavailable").
-        if (!string.IsNullOrWhiteSpace(query.SizeValue) || !string.IsNullOrWhiteSpace(query.ColorValue))
-        {
-            var size = string.IsNullOrWhiteSpace(query.SizeValue) ? null : query.SizeValue;
-            var color = string.IsNullOrWhiteSpace(query.ColorValue) ? null : query.ColorValue;
-            baseQuery = baseQuery.Where(l => l.Variants.Any(v =>
-                v.IsActive && v.AvailableQuantity > 0
-                && (size == null || v.OptionValues.Any(ov =>
-                    SizeOptionNames.Contains(ov.OptionValue.Option.Name) && ov.OptionValue.Value == size))
-                && (color == null || v.OptionValues.Any(ov =>
-                    ColorOptionNames.Contains(ov.OptionValue.Option.Name) && ov.OptionValue.Value == color))));
-        }
-
         if (query.MinPrice is { } min)
         {
             baseQuery = baseQuery.Where(l => l.RetailPrice >= min);
@@ -178,7 +138,9 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
         if (!string.IsNullOrWhiteSpace(query.SearchText))
         {
             var term = query.SearchText.Trim();
-            baseQuery = baseQuery.Where(l => EF.Functions.Like(l.Title, $"%{term}%") || EF.Functions.Like(l.Description, $"%{term}%"));
+            baseQuery = baseQuery.Where(l =>
+                EF.Functions.Like(l.Title, $"%{term}%")
+                || (l.Description != null && EF.Functions.Like(l.Description, $"%{term}%")));
         }
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
@@ -192,23 +154,30 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
         page = Math.Min(page, totalPages);
         var normalizedQuery = query with { Page = page, PageSize = pageSize };
 
+        // A merchant who ignores reservations ranks below responsive merchants, whatever the
+        // buyer's chosen sort (docs/BUSINESS-MODEL.md §8.4). New sellers are never in this set,
+        // so the penalty only lands on a merchant with a real, poor track record.
+        var lowResponders = (await responses.GetLowResponderMerchantIdsAsync(cancellationToken)).ToArray();
+        IOrderedQueryable<Listing> ordered = baseQuery.OrderBy(l => lowResponders.Contains(l.MerchantProfileId));
+
         // Every sort ends on l.Id — a unique, stable final key. Without it, listings that tie on
         // price and publication timestamp have no defined order, so they can swap places between
         // requests and appear twice (or not at all) as the reader pages through.
-        baseQuery = query.Sort switch
+        ordered = query.Sort switch
         {
-            ShopSort.PriceLowToHigh => baseQuery
-                .OrderBy(l => l.RetailPrice ?? decimal.MaxValue)
+            ShopSort.PriceLowToHigh => ordered
+                .ThenBy(l => l.RetailPrice ?? decimal.MaxValue)
                 .ThenByDescending(l => l.PublishedAtUtc)
                 .ThenBy(l => l.Id),
-            ShopSort.PriceHighToLow => baseQuery
-                .OrderByDescending(l => l.RetailPrice ?? decimal.MinValue)
+            ShopSort.PriceHighToLow => ordered
+                .ThenByDescending(l => l.RetailPrice ?? decimal.MinValue)
                 .ThenByDescending(l => l.PublishedAtUtc)
                 .ThenBy(l => l.Id),
-            _ => baseQuery
-                .OrderByDescending(l => l.PublishedAtUtc)
+            _ => ordered
+                .ThenByDescending(l => l.PublishedAtUtc)
                 .ThenBy(l => l.Id),
         };
+        baseQuery = ordered;
 
         var pageIds = await baseQuery
             .Skip((page - 1) * pageSize)
@@ -249,6 +218,8 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             .Where(m => m.Id == listing.MerchantProfileId)
             .Select(m => new { m.BusinessName, m.PublicSlug })
             .SingleAsync(cancellationToken);
+
+        var response = await responses.GetAsync(listing.MerchantProfileId, cancellationToken);
 
         var category = await db.Categories
             .AsNoTracking()
@@ -316,6 +287,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             // Reachable only via PublicLiveListings(), which already requires the owning
             // merchant to be Approved — true unconditionally here, not re-derived.
             MerchantIsVerified: true,
+            response,
             listing.PublishedAtUtc ?? listing.UpdatedAtUtc);
     }
 
@@ -337,8 +309,10 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             .AsNoTracking()
             .CountAsync(l => l.MerchantProfileId == merchant.Id && l.Status == ListingStatus.Live, cancellationToken);
 
+        var response = await responses.GetAsync(merchant.Id, cancellationToken);
+
         return new PublicMerchantProfileView(
-            merchant.Id, merchant.BusinessName, merchant.PublicSlug, true, merchant.CreatedAtUtc, liveCount);
+            merchant.Id, merchant.BusinessName, merchant.PublicSlug, true, merchant.CreatedAtUtc, liveCount, response);
     }
 
     /// <summary>
@@ -400,13 +374,11 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
     }
 
     /// <summary>
-    /// The DB-driven filter choices. Categories/conditions/reasons are the full admin-managed
-    /// reference lists, restricted to the launch sector for categories;
-    /// Brands, sizes and colours are the uncontrolled exceptions,
-    /// so only values actually used by a matching Live listing are offered
+    /// The DB-driven filter choices: the full admin-managed reference lists of condition
+    /// grades and of the launch sector's categories, both small.
     /// </summary>
     private async Task<ShopFacets> GetFacetsAsync(
-        Guid? merchantId, IReadOnlySet<Guid> launchCategoryIds, CancellationToken cancellationToken)
+        IReadOnlySet<Guid> launchCategoryIds, CancellationToken cancellationToken)
     {
         var categories = await db.Categories
             .AsNoTracking()
@@ -422,57 +394,7 @@ public sealed class PublicMarketplaceService(IApplicationDbContext db) : IPublic
             .Select(g => new FacetOption(g.Code, $"Grade {g.Code} — {g.Name}"))
             .ToListAsync(cancellationToken);
 
-        var reasons = await db.DiscountReasons
-            .AsNoTracking()
-            .Where(r => r.IsActive)
-            .OrderBy(r => r.Name)
-            .Select(r => new FacetOption(r.Code, r.Name))
-            .ToListAsync(cancellationToken);
-
-        var scopedListings = PublicLiveListings().Where(l => launchCategoryIds.Contains(l.CategoryId));
-        if (merchantId is { } mid)
-        {
-            scopedListings = scopedListings.Where(l => l.MerchantProfileId == mid);
-        }
-
-        var (sizes, colors) = await GetSizeAndColorFacetsAsync(scopedListings, cancellationToken);
-
-        return new ShopFacets(categories, conditions, reasons, sizes, colors);
-    }
-
-    private static async Task<(IReadOnlyList<FacetOption> Sizes, IReadOnlyList<FacetOption> Colors)> GetSizeAndColorFacetsAsync(
-        IQueryable<Listing> scopedListings, CancellationToken cancellationToken)
-    {
-        // Project the distinct (option name, value) pairs in the database rather than pulling
-        // every matching listing and its whole option graph into memory: the facet list is
-        // bounded by the vocabulary merchants actually use, not by catalog size. Only values on
-        // a sellable variant (active, in stock) are offered, so the filter never presents a
-        // choice that resolves to nothing (matches the variant-aware filter above).
-        var flattened = await scopedListings
-            .SelectMany(l => l.Variants)
-            .Where(v => v.IsActive && v.AvailableQuantity > 0)
-            .SelectMany(v => v.OptionValues)
-            .Select(ov => new { OptionName = ov.OptionValue.Option.Name, ov.OptionValue.Value })
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        var sizes = flattened
-            .Where(x => SizeOptionNames.Contains(x.OptionName, StringComparer.OrdinalIgnoreCase))
-            .Select(x => x.Value)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
-            .Select(v => new FacetOption(v, v))
-            .ToList();
-
-        var colors = flattened
-            .Where(x => ColorOptionNames.Contains(x.OptionName, StringComparer.OrdinalIgnoreCase))
-            .Select(x => x.Value)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(v => v, StringComparer.OrdinalIgnoreCase)
-            .Select(v => new FacetOption(v, v))
-            .ToList();
-
-        return (sizes, colors);
+        return new ShopFacets(categories, conditions);
     }
 
     /// <summary>

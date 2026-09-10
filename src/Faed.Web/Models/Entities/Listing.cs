@@ -43,7 +43,7 @@ public class Listing
         Guid conditionGradeId,
         string title,
         string slug,
-        string description,
+        string? description,
         DateTime nowUtc)
     {
         Id = Guid.CreateVersion7();
@@ -52,7 +52,7 @@ public class Listing
         ConditionGradeId = conditionGradeId;
         Title = RequireText(title, "title", MinTitleLength, MaxTitleLength);
         Slug = RequireText(slug, "slug", 1, MaxSlugLength);
-        Description = RequireText(description, "description", 1, MaxDescriptionLength);
+        Description = OptionalText(description, "description", MaxDescriptionLength);
         Status = ListingStatus.Draft;
         CreatedAtUtc = nowUtc;
         UpdatedAtUtc = nowUtc;
@@ -72,7 +72,12 @@ public class Listing
     /// <summary>Public routing identifier. Never an authorization key.</summary>
     public string Slug { get; private set; } = null!;
 
-    public string Description { get; private set; } = null!;
+    /// <summary>
+    /// Optional free prose the buyer sees under the photos: model and specs, what is in the
+    /// box, where a mark is. Not a substitute for the structured condition — that is chosen
+    /// from four cards — so a listing with none is still complete.
+    /// </summary>
+    public string? Description { get; private set; }
 
     /// <summary>What the item normally sells for. Requires provenance evidence to be submitted.</summary>
     public decimal? ReferencePrice { get; private set; }
@@ -161,7 +166,7 @@ public class Listing
         Guid categoryId,
         Guid conditionGradeId,
         string title,
-        string description,
+        string? description,
         decimal? referencePrice,
         decimal? retailPrice,
         string? returnPolicyText,
@@ -180,7 +185,7 @@ public class Listing
         RequireMaterialEditAllowed();
 
         title = RequireText(title, "title", MinTitleLength, MaxTitleLength);
-        description = RequireText(description, "description", 1, MaxDescriptionLength);
+        description = OptionalText(description, "description", MaxDescriptionLength);
         returnPolicyText = OptionalText(returnPolicyText, "return policy", MaxPolicyTextLength);
         RequireValidWarranty(warrantyType, warrantyMonths);
         includedItemsText = OptionalText(includedItemsText, "included items", MaxPolicyTextLength);
@@ -562,52 +567,55 @@ public class Listing
     /// Both parameters are resolved by the caller: the aggregate stores only the catalog
     /// ids, never a denormalized copy of admin-managed reference text
     /// </remarks>
-    public IReadOnlyList<string> DescribeSubmissionBlockers(
+    public IReadOnlyList<SubmissionBlocker> DescribeSubmissionBlockers(
         string conditionGradeCode, IReadOnlyCollection<string> discountReasonCodes)
     {
-        var problems = new List<string>();
+        var problems = new List<SubmissionBlocker>();
 
         if (RetailPrice is null)
         {
-            problems.Add("A retail price is required.");
+            problems.Add(new SubmissionBlocker(SubmissionBlockerFields.Price, "Set a price."));
         }
 
         if (ReferencePrice is { } reference && RetailPrice is { } retail && reference <= retail)
         {
-            problems.Add("The reference price must be higher than the Faed retail price.");
+            problems.Add(new SubmissionBlocker(
+                SubmissionBlockerFields.OriginalPrice, "The original price must be higher than your price."));
         }
 
         if (ReferencePrice is not null && _referencePriceEvidence.Count == 0)
         {
-            problems.Add("Add evidence for the reference price, or remove the reference price.");
+            problems.Add(new SubmissionBlocker(
+                SubmissionBlockerFields.OriginalPrice,
+                "Add a photo or link showing the original price, or clear the original price."));
         }
 
         if (_discountReasons.Count == 0)
         {
-            problems.Add("Select at least one reason this stock is discounted.");
+            problems.Add(new SubmissionBlocker(SubmissionBlockerFields.Condition, "Choose the item's condition."));
         }
 
         if (!_variants.Any(v => v.IsActive))
         {
-            problems.Add("Add at least one active variant.");
+            problems.Add(new SubmissionBlocker(SubmissionBlockerFields.Quantity, "Enter how many units you have."));
         }
 
         if (_options.Any(o => o.Values.Count == 0))
         {
-            problems.Add("Every option needs at least one value.");
+            problems.Add(new SubmissionBlocker(SubmissionBlockerFields.Quantity, "Every option needs at least one value."));
         }
 
         if (!_media.Any(m => m.MediaType == ListingMediaType.Product))
         {
-            problems.Add("Add at least one product photo.");
+            problems.Add(new SubmissionBlocker(SubmissionBlockerFields.Photos, "Add at least one photo."));
         }
 
         if (DisclosesAPhysicalImperfection(conditionGradeCode, discountReasonCodes)
             && !_media.Any(m => m.MediaType is ListingMediaType.Defect or ListingMediaType.Packaging))
         {
-            problems.Add(
-                "This listing's condition grade or discount reason discloses a physical imperfection — " +
-                "add a defect or packaging photo showing it.");
+            problems.Add(new SubmissionBlocker(
+                SubmissionBlockerFields.DefectPhoto,
+                "This condition needs a photo of the mark or the opened box."));
         }
 
         return problems;
@@ -625,7 +633,7 @@ public class Listing
         var blockers = DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
         if (blockers.Count > 0)
         {
-            throw new DomainException(blockers[0]);
+            throw new DomainException(blockers[0].Message);
         }
 
         Status = ListingStatus.PendingReview;
@@ -777,6 +785,30 @@ public class Listing
     {
         RequireNotArchived();
         Status = ListingStatus.Archived;
+        Touch(nowUtc);
+    }
+
+    /// <summary>
+    /// Sets a variant's on-hand quantity from the merchant's single "Quantity" field on the
+    /// listing form. A quantity is not a claim about the product — the title, condition, photos
+    /// and price are — so this deliberately does NOT route through
+    /// <see cref="ApplyMaterialChange"/>: editing stock on a Live listing must never send it
+    /// back to moderation. That rule outlived the deleted <c>IInventoryService</c>, which first
+    /// stated it, and PHASE-PLAN.md Phase 3 carried it forward to be enforced here. Publication
+    /// is still reconciled with stock — a listing that hits zero becomes SoldOut, and returns
+    /// to Live when restocked — through <see cref="RefreshAvailability(DateTime)"/>.
+    /// </summary>
+    public void SetVariantStock(Guid variantId, int onHand, DateTime nowUtc)
+    {
+        RequireNotArchived();
+        if (Status == ListingStatus.PendingReview)
+        {
+            throw new DomainException(
+                "This listing is being reviewed and cannot be edited until a decision is made.");
+        }
+
+        FindVariant(variantId).SetOnHandQuantity(onHand, nowUtc);
+        RefreshAvailability(nowUtc);
         Touch(nowUtc);
     }
 
@@ -1032,4 +1064,26 @@ public class Listing
     }
 
     private void Touch(DateTime nowUtc) => UpdatedAtUtc = nowUtc;
+}
+
+/// <summary>
+/// One reason a listing cannot be published yet, paired with the merchant-form field that
+/// fixes it. <see cref="Listing.DescribeSubmissionBlockers"/> returns these so the controller
+/// can attach each message to its field for inline validation, rather than the merchant
+/// meeting a single error after pressing Publish.
+/// </summary>
+public sealed record SubmissionBlocker(string Field, string Message);
+
+/// <summary>
+/// The <see cref="SubmissionBlocker.Field"/> keys. They match the merchant listing form's
+/// input names so a controller can map a blocker straight onto <c>ModelState</c>.
+/// </summary>
+public static class SubmissionBlockerFields
+{
+    public const string Price = "Price";
+    public const string OriginalPrice = "OriginalPrice";
+    public const string Condition = "Condition";
+    public const string Quantity = "Quantity";
+    public const string Photos = "Photos";
+    public const string DefectPhoto = "DefectPhoto";
 }

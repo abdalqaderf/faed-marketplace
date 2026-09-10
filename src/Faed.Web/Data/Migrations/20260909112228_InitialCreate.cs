@@ -272,7 +272,7 @@ namespace Faed.Web.Data.Migrations
                     ConditionGradeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Slug = table.Column<string>(type: "nvarchar(240)", maxLength: 240, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     ReferencePrice = table.Column<decimal>(type: "decimal(18,3)", nullable: true),
                     RetailPrice = table.Column<decimal>(type: "decimal(18,3)", nullable: true),
                     ReturnPolicyText = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),

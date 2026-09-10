@@ -4,7 +4,8 @@ namespace Faed.Web.Models.Entities;
 
 /// <summary>
 /// A physical pickup point a merchant offers for B2C orders. Faed does not operate warehouses; the address, instructions
-/// and hours are merchant-supplied free text and are snapshotted onto the order at checkout.
+/// and hours are merchant-supplied free text and are snapshotted onto the order when the
+/// buyer reserves.
 /// </summary>
 public class MerchantLocation
 {

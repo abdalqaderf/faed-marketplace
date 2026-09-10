@@ -56,11 +56,11 @@
             <table class="faed-table">
                 <thead>
                     <tr>
-                        <th scope="col">Placed</th>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Reserved</th>
                         <th scope="col">Buyer</th>
                         <th scope="col">Units</th>
-                        <th scope="col">Total</th>
-                        <th scope="col">Fulfilment</th>
+                        <th scope="col">Cash at pickup</th>
                         <th scope="col">Status</th>
                         <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
@@ -69,11 +69,11 @@
                     @foreach (var order in Model.Orders.Items)
                     {
                         <tr class="@(order.Status == OrderStatus.Pending ? "faed-row--attention" : "")">
-                            <td><a asp-action="Details" asp-route-id="@order.Id">@AmmanTime.FormatDateTime(order.CreatedAtUtc)</a></td>
+                            <td><a asp-action="Details" asp-route-id="@order.Id">#@order.Reference</a></td>
+                            <td>@AmmanTime.FormatDateTime(order.CreatedAtUtc)</td>
                             <td>@order.Counterparty</td>
                             <td>@order.TotalUnits</td>
                             <td>JOD @order.Total.ToString("0.000")</td>
-                            <td>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</td>
                             <td><span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span></td>
                             <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Details" asp-route-id="@order.Id">View</a></td>
                         </tr>

@@ -1,15 +1,8 @@
 ﻿using Faed.Web.Models.Enums;
 using Faed.Web.Services.Listings;
+using Faed.Web.Services.Ordering;
 
 namespace Faed.Web.Services.Marketplace;
-
-/// <summary>Which sales channel a browse query should restrict results to.</summary>
-public enum MarketplaceChannel
-{
-    All = 0,
-    RetailOnly = 1,
-    WholesaleOnly = 2,
-}
 
 public enum ShopSort
 {
@@ -19,19 +12,16 @@ public enum ShopSort
 }
 
 /// <summary>
-/// Everything a browse request can filter, sort and page by. Every catalog reference is a
-/// public slug/code, never a database id — an unresolvable
-/// value must yield zero results rather than being silently ignored.
+/// Everything a browse request can filter, sort and page by. The shop has four filters only —
+/// category, condition, price range and text (docs/CORE.md §4.2). Every catalog reference is
+/// a public slug/code, never a database id — an unresolvable value must yield zero results
+/// rather than being silently ignored.
 /// </summary>
 public sealed record ShopQuery(
     string? CategorySlug,
     string? ConditionCode,
-    string? DiscountReasonCode,
-    string? SizeValue,
-    string? ColorValue,
     decimal? MinPrice,
     decimal? MaxPrice,
-    MarketplaceChannel Channel,
     ShopSort Sort,
     string? SearchText,
     string? MerchantSlug,
@@ -84,14 +74,11 @@ public sealed record ListingCardView(
 
 public sealed record FacetOption(string Value, string Label);
 
-/// <summary>The DB-driven filter choices for a browse page. Always the full reference list —
-/// categories, conditions and discount reasons are small and admin-managed.</summary>
+/// <summary>The DB-driven filter choices for a browse page: the full admin-managed reference
+/// lists of categories and condition grades, both small.</summary>
 public sealed record ShopFacets(
     IReadOnlyList<FacetOption> Categories,
-    IReadOnlyList<FacetOption> Conditions,
-    IReadOnlyList<FacetOption> DiscountReasons,
-    IReadOnlyList<FacetOption> Sizes,
-    IReadOnlyList<FacetOption> Colors);
+    IReadOnlyList<FacetOption> Conditions);
 
 public sealed record ShopResultView(
     IReadOnlyList<ListingCardView> Items,
@@ -131,7 +118,7 @@ public sealed record PublicListingDetailView(
     Guid Id,
     string Title,
     string Slug,
-    string Description,
+    string? Description,
     string CategoryName,
     string CategorySlug,
     string ConditionCode,
@@ -152,6 +139,7 @@ public sealed record PublicListingDetailView(
     string MerchantBusinessName,
     string MerchantSlug,
     bool MerchantIsVerified,
+    MerchantResponseStats MerchantResponse,
     DateTime PublishedAtUtc)
 {
     public bool HasValidReferencePrice => ReferencePrice is { } reference && RetailPrice is { } retail && reference > retail;
@@ -206,7 +194,8 @@ public sealed record PublicMerchantProfileView(
     string PublicSlug,
     bool IsVerified,
     DateTime MemberSinceUtc,
-    int LiveListingCount);
+    int LiveListingCount,
+    MerchantResponseStats Response);
 
 public sealed record CategoryNavItem(string Slug, string Name, int LiveListingCount);
 

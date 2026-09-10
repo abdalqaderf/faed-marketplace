@@ -1,37 +1,23 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Ordering;
 using Faed.Web.Services.Trust;
 
 namespace Faed.Web.Areas.Buyer.ViewModels;
 
-/// <summary>One "how many of this variant" row on the checkout form.</summary>
-public sealed class CheckoutLineFormModel
-{
-    public Guid VariantId { get; set; }
-
-    [Range(0, 50, ErrorMessage = "Enter a quantity between 0 and 50.")]
-    public int Quantity { get; set; }
-}
-
 /// <summary>
-/// The buyer's checkout submission. Prices and the selling merchant are never bound here —
-/// they are resolved server-side.
+/// The buyer's reservation submission: which unit, which pickup point, and the contact
+/// details the shop uses to reach them. Prices and the selling merchant are never bound here
+/// — they are resolved server-side. A reservation is always one physical unit, collected and
+/// paid for in cash at the shop.
 /// </summary>
-public sealed class CheckoutFormModel
+public sealed class ReservationFormModel
 {
     public string ListingSlug { get; set; } = string.Empty;
 
-    public List<CheckoutLineFormModel> Lines { get; set; } = [];
-
-    [Required(ErrorMessage = "Choose how you want to receive the order.")]
-    public OrderFulfillmentType FulfillmentType { get; set; } = OrderFulfillmentType.Pickup;
+    public Guid VariantId { get; set; }
 
     public Guid? MerchantLocationId { get; set; }
-
-    [StringLength(600)]
-    public string? DeliveryAddressText { get; set; }
 
     [Required(ErrorMessage = "Enter a contact name.")]
     [StringLength(120)]
@@ -45,11 +31,11 @@ public sealed class CheckoutFormModel
     public string? BuyerNote { get; set; }
 }
 
-public sealed class CheckoutPageModel
+public sealed class ReservationPageModel
 {
-    public required CheckoutView Checkout { get; init; }
+    public required ReservationView Reservation { get; init; }
 
-    public CheckoutFormModel Form { get; set; } = new();
+    public ReservationFormModel Form { get; set; } = new();
 }
 
 public sealed class BuyerOrderListPageModel

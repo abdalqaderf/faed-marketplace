@@ -10,7 +10,9 @@ public sealed record OrderLineInput(Guid VariantId, int Quantity);
 
 /// <summary>
 /// Everything needed to place a B2C order. The selling merchant is resolved from the
-/// requested variants, never trusted from input; all money is computed server-side
+/// requested variants, never trusted from input; all money is computed server-side. Every
+/// Phase-1 order is a pickup — the platform models no delivery zone, fee or address, so the
+/// two parties arrange any delivery directly on WhatsApp after the merchant confirms.
 /// </summary>
 public sealed record PlaceOrderInput(
     IReadOnlyList<OrderLineInput> Lines,
@@ -21,9 +23,9 @@ public sealed record PlaceOrderInput(
     string ContactPhone,
     string? BuyerNote);
 
-// ---- Checkout view ----------------------------------------------------------------
+// ---- Reservation view ------------------------------------------------------------
 
-public sealed record CheckoutLineView(
+public sealed record ReservationLineView(
     Guid VariantId,
     string Combination,
     decimal UnitPrice,
@@ -32,11 +34,15 @@ public sealed record CheckoutLineView(
     public bool IsSellable => AvailableQuantity > 0;
 }
 
-public sealed record PickupLocationOption(
-    Guid Id, string Name, string Address, string? Instructions, string? Hours);
+/// <summary>
+/// A pickup point as shown before the buyer reserves: the merchant's area only. The full
+/// address, hours and phone are revealed once the merchant confirms (docs/BUSINESS-MODEL.md
+/// §8.7), which protects merchant details from scraping and gives the confirm step meaning.
+/// </summary>
+public sealed record ReservationPickupOption(Guid Id, string Name, string Area);
 
-/// <summary>The single-listing order builder shown to a signed-in buyer before checkout.</summary>
-public sealed record CheckoutView(
+/// <summary>The single-listing reservation confirmation shown to a signed-in buyer.</summary>
+public sealed record ReservationView(
     Guid ListingId,
     string ListingTitle,
     string ListingSlug,
@@ -44,13 +50,10 @@ public sealed record CheckoutView(
     string MerchantBusinessName,
     string MerchantSlug,
     string ConditionLabel,
-    IReadOnlyList<string> DiscountReasonNames,
-    IReadOnlyList<CheckoutLineView> Lines,
-    IReadOnlyList<PickupLocationOption> PickupLocations)
+    IReadOnlyList<ReservationLineView> Lines,
+    IReadOnlyList<ReservationPickupOption> PickupLocations)
 {
-    public bool CanPickup => PickupLocations.Count > 0;
-
-    public bool CanOrder => Lines.Any(l => l.IsSellable) && CanPickup;
+    public bool CanReserve => Lines.Any(l => l.IsSellable) && PickupLocations.Count > 0;
 }
 
 // ---- Order views ----------------------------------------------------------------
@@ -58,6 +61,7 @@ public sealed record CheckoutView(
 /// <summary>A row in a buyer's order history or a merchant's order queue.</summary>
 public sealed record OrderSummaryView(
     Guid Id,
+    string Reference,
     OrderStatus Status,
     OrderFulfillmentType FulfillmentType,
     string Counterparty,
@@ -79,6 +83,7 @@ public sealed record OrderLineView(
 /// <summary>The full picture of one order for its buyer or its selling merchant.</summary>
 public sealed record OrderDetailView(
     Guid Id,
+    string Reference,
     OrderStatus Status,
     string? StatusReason,
     OrderFulfillmentType FulfillmentType,
@@ -97,8 +102,16 @@ public sealed record OrderDetailView(
     Guid MerchantProfileId,
     string MerchantBusinessName,
     string MerchantSlug,
+    string PickupArea,
+    string? MerchantPhone,
     IReadOnlyList<OrderLineView> Items)
 {
+    /// <summary>
+    /// Contact details are exchanged only after the merchant confirms (docs/BUSINESS-MODEL.md
+    /// §8.7): before that the buyer sees the shop's area, the merchant sees the order alone.
+    /// </summary>
+    public bool ContactRevealed => ConfirmedAtUtc is not null;
+
     public bool BuyerCanCancel => Status is OrderStatus.Pending or OrderStatus.Confirmed;
 
     /// <summary>The buyer can confirm receipt once the merchant has handed the order over.</summary>

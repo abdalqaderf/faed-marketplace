@@ -19,7 +19,7 @@
     <div class="faed-page__header">
         <div>
             <h1 class="faed-page__title">Listings</h1>
-            <p class="faed-page__subtitle">Manage your marketplace listings, variants, availability, and stock.</p>
+            <p class="faed-page__subtitle">Everything you're selling, and what still needs your attention.</p>
         </div>
         <div class="faed-page__actions">
             <a class="faed-btn faed-btn--primary" asp-action="Create">@FaedIcon.Render("plus", "faed-icon")<span>New listing</span></a>
@@ -64,9 +64,8 @@
                         <th scope="col">Status</th>
                         <th scope="col">Category</th>
                         <th scope="col">Condition</th>
-                        <th scope="col">Retail price</th>
-                        <th scope="col">Variants</th>
-                        <th scope="col">Available</th>
+                        <th scope="col">Price</th>
+                        <th scope="col">In stock</th>
                         <th scope="col">Updated</th>
                         <th scope="col"><span class="visually-hidden">Action</span></th>
                     </tr>
@@ -90,9 +89,8 @@
                                 }
                             </td>
                             <td>@item.CategoryName</td>
-                            <td>Grade @item.ConditionCode</td>
+                            <td>@(ConditionPresets.All.FirstOrDefault(p => p.GradeCode == item.ConditionCode)?.Heading ?? item.ConditionCode)</td>
                             <td>@(item.RetailPrice is { } price ? $"JOD {price:0.000}" : "—")</td>
-                            <td>@item.VariantCount</td>
                             <td>@item.AvailableUnits</td>
                             <td>@AmmanTime.FormatDate(item.UpdatedAtUtc)</td>
                             <td><a class="faed-btn faed-btn--ghost faed-btn--sm" asp-action="Edit" asp-route-id="@item.Id">Manage</a></td>

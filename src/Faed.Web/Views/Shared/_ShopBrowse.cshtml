@@ -70,7 +70,7 @@
             <svg viewBox="0 0 24 24" focusable="false"><path d="m21 20-4.7-4.7a7.4 7.4 0 1 0-1 1L20 21l1-1ZM5.5 10.5a5 5 0 1 1 10 0 5 5 0 0 1-10 0Z" fill="currentColor" /></svg>
         </span>
         <input class="faed-shop-search__input" type="search" id="shop-search-input" name="Q" value="@filters.Q"
-               placeholder="@(isStore ? "Search this store" : "Search products, brands or keywords")" maxlength="@ShopFilterModel.MaxSearchTextLength" />
+               placeholder="@(isStore ? "Search this store" : "Search products or keywords")" maxlength="@ShopFilterModel.MaxSearchTextLength" />
         @if (!string.IsNullOrWhiteSpace(filters.Q))
         {
             <a class="faed-shop-search__clear" href="@FilterHrefWithout("Q")" aria-label="Clear search">@FaedIcon.Render("close", "faed-icon")</a>
@@ -79,7 +79,7 @@
     </form>
 
     <div class="faed-shop-toolbar">
-        <form method="get" action="@path" class="faed-quick-filters" aria-label="Quick filters">
+        <form method="get" action="@path" class="faed-quick-filters" aria-label="Filters">
             @foreach (var pair in filters.ToFilterRouteValues())
             {
                 if (pair.Key is not ("Category" or "Condition" or "MinPrice" or "MaxPrice") && !string.IsNullOrEmpty(pair.Value))
@@ -140,15 +140,6 @@
             </div>
         </form>
 
-        <button type="button" class="faed-quick-filter faed-more-filters" data-bs-toggle="offcanvas" data-bs-target="#shop-filters" aria-controls="shop-filters">
-            @FaedIcon.Render("sliders", "faed-icon faed-more-filters__icon")
-            <span>More filters</span>
-            @if (filters.ActiveFilterCount > 0)
-            {
-                <span class="faed-filter-toggle__count" aria-label="@(filters.ActiveFilterCount == 1 ? "1 filter applied" : $"{filters.ActiveFilterCount} filters applied")">@filters.ActiveFilterCount</span>
-            }
-        </button>
-
         <form method="get" action="@path" class="faed-shop-sort">
             @foreach (var pair in filters.ToFilterRouteValues())
             {
@@ -190,154 +181,13 @@
                 {
                     <a class="faed-filter-chip" href="@FilterHrefWithout("Condition")" aria-label="Remove condition filter @conditionLabel"><span>@conditionLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
-                @if (!string.IsNullOrWhiteSpace(filters.Reason))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Reason")" aria-label="Remove discount reason filter"><span>@FacetLabel(facets.DiscountReasons, filters.Reason, filters.Reason!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(filters.Size))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Size")" aria-label="Remove size filter"><span>Size @FacetLabel(facets.Sizes, filters.Size, filters.Size!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(filters.Color))
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Color")" aria-label="Remove colour filter"><span>@FacetLabel(facets.Colors, filters.Color, filters.Color!)</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
                 @if (filters.MinPrice is not null || filters.MaxPrice is not null)
                 {
                     <a class="faed-filter-chip" href="@FilterHrefWithout("MinPrice", "MaxPrice")" aria-label="Remove price filter @priceLabel"><span>@priceLabel</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
                 }
-                @if (filters.Channel != MarketplaceChannel.All)
-                {
-                    <a class="faed-filter-chip" href="@FilterHrefWithout("Channel")" aria-label="Remove availability filter"><span>@(filters.Channel == MarketplaceChannel.RetailOnly ? "Retail available" : "Wholesale available")</span>@FaedIcon.Render("close", "faed-icon faed-filter-chip__remove")</a>
-                }
                 <a class="faed-active-filters__clear" href="@path">Clear all</a>
             </div>
         }
-    </div>
-
-    <div class="offcanvas offcanvas-end faed-filter-drawer" tabindex="-1" id="shop-filters" aria-labelledby="shop-filters-label">
-        <div class="offcanvas-header faed-filter-drawer__header">
-            <div>
-                <p class="faed-kicker">Refine results</p>
-                <h2 class="offcanvas-title" id="shop-filters-label">Filters</h2>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close filters"></button>
-        </div>
-        <form method="get" action="@path" class="faed-filter-drawer__form">
-            <input type="hidden" name="Sort" value="@filters.Sort" />
-            <div class="offcanvas-body faed-filter-drawer__body">
-                <div class="faed-filter-drawer__search">
-                    <label for="filter-q">Search</label>
-                    <input class="faed-input" type="search" id="filter-q" name="Q" value="@filters.Q" maxlength="@ShopFilterModel.MaxSearchTextLength" placeholder="Search listings" />
-                </div>
-
-                <details class="faed-filter-section" open>
-                    <summary><span>Category</span><span class="faed-filter-section__summary-value">@categoryLabel</span></summary>
-                    <fieldset>
-                        <legend class="visually-hidden">Category</legend>
-                        <div class="faed-filter-options">
-                            <label class="faed-filter-option"><input type="radio" name="Category" value="" checked="@string.IsNullOrEmpty(filters.Category)" /><span>All categories</span></label>
-                            @foreach (var option in facets.Categories)
-                            {
-                                <label class="faed-filter-option"><input type="radio" name="Category" value="@option.Value" checked="@(filters.Category == option.Value)" /><span>@option.Label</span></label>
-                            }
-                        </div>
-                    </fieldset>
-                </details>
-
-                <details class="faed-filter-section" open>
-                    <summary><span>Condition</span><span class="faed-filter-section__summary-value">@conditionLabel</span></summary>
-                    <fieldset>
-                        <legend class="visually-hidden">Condition</legend>
-                        <div class="faed-filter-options">
-                            <label class="faed-filter-option"><input type="radio" name="Condition" value="" checked="@string.IsNullOrEmpty(filters.Condition)" /><span>Any condition</span></label>
-                            @foreach (var option in facets.Conditions)
-                            {
-                                <label class="faed-filter-option"><input type="radio" name="Condition" value="@option.Value" checked="@(filters.Condition == option.Value)" /><span>@option.Label</span></label>
-                            }
-                        </div>
-                    </fieldset>
-                </details>
-
-                <details class="faed-filter-section" open>
-                    <summary><span>Price</span><span class="faed-filter-section__summary-value">@priceLabel</span></summary>
-                    <fieldset>
-                        <legend class="visually-hidden">Price range in JOD</legend>
-                        <div class="faed-filter-price-row">
-                            <label><span>Minimum</span><input class="faed-input" type="number" min="0" step="0.001" name="MinPrice" value="@filters.MinPrice" placeholder="0" /></label>
-                            <span aria-hidden="true">–</span>
-                            <label><span>Maximum</span><input class="faed-input" type="number" min="0" step="0.001" name="MaxPrice" value="@filters.MaxPrice" placeholder="Any" /></label>
-                        </div>
-                    </fieldset>
-                </details>
-
-                <details class="faed-filter-section">
-                    <summary><span>Why discounted</span><span class="faed-filter-section__summary-value">@(string.IsNullOrWhiteSpace(filters.Reason) ? "Any" : FacetLabel(facets.DiscountReasons, filters.Reason, filters.Reason!))</span></summary>
-                    <fieldset>
-                        <legend class="visually-hidden">Why discounted</legend>
-                        <div class="faed-filter-options">
-                            <label class="faed-filter-option"><input type="radio" name="Reason" value="" checked="@string.IsNullOrEmpty(filters.Reason)" /><span>Any reason</span></label>
-                            @foreach (var option in facets.DiscountReasons)
-                            {
-                                <label class="faed-filter-option"><input type="radio" name="Reason" value="@option.Value" checked="@(filters.Reason == option.Value)" /><span>@option.Label</span></label>
-                            }
-                        </div>
-                    </fieldset>
-                </details>
-
-                @if (facets.Sizes.Count > 0)
-                {
-                    <details class="faed-filter-section">
-                        <summary><span>Size</span><span class="faed-filter-section__summary-value">@(string.IsNullOrWhiteSpace(filters.Size) ? "Any" : FacetLabel(facets.Sizes, filters.Size, filters.Size!))</span></summary>
-                        <fieldset>
-                            <legend class="visually-hidden">Size</legend>
-                            <div class="faed-filter-options faed-filter-options--wrap">
-                                <label class="faed-filter-option"><input type="radio" name="Size" value="" checked="@string.IsNullOrEmpty(filters.Size)" /><span>Any size</span></label>
-                                @foreach (var option in facets.Sizes)
-                                {
-                                    <label class="faed-filter-option"><input type="radio" name="Size" value="@option.Value" checked="@(filters.Size == option.Value)" /><span>@option.Label</span></label>
-                                }
-                            </div>
-                        </fieldset>
-                    </details>
-                }
-
-                @if (facets.Colors.Count > 0)
-                {
-                    <details class="faed-filter-section">
-                        <summary><span>Colour</span><span class="faed-filter-section__summary-value">@(string.IsNullOrWhiteSpace(filters.Color) ? "Any" : FacetLabel(facets.Colors, filters.Color, filters.Color!))</span></summary>
-                        <fieldset>
-                            <legend class="visually-hidden">Colour</legend>
-                            <div class="faed-filter-options faed-filter-options--wrap">
-                                <label class="faed-filter-option"><input type="radio" name="Color" value="" checked="@string.IsNullOrEmpty(filters.Color)" /><span>Any colour</span></label>
-                                @foreach (var option in facets.Colors)
-                                {
-                                    <label class="faed-filter-option"><input type="radio" name="Color" value="@option.Value" checked="@(filters.Color == option.Value)" /><span>@option.Label</span></label>
-                                }
-                            </div>
-                        </fieldset>
-                    </details>
-                }
-
-                <details class="faed-filter-section">
-                    <summary><span>Availability</span><span class="faed-filter-section__summary-value">@(filters.Channel == MarketplaceChannel.All ? "All" : filters.Channel == MarketplaceChannel.RetailOnly ? "Retail" : "Wholesale")</span></summary>
-                    <fieldset>
-                        <legend class="visually-hidden">Availability</legend>
-                        <div class="faed-filter-options">
-                            <label class="faed-filter-option"><input type="radio" name="Channel" value="@MarketplaceChannel.All" checked="@(filters.Channel == MarketplaceChannel.All)" /><span>All listings</span></label>
-                            <label class="faed-filter-option"><input type="radio" name="Channel" value="@MarketplaceChannel.RetailOnly" checked="@(filters.Channel == MarketplaceChannel.RetailOnly)" /><span>Retail available</span></label>
-                            <label class="faed-filter-option"><input type="radio" name="Channel" value="@MarketplaceChannel.WholesaleOnly" checked="@(filters.Channel == MarketplaceChannel.WholesaleOnly)" /><span>Wholesale available</span></label>
-                        </div>
-                        <p class="faed-filter-section__hint">A listing can support both retail and wholesale. This filter checks what is available.</p>
-                    </fieldset>
-                </details>
-            </div>
-
-            <div class="faed-filter-drawer__actions">
-                <a class="faed-btn faed-btn--ghost" href="@path">Clear all</a>
-                <button class="faed-btn faed-btn--primary" type="submit">Show results</button>
-            </div>
-        </form>
     </div>
 
     @if (!result.HasResults)
@@ -347,7 +197,7 @@
             @if (filters.HasActiveFilters)
             {
                 <div class="faed-empty__title">No listings match these choices</div>
-                <p>Remove one or two filters, widen the price range, or start again with all current stock.</p>
+                <p>Remove a filter, widen the price range, or start again with all current stock.</p>
                 <a class="faed-btn faed-btn--primary" href="@path">Clear filters</a>
             }
             else

@@ -1,23 +1,27 @@
 @model BuyerOrderDetailPageModel
 @{
     var order = Model.Order;
-    ViewData["Title"] = $"Order — {order.MerchantBusinessName}";
-    var orderReference = order.Id.ToString()[..8].ToUpperInvariant();
+    ViewData["Title"] = $"Reservation #{order.Reference}";
+    var orderReference = order.Reference;
     var isTerminalProblem = order.Status is OrderStatus.Cancelled or OrderStatus.NoShow;
+    var firstItem = order.Items.Count > 0 ? order.Items[0].ListingTitle : "my item";
+    var whatsApp = order.ContactRevealed
+        ? WhatsAppLink.Build(order.MerchantPhone, $"Hi, I reserved {firstItem} on Faed. Order #{order.Reference}")
+        : null;
 }
 
 <div class="faed-page faed-page--wide faed-buyer-page faed-order-detail-page">
     <nav class="faed-breadcrumb" aria-label="Breadcrumb">
         <a asp-action="Index">My orders</a>
         <span aria-hidden="true">/</span>
-        <span aria-current="page">Order @orderReference</span>
+        <span aria-current="page">Reservation #@orderReference</span>
     </nav>
 
     <header class="faed-order-detail-hero">
         <div>
-            <p class="faed-kicker">Order @orderReference</p>
-            <h1>Order from @order.MerchantBusinessName</h1>
-            <p>Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) · @OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</p>
+            <p class="faed-kicker">Reservation #@orderReference</p>
+            <h1>Reserved from @order.MerchantBusinessName</h1>
+            <p>Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) · Pickup, pay cash</p>
         </div>
         <div class="faed-order-detail-hero__status">
             <span>Status</span>
@@ -28,8 +32,22 @@
     @if (order.Status == OrderStatus.Pending && order.ReservationExpiresAtUtc is { } expires)
     {
         <div class="faed-order-callout faed-order-callout--info" role="status">
-            <strong>Your stock is reserved.</strong>
-            <span>The merchant has until about @AmmanTime.FormatDateTime(expires) to confirm. If it is not confirmed, the order is cancelled automatically and the stock is released.</span>
+            <strong>The item is held for you.</strong>
+            <span>The shop has until about @AmmanTime.FormatDateTime(expires) to confirm. If it doesn't, the reservation is cancelled automatically and you lose nothing.</span>
+        </div>
+    }
+    else if (order.Status == OrderStatus.Confirmed)
+    {
+        <div class="faed-order-callout faed-order-callout--info" role="status">
+            <strong>Confirmed — go and collect it.</strong>
+            <span>Pick it up and pay cash within 48 hours. After that the reservation is released.</span>
+        </div>
+    }
+    else if (order.Status == OrderStatus.ReadyForPickup)
+    {
+        <div class="faed-order-callout faed-order-callout--info" role="status">
+            <strong>Ready for pickup.</strong>
+            <span>Collect it within 72 hours. After that the reservation is closed and the stock released.</span>
         </div>
     }
 
@@ -51,10 +69,10 @@
                 <span>2</span><strong>Confirmed</strong><small>Merchant accepted</small>
             </li>
             <li class="@(order.Status is OrderStatus.ReadyForPickup or OrderStatus.OutForDelivery or OrderStatus.Completed ? "is-reached" : "")">
-                <span>3</span><strong>Fulfilment</strong><small>@(order.FulfillmentType == OrderFulfillmentType.Pickup ? "Ready for pickup" : "Delivery")</small>
+                <span>3</span><strong>Ready</strong><small>Ready for pickup</small>
             </li>
             <li class="@(order.Status == OrderStatus.Completed ? "is-reached" : "")">
-                <span>4</span><strong>Complete</strong><small>Receipt confirmed</small>
+                <span>4</span><strong>Collected</strong><small>Picked up and paid</small>
             </li>
         </ol>
     }
@@ -167,20 +185,34 @@
             </section>
 
             <section class="faed-order-summary__card" aria-labelledby="fulfilment-summary-title">
-                <p class="faed-kicker">Fulfilment</p>
-                <h2 id="fulfilment-summary-title">@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</h2>
+                <p class="faed-kicker">Pickup</p>
+                <h2 id="fulfilment-summary-title">Collect from @order.MerchantBusinessName</h2>
                 <dl class="faed-order-summary-list">
-                    <div><dt>Details</dt><dd>@order.FulfillmentSnapshot</dd></div>
-                    @if (!string.IsNullOrWhiteSpace(order.DeliveryAddressText))
+                    @if (order.ContactRevealed)
                     {
-                        <div><dt>Delivery address</dt><dd>@order.DeliveryAddressText</dd></div>
+                        <div><dt>Where</dt><dd>@order.FulfillmentSnapshot</dd></div>
+                        @if (!string.IsNullOrWhiteSpace(order.MerchantPhone))
+                        {
+                            <div><dt>Shop phone</dt><dd>@order.MerchantPhone</dd></div>
+                        }
                     }
-                    <div><dt>Contact</dt><dd>@order.ContactName<br />@order.ContactPhone</dd></div>
+                    else
+                    {
+                        <div><dt>Area</dt><dd>@order.PickupArea</dd></div>
+                        <div><dt>Full address</dt><dd>Revealed once the shop confirms your reservation.</dd></div>
+                    }
+                    <div><dt>Your contact</dt><dd>@order.ContactName<br />@order.ContactPhone</dd></div>
                     @if (!string.IsNullOrWhiteSpace(order.BuyerNote))
                     {
                         <div><dt>Your note</dt><dd>@order.BuyerNote</dd></div>
                     }
                 </dl>
+                @if (whatsApp is not null)
+                {
+                    <a class="faed-btn faed-btn--ghost faed-whatsapp-btn" href="@whatsApp" target="_blank" rel="noopener">
+                        @FaedIcon.Render("chat", "faed-icon") Message the shop on WhatsApp
+                    </a>
+                }
                 <a class="faed-order-summary__merchant" asp-area="" asp-controller="Store" asp-action="Index" asp-route-slug="@order.MerchantSlug">
                     Visit @order.MerchantBusinessName @FaedIcon.Render("arrow-right", "faed-icon")
                 </a>

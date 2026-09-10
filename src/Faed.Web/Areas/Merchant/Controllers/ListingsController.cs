@@ -1,5 +1,6 @@
-﻿using Faed.Web.Areas.Merchant.ViewModels;
+using Faed.Web.Areas.Merchant.ViewModels;
 using Faed.Web.Authorization;
+using Faed.Web.Models.Enums;
 using Faed.Web.Services.Common;
 using Faed.Web.Services.Listings;
 using Microsoft.AspNetCore.Authorization;
@@ -8,10 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Faed.Web.Areas.Merchant.Controllers;
 
 /// <summary>
-/// Merchant listing management: create, edit variants/media/evidence, and submit for
-/// moderation. Gated by the <c>RegisteredMerchant</c> policy so drafts can be built before
-/// verification is approved; the service layer re-checks ownership on every call and enforces
-/// the full publish gate (verified, subscribed, under quota) on submission and restoration.
+/// The merchant's listing workspace: the one-page create/edit form (CORE.md §3.2) and the two
+/// lifecycle actions a merchant sees — Pause and Delete. Gated by <c>RegisteredMerchant</c> so
+/// a listing can be built before verification is approved; the service re-checks ownership on
+/// every call and enforces the publish gate (verified, subscribed, under quota) on submission.
 /// </summary>
 [Area("Merchant")]
 [Authorize(Policy = FaedPolicies.RegisteredMerchant)]
@@ -31,30 +32,18 @@ public sealed class ListingsController(IMerchantListingService listings) : Contr
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
-        ViewData["ReferenceData"] = referenceData;
-        return View(new ListingFormModel());
+        return View("Form", new ListingFormPageModel
+        {
+            Form = ListingFormModel.ForNewListing(),
+            ReferenceData = referenceData,
+        });
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ListingFormModel form, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            ViewData["ReferenceData"] = await listings.GetReferenceDataAsync(cancellationToken);
-            return View(form);
-        }
-
-        var result = await listings.CreateAsync(User.RequireUserId(), form.ToInput(), cancellationToken);
-        if (result.Failed)
-        {
-            ModelState.AddModelError(string.Empty, result.Error!);
-            ViewData["ReferenceData"] = await listings.GetReferenceDataAsync(cancellationToken);
-            return View(form);
-        }
-
-        TempData["StatusMessage"] = "Listing created as a draft. Add variants and photos, then submit for review.";
-        return RedirectToAction(nameof(Edit), new { id = result.Value });
-    }
+    [RequestSizeLimit(64 * 1024 * 1024)]
+    public Task<IActionResult> Create(
+        [Bind(Prefix = "Form")] ListingFormModel form, CancellationToken cancellationToken) =>
+        SaveAsync(null, form, cancellationToken);
 
     [HttpGet]
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken)
@@ -65,245 +54,181 @@ public sealed class ListingsController(IMerchantListingService listings) : Contr
             return NotFound();
         }
 
-        var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
-        return View("Workspace", new ListingWorkspacePageModel
+        // Inline, immediate validation: whatever currently stops this listing publishing is
+        // shown next to the field that fixes it, every time the page is opened.
+        foreach (var blocker in listing.SubmissionBlockers)
         {
-            Listing = listing,
-            ReferenceData = referenceData,
+            ModelState.AddModelError($"Form.{blocker.Field}", blocker.Message);
+        }
+
+        var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
+        return View("Form", new ListingFormPageModel
+        {
             Form = ListingFormModel.FromDetail(listing),
+            ReferenceData = referenceData,
+            Listing = listing,
         });
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpdateDetails(Guid id, ListingFormModel form, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { Form = form });
-        }
-
-        var result = await listings.UpdateDetailsAsync(User.RequireUserId(), id, form.ToInput(), cancellationToken);
-        return await AfterMutationAsync(id, result, "Listing details saved.", cancellationToken);
-    }
+    [RequestSizeLimit(64 * 1024 * 1024)]
+    public Task<IActionResult> Edit(
+        Guid id, [Bind(Prefix = "Form")] ListingFormModel form, CancellationToken cancellationToken) =>
+        SaveAsync(id, form, cancellationToken);
 
     [HttpPost]
-    public async Task<IActionResult> AddOption(Guid id, AddOptionModel addOption, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { AddOption = addOption });
-        }
-
-        var result = await listings.AddOptionAsync(User.RequireUserId(), id, addOption.Name, cancellationToken);
-        return await AfterMutationAsync(id, result, $"Option {addOption.Name} added.", cancellationToken);
-    }
+    public async Task<IActionResult> Pause(Guid id, CancellationToken cancellationToken) =>
+        await AfterLifecycleAsync(
+            id, await listings.HideAsync(User.RequireUserId(), id, cancellationToken),
+            "Paused. It's hidden from the shop and a quota slot is free.");
 
     [HttpPost]
-    public async Task<IActionResult> RemoveOption(Guid id, Guid optionId, CancellationToken cancellationToken)
-    {
-        var result = await listings.RemoveOptionAsync(User.RequireUserId(), id, optionId, cancellationToken);
-        return await AfterMutationAsync(id, result, "Option removed.", cancellationToken);
-    }
+    public async Task<IActionResult> Resume(Guid id, CancellationToken cancellationToken) =>
+        await AfterLifecycleAsync(
+            id, await listings.RestoreAsync(User.RequireUserId(), id, cancellationToken),
+            "Back in the shop.");
 
     [HttpPost]
-    public async Task<IActionResult> AddOptionValue(Guid id, AddOptionValueModel addOptionValue, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { AddOptionValue = addOptionValue });
-        }
-
-        var result = await listings.AddOptionValueAsync(
-            User.RequireUserId(), id, addOptionValue.OptionId, addOptionValue.Value, cancellationToken);
-        return await AfterMutationAsync(id, result, $"{addOptionValue.Value} added.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> RemoveOptionValue(
-        Guid id, Guid optionId, Guid optionValueId, CancellationToken cancellationToken)
-    {
-        var result = await listings.RemoveOptionValueAsync(
-            User.RequireUserId(), id, optionId, optionValueId, cancellationToken);
-        return await AfterMutationAsync(id, result, "Value removed.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> AddVariant(Guid id, AddVariantModel addVariant, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { AddVariant = addVariant });
-        }
-
-        var result = await listings.AddVariantAsync(
-            User.RequireUserId(), id,
-            new AddVariantInput(addVariant.Sku, addVariant.OptionValueIds, addVariant.InitialQuantity),
-            cancellationToken);
-        return await AfterMutationAsync(id, result, $"Variant {addVariant.Sku} added.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> RemoveVariant(Guid id, Guid variantId, CancellationToken cancellationToken)
-    {
-        var result = await listings.RemoveVariantAsync(User.RequireUserId(), id, variantId, cancellationToken);
-        return await AfterMutationAsync(id, result, "Variant removed.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> ToggleVariant(
-        Guid id, Guid variantId, bool isActive, CancellationToken cancellationToken)
-    {
-        var result = await listings.SetVariantActiveAsync(
-            User.RequireUserId(), id, variantId, isActive, cancellationToken);
-        return await AfterMutationAsync(
-            id, result, isActive ? "Variant reactivated." : "Variant deactivated.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> UploadImage(Guid id, UploadImageModel uploadImage, CancellationToken cancellationToken)
-    {
-        if (uploadImage.File is { Length: 0 })
-        {
-            ModelState.AddModelError($"{nameof(uploadImage)}.{nameof(uploadImage.File)}", "The selected file is empty.");
-        }
-
-        if (!ModelState.IsValid || uploadImage.File is null)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { UploadImage = uploadImage });
-        }
-
-        await using var stream = uploadImage.File.OpenReadStream();
-        var result = await listings.AddImageAsync(
-            User.RequireUserId(), id,
-            new AddListingImageInput(
-                uploadImage.MediaType, stream, uploadImage.File.FileName, uploadImage.File.ContentType,
-                uploadImage.File.Length, uploadImage.AltText),
-            cancellationToken);
-
-        return await AfterMutationAsync(id, result, "Image added.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> RemoveImage(Guid id, Guid mediaId, CancellationToken cancellationToken)
-    {
-        var result = await listings.RemoveImageAsync(User.RequireUserId(), id, mediaId, cancellationToken);
-        return await AfterMutationAsync(id, result, "Image removed.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> AddEvidence(Guid id, AddEvidenceModel addEvidence, CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-        {
-            return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws with { AddEvidence = addEvidence });
-        }
-
-        Stream? content = null;
-        var openedFile = addEvidence.File is { Length: > 0 } ? addEvidence.File.OpenReadStream() : null;
-        try
-        {
-            content = openedFile;
-            var result = await listings.AddReferencePriceEvidenceAsync(
-                User.RequireUserId(), id,
-                new AddReferencePriceEvidenceInput(
-                    addEvidence.EvidenceType,
-                    addEvidence.ReferenceUrl,
-                    addEvidence.Note,
-                    content,
-                    addEvidence.File?.FileName,
-                    addEvidence.File?.ContentType,
-                    addEvidence.File?.Length ?? 0),
-                cancellationToken);
-
-            return await AfterMutationAsync(id, result, "Evidence added.", cancellationToken);
-        }
-        finally
-        {
-            if (openedFile is not null)
-            {
-                await openedFile.DisposeAsync();
-            }
-        }
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> RemoveEvidence(Guid id, Guid evidenceId, CancellationToken cancellationToken)
-    {
-        var result = await listings.RemoveReferencePriceEvidenceAsync(
-            User.RequireUserId(), id, evidenceId, cancellationToken);
-        return await AfterMutationAsync(id, result, "Evidence removed.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Submit(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await listings.SubmitForReviewAsync(User.RequireUserId(), id, cancellationToken);
-        return await AfterMutationAsync(
-            id, result, "Submitted for review. An administrator will look at it shortly.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Hide(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await listings.HideAsync(User.RequireUserId(), id, cancellationToken);
-        return await AfterMutationAsync(id, result, "Listing hidden from the public marketplace.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Restore(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await listings.RestoreAsync(User.RequireUserId(), id, cancellationToken);
-        return await AfterMutationAsync(id, result, "Listing republished.", cancellationToken);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var result = await listings.ArchiveAsync(User.RequireUserId(), id, cancellationToken);
         if (result.Succeeded)
         {
-            TempData["StatusMessage"] = "Listing archived.";
+            TempData["StatusMessage"] = "Deleted.";
             return RedirectToAction(nameof(Index));
         }
 
-        return await AfterMutationAsync(id, result, string.Empty, cancellationToken);
+        return await AfterLifecycleAsync(id, result, string.Empty);
     }
 
-    private async Task<IActionResult> AfterMutationAsync(
-        Guid id, Result result, string successMessage, CancellationToken cancellationToken)
+    // ---- Internals ------------------------------------------------------------------
+
+    private async Task<IActionResult> SaveAsync(Guid? id, ListingFormModel form, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return await RenderFormAsync(id, form, cancellationToken);
+        }
+
+        var openedStreams = new List<Stream>();
+        try
+        {
+            var submission = BuildSubmission(form, openedStreams);
+            var result = await listings.SaveListingAsync(User.RequireUserId(), id, submission, cancellationToken);
+
+            if (result.Failed)
+            {
+                if (result.ErrorKind == ResultErrorKind.NotFound)
+                {
+                    return NotFound();
+                }
+
+                ModelState.AddModelError(string.Empty, result.Error!);
+                return await RenderFormAsync(id, form, cancellationToken);
+            }
+
+            var outcome = result.Value;
+            TempData["StatusMessage"] = outcome switch
+            {
+                { Published: true, Status: ListingStatus.PendingReview } =>
+                    "Published — it's under review. We'll let you know when it goes live.",
+                { Published: true } => "Saved.",
+                { GateMessage: { } gate } => gate,
+                _ => "Saved as a draft. Fix the highlighted items to publish.",
+            };
+
+            // Always land on the edit view (PRG): it re-derives and shows any remaining
+            // blockers inline, and a published listing shows its "under review" state there.
+            return RedirectToAction(nameof(Edit), new { id = outcome.ListingId });
+        }
+        finally
+        {
+            foreach (var stream in openedStreams)
+            {
+                await stream.DisposeAsync();
+            }
+        }
+    }
+
+    private static ListingFormSubmission BuildSubmission(ListingFormModel form, List<Stream> openedStreams)
+    {
+        IncomingPhoto Open(IFormFile file)
+        {
+            var stream = file.OpenReadStream();
+            openedStreams.Add(stream);
+            return new IncomingPhoto(stream, file.FileName, file.ContentType, file.Length);
+        }
+
+        var productPhotos = form.Photos
+            .Where(f => f.Length > 0)
+            .Select(Open)
+            .ToList();
+
+        var defectPhotos = form.DefectPhoto is { Length: > 0 } defect
+            ? new List<IncomingPhoto> { Open(defect) }
+            : [];
+
+        IncomingEvidence? evidence = null;
+        if (form.OriginalPrice is not null)
+        {
+            if (form.OriginalPriceEvidence is { Length: > 0 } evidenceFile)
+            {
+                evidence = new IncomingEvidence(
+                    ReferencePriceEvidenceType.Photo, form.OriginalPriceLink, Open(evidenceFile));
+            }
+            else if (!string.IsNullOrWhiteSpace(form.OriginalPriceLink))
+            {
+                evidence = new IncomingEvidence(ReferencePriceEvidenceType.Link, form.OriginalPriceLink, null);
+            }
+        }
+
+        return new ListingFormSubmission(
+            form.Title.Trim(),
+            string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim(),
+            form.CategoryId!.Value,
+            form.Condition!.Value,
+            form.ExtraReasonIds,
+            form.WarrantyType,
+            form.WarrantyMonths,
+            form.Price,
+            form.OriginalPrice,
+            form.Quantity,
+            productPhotos,
+            defectPhotos,
+            form.RemovePhotoIds,
+            evidence);
+    }
+
+    private async Task<IActionResult> RenderFormAsync(Guid? id, ListingFormModel form, CancellationToken cancellationToken)
+    {
+        var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
+        var listing = id is { } listingId
+            ? await listings.GetMyListingAsync(User.RequireUserId(), listingId, cancellationToken)
+            : null;
+
+        return View("Form", new ListingFormPageModel
+        {
+            Form = form,
+            ReferenceData = referenceData,
+            Listing = listing,
+        });
+    }
+
+    private async Task<IActionResult> AfterLifecycleAsync(Guid id, Result result, string successMessage)
     {
         if (result.Succeeded)
         {
             TempData["StatusMessage"] = successMessage;
-            return RedirectToAction(nameof(Edit), new { id });
         }
-
-        if (result.ErrorKind == ResultErrorKind.NotFound)
+        else if (result.ErrorKind == ResultErrorKind.NotFound)
         {
             return NotFound();
         }
-
-        ModelState.AddModelError(string.Empty, result.Error!);
-        return await RedisplayWorkspaceAsync(id, cancellationToken, ws => ws);
-    }
-
-    private async Task<IActionResult> RedisplayWorkspaceAsync(
-        Guid id, CancellationToken cancellationToken, Func<ListingWorkspacePageModel, ListingWorkspacePageModel> adjust)
-    {
-        var listing = await listings.GetMyListingAsync(User.RequireUserId(), id, cancellationToken);
-        if (listing is null)
+        else
         {
-            return NotFound();
+            TempData["ErrorMessage"] = result.Error;
         }
 
-        var referenceData = await listings.GetReferenceDataAsync(cancellationToken);
-        var page = adjust(new ListingWorkspacePageModel
-        {
-            Listing = listing,
-            ReferenceData = referenceData,
-            Form = ListingFormModel.FromDetail(listing),
-        });
-
-        return View("Workspace", page);
+        return RedirectToAction(nameof(Edit), new { id });
     }
 }

@@ -67,7 +67,7 @@ public class ListingTests
 
         var blockers = listing.DescribeSubmissionBlockers(GradeCode, ReasonCodes);
 
-        Assert.Contains(blockers, b => b.Contains("product photo", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.Photos);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class ListingTests
 
         var blockers = listing.DescribeSubmissionBlockers(GradeCode, []);
 
-        Assert.Contains(blockers, b => b.Contains("discounted", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.Condition);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ListingTests
 
         var blockers = listing.DescribeSubmissionBlockers(GradeCode, ReasonCodes);
 
-        Assert.Contains(blockers, b => b.Contains("active variant", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.Quantity);
     }
 
     [Fact]
@@ -107,7 +107,93 @@ public class ListingTests
 
         var ex = Assert.Throws<DomainException>(() => listing.SubmitForReview(GradeCode, ReasonCodes, Now));
 
-        Assert.Contains("product photo", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("photo", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DescribeSubmissionBlockers_ConditionDisclosingAnImperfection_AsksForADefectPhoto()
+    {
+        var listing = BuildListing(includePhoto: true, includeReason: true, includeVariant: true);
+
+        // Grade B / PackagingDamage discloses a physical imperfection; only a product photo is attached.
+        var blockers = listing.DescribeSubmissionBlockers("B", ["PackagingDamage"]);
+
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.DefectPhoto);
+    }
+
+    [Fact]
+    public void DescribeSubmissionBlockers_OriginalPriceNotAbovePrice_ReportsTheOriginalPriceField()
+    {
+        var listing = BuildListingWithPrices(retail: 20m, reference: 15m, withEvidence: true);
+
+        var blockers = listing.DescribeSubmissionBlockers(GradeCode, ReasonCodes);
+
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.OriginalPrice);
+    }
+
+    [Fact]
+    public void DescribeSubmissionBlockers_OriginalPriceWithoutEvidence_ReportsTheOriginalPriceField()
+    {
+        var listing = BuildListingWithPrices(retail: 20m, reference: 30m, withEvidence: false);
+
+        var blockers = listing.DescribeSubmissionBlockers(GradeCode, ReasonCodes);
+
+        Assert.Contains(blockers, b => b.Field == SubmissionBlockerFields.OriginalPrice);
+    }
+
+    // ---- Phase 8: a quantity change is not a claim about the product --------------------
+
+    [Fact]
+    public void SetVariantStock_OnALiveListing_NeverReopensModeration()
+    {
+        var listing = BuildListing(includePhoto: true, includeReason: true, includeVariant: true);
+        listing.SubmitForReview(GradeCode, ReasonCodes, Now);
+        listing.Approve("admin-id", null, Now);
+        var variantId = listing.Variants.Single().Id;
+        var moderationsBefore = listing.Moderations.Count;
+
+        listing.SetVariantStock(variantId, 0, Now);
+        Assert.Equal(ListingStatus.SoldOut, listing.Status);
+
+        listing.SetVariantStock(variantId, 7, Now);
+        Assert.Equal(ListingStatus.Live, listing.Status);
+        Assert.Equal(moderationsBefore, listing.Moderations.Count);
+    }
+
+    [Fact]
+    public void SetVariantStock_Negative_Throws()
+    {
+        var listing = BuildListing(includePhoto: true, includeReason: true, includeVariant: true);
+
+        Assert.Throws<DomainException>(() => listing.SetVariantStock(listing.Variants.Single().Id, -1, Now));
+    }
+
+    [Fact]
+    public void SetVariantStock_WhileUnderReview_Throws()
+    {
+        var listing = BuildListing(includePhoto: true, includeReason: true, includeVariant: true);
+        listing.SubmitForReview(GradeCode, ReasonCodes, Now);
+
+        Assert.Throws<DomainException>(() => listing.SetVariantStock(listing.Variants.Single().Id, 3, Now));
+    }
+
+    private static Listing BuildListingWithPrices(decimal retail, decimal reference, bool withEvidence)
+    {
+        var listing = BuildListing(includePhoto: true, includeReason: true, includeVariant: true);
+        listing.UpdateDetails(
+            listing.CategoryId, listing.ConditionGradeId, listing.Title, listing.Description,
+            referencePrice: reference, retailPrice: retail, returnPolicyText: null,
+            warrantyType: WarrantyType.None, warrantyMonths: null, includedItemsText: null,
+            missingItemsText: null, discountReasonIds: [Guid.NewGuid()], Now);
+
+        if (withEvidence)
+        {
+            listing.AddReferencePriceEvidence(
+                ReferencePriceEvidenceType.Link, "https://example.com/price", storageObjectKey: null,
+                originalFileName: null, contentType: null, note: null, Now);
+        }
+
+        return listing;
     }
 
     /// <summary>

@@ -103,12 +103,15 @@ docs/
 - A dispute system. Deferred — buyers inspect before paying.
 - Auctions, shipping providers, warehouses, ERP sync.
 - Annual plans, discounts, trials, or a free tier.
-- Fields on the merchant listing form. It is exactly eight fields; adding a ninth needs a
-  decision, not a commit.
+- Fields on the merchant listing form. It is nine — eight that ask the merchant to decide
+  something, plus an optional description. Adding one needs a decision, not a commit. The test
+  is not the count: does the new field make the merchant *reason* about something? A text box
+  does not; a second taxonomy overlapping an existing one does, and that is what is banned.
 
 ## UI principles
 
-- The merchant listing form is **one page, eight fields**. Do not split it or add sections.
+- The merchant listing form is **one page**: eight decision fields plus an optional
+  description, last. Do not split it or add sections.
 - Merchants never see the words "variant", "SKU", "condition grade" or "discount reason".
   One condition question derives the grade and the reason.
 - The merchant sees two lifecycle words only: **Pause** and **Delete**.

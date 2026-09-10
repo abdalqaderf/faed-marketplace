@@ -8,7 +8,7 @@
         <div>
             <p class="faed-kicker">Your purchases</p>
             <h1>My orders</h1>
-            <p>Track every retail order, see what happens next, and open the full order when you need to take action.</p>
+            <p>Track every reservation, see what happens next, and open it when you need to take action.</p>
         </div>
         <a class="faed-btn faed-btn--primary" asp-area="" asp-controller="Shop" asp-action="Index">Browse marketplace</a>
     </header>
@@ -18,8 +18,8 @@
         <section class="faed-buyer-empty">
             <span class="faed-buyer-empty__mark" aria-hidden="true">01</span>
             <p class="faed-kicker">Nothing to track yet</p>
-            <h2>Your first order will appear here.</h2>
-            <p>When you place an order, this page becomes your hub for merchant confirmation, fulfilment, receipt, reviews, and disputes.</p>
+            <h2>Your first reservation will appear here.</h2>
+            <p>When you reserve an item, this page tracks the shop's confirmation, the pickup and your review.</p>
             <a class="faed-btn faed-btn--primary" asp-area="" asp-controller="Shop" asp-action="Index">Start shopping</a>
         </section>
     }
@@ -39,26 +39,22 @@
                         </div>
 
                         <div class="faed-order-card__facts">
+                            <div><span>Reference</span><strong>#@order.Reference</strong></div>
                             <div><span>Items</span><strong>@order.TotalUnits unit@(order.TotalUnits == 1 ? "" : "s")</strong></div>
-                            <div><span>Total</span><strong>JOD @order.Total.ToString("0.000")</strong></div>
-                            <div><span>Fulfilment</span><strong>@OrderStatusDisplay.FulfillmentLabel(order.FulfillmentType)</strong></div>
+                            <div><span>Cash at pickup</span><strong>JOD @order.Total.ToString("0.000")</strong></div>
                         </div>
 
                         @if (order.Status == OrderStatus.Pending && order.ReservationExpiresAtUtc is { } expires)
                         {
-                            <p class="faed-order-card__context">Stock reserved while the merchant confirms · until about @AmmanTime.FormatDateTime(expires)</p>
+                            <p class="faed-order-card__context">Held while the shop confirms · until about @AmmanTime.FormatDateTime(expires)</p>
                         }
                         else if (order.Status == OrderStatus.ReadyForPickup)
                         {
-                            <p class="faed-order-card__context">Your order is ready to collect. Open it for the pickup details.</p>
-                        }
-                        else if (order.Status == OrderStatus.OutForDelivery)
-                        {
-                            <p class="faed-order-card__context">The merchant has marked this order as out for delivery.</p>
+                            <p class="faed-order-card__context">Ready to collect. Open it for the pickup details.</p>
                         }
                         else if (order.Status == OrderStatus.Completed)
                         {
-                            <p class="faed-order-card__context">Order completed. Your order page contains review and dispute history.</p>
+                            <p class="faed-order-card__context">Collected. Open it to review the shop.</p>
                         }
                     </a>
                     <a class="faed-order-card__open" asp-action="Details" asp-route-id="@order.Id">

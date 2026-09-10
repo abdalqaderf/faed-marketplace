@@ -29,8 +29,8 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
             .IsRequired()
             .HasMaxLength(Listing.MaxSlugLength);
 
+        // Optional buyer-facing prose: a listing is complete on its structured condition alone.
         builder.Property(l => l.Description)
-            .IsRequired()
             .HasMaxLength(Listing.MaxDescriptionLength);
 
         builder.Property(l => l.ReturnPolicyText).HasMaxLength(Listing.MaxPolicyTextLength);

@@ -41,21 +41,23 @@ public sealed class MerchantListingService(
             .Select(c => new CatalogChoice(c.Id, c.Name))
             .ToListAsync(cancellationToken);
 
-        var grades = await db.ConditionGrades
-            .AsNoTracking()
-            .Where(g => g.IsActive)
-            .OrderBy(g => g.SortOrder)
-            .Select(g => new CatalogChoice(g.Id, $"Grade {g.Code} — {g.Name}"))
-            .ToListAsync(cancellationToken);
+        // The four condition cards already imply one reason each; the "Add another reason"
+        // link only needs to offer the rest.
+        var presetReasonCodes = ConditionPresets.All
+            .SelectMany(p => p.ReasonCodes)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var reasons = await db.DiscountReasons
-            .AsNoTracking()
-            .Where(r => r.IsActive)
-            .OrderBy(r => r.Name)
+        var additionalReasons = (await db.DiscountReasons
+                .AsNoTracking()
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.Name)
+                .Select(r => new { r.Id, r.Code, r.Name })
+                .ToListAsync(cancellationToken))
+            .Where(r => !presetReasonCodes.Contains(r.Code))
             .Select(r => new CatalogChoice(r.Id, r.Name))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        return new ListingReferenceData(categories, grades, reasons);
+        return new ListingReferenceData(categories, additionalReasons);
     }
 
     public async Task<PagedResult<MerchantListingListItem>> GetMyListingsAsync(
@@ -181,6 +183,330 @@ public sealed class MerchantListingService(
 
         throw new InvalidOperationException("The listing slug retry loop exited unexpectedly.");
     }
+
+    public async Task<Result<SaveListingOutcome>> SaveListingAsync(
+        string userId, Guid? listingId, ListingFormSubmission submission, CancellationToken cancellationToken = default)
+    {
+        var merchant = await RequireRegisteredMerchantAsync(userId, cancellationToken);
+        if (merchant.Failed)
+        {
+            return Result<SaveListingOutcome>.From(merchant);
+        }
+
+        var resolved = await ResolveConditionAsync(submission, cancellationToken);
+        if (resolved.Failed)
+        {
+            return Result<SaveListingOutcome>.From(resolved);
+        }
+
+        var (gradeId, reasonIds) = resolved.Value;
+
+        Listing? existing = null;
+        if (listingId is { } id)
+        {
+            existing = await db.Listings
+                .WithAggregate()
+                .SingleOrDefaultAsync(l => l.Id == id && l.MerchantProfileId == merchant.Value, cancellationToken);
+            if (existing is null)
+            {
+                return Result<SaveListingOutcome>.NotFound("That listing was not found.");
+            }
+        }
+
+        // The one-page form no longer shows return policy or included/missing items; preserve
+        // whatever an older listing already carries rather than blanking it on every edit.
+        var details = new ListingDetailsInput(
+            submission.CategoryId, gradeId, submission.Title, submission.Description,
+            ReferencePrice: submission.OriginalPrice, RetailPrice: submission.Price,
+            ReturnPolicyText: existing?.ReturnPolicyText,
+            submission.WarrantyType, submission.WarrantyMonths,
+            IncludedItemsText: existing?.IncludedItemsText,
+            MissingItemsText: existing?.MissingItemsText,
+            reasonIds);
+
+        var validation = await ValidateDetailsAsync(details, cancellationToken);
+        if (validation.Failed)
+        {
+            return Result<SaveListingOutcome>.From(validation);
+        }
+
+        // Buffer and store every new upload before touching the aggregate, so a storage
+        // failure can never leave a half-built listing. Any stored key is cleaned up if the
+        // aggregate rejects the file or the save fails.
+        var storedKeys = new List<string>();
+        var product = new List<StoredUpload>();
+        var defect = new List<StoredUpload>();
+        StoredUpload? evidenceFile = null;
+
+        async Task<Result<SaveListingOutcome>> AbortAsync(Result failure)
+        {
+            foreach (var key in storedKeys)
+            {
+                await TryDeleteAsync(key, CancellationToken.None);
+            }
+
+            return Result<SaveListingOutcome>.From(failure);
+        }
+
+        foreach (var (source, sink) in new[]
+                 {
+                     (submission.NewProductPhotos, product),
+                     (submission.NewDefectPhotos, defect),
+                 })
+        {
+            foreach (var photo in source)
+            {
+                var stored = await BufferValidateAndStoreAsync(
+                    MediaContainer, photo.Content, photo.FileName, photo.ContentType,
+                    ListingImageValidator.ImageContentTypes, cancellationToken);
+                if (stored.Failed)
+                {
+                    return await AbortAsync(stored);
+                }
+
+                storedKeys.Add(stored.Value.ObjectKey);
+                sink.Add(stored.Value);
+            }
+        }
+
+        if (submission.OriginalPriceEvidence?.File is { } file)
+        {
+            var stored = await BufferValidateAndStoreAsync(
+                EvidenceContainer, file.Content, file.FileName, file.ContentType,
+                ListingImageValidator.EvidenceContentTypes, cancellationToken);
+            if (stored.Failed)
+            {
+                return await AbortAsync(stored);
+            }
+
+            storedKeys.Add(stored.Value.ObjectKey);
+            evidenceFile = stored.Value;
+        }
+
+        var now = clock.UtcNow;
+        var evidence = submission.OriginalPriceEvidence;
+
+        try
+        {
+            return existing is null
+                ? await CreateSubmittedListingAsync(merchant.Value, submission, details, product, defect, evidenceFile, evidence, now, cancellationToken)
+                : await UpdateSubmittedListingAsync(existing, submission, details, product, defect, evidenceFile, evidence, now, cancellationToken);
+        }
+        catch (DomainException ex)
+        {
+            return await AbortAsync(Result.Validation(ex.Message));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return await AbortAsync(Result.Conflict(
+                "This listing changed while you were editing it. Reload it and try again."));
+        }
+    }
+
+    private async Task<Result<SaveListingOutcome>> CreateSubmittedListingAsync(
+        Guid merchantId, ListingFormSubmission submission, ListingDetailsInput details,
+        IReadOnlyList<StoredUpload> product, IReadOnlyList<StoredUpload> defect,
+        StoredUpload? evidenceFile, IncomingEvidence? evidence, DateTime now, CancellationToken cancellationToken)
+    {
+        var baseSlug = Slug.Truncate(Slug.Create(submission.Title, "listing"), Listing.MaxSlugLength - 8);
+
+        for (var attempt = 1; attempt <= MaxSlugAttempts; attempt++)
+        {
+            var slug = await NextAvailableSlugAsync(baseSlug, cancellationToken);
+
+            var listing = new Listing(
+                merchantId, submission.CategoryId, details.ConditionGradeId,
+                submission.Title, slug, submission.Description, now);
+            ApplyDetails(listing, details, now);
+            listing.AddVariant(GenerateSku(), [], Math.Max(0, submission.Quantity), now);
+            AddPhotos(listing, product, defect, now);
+            AddEvidence(listing, evidenceFile, evidence, now);
+
+            var (blockers, published, gateMessage) = await FinalizeSubmissionAsync(listing, now, cancellationToken);
+            db.Listings.Add(listing);
+
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                logger.LogInformation("Merchant {MerchantId} saved listing {ListingId} (published: {Published})",
+                    merchantId, listing.Id, published);
+                return Result<SaveListingOutcome>.Success(
+                    new SaveListingOutcome(listing.Id, listing.Status, published, blockers, gateMessage));
+            }
+            catch (DbUpdateException ex) when (IsUniqueIndexViolation(ex, ListingSlugIndex))
+            {
+                // Slug availability is check-then-insert; detach the failed graph and retry
+                // against committed data within a small fixed budget.
+                db.Listings.Remove(listing);
+                if (attempt == MaxSlugAttempts)
+                {
+                    return Result<SaveListingOutcome>.Conflict(
+                        "Another listing claimed this address while you were saving. Please try again.");
+                }
+            }
+        }
+
+        throw new InvalidOperationException("The listing slug retry loop exited unexpectedly.");
+    }
+
+    private async Task<Result<SaveListingOutcome>> UpdateSubmittedListingAsync(
+        Listing listing, ListingFormSubmission submission, ListingDetailsInput details,
+        IReadOnlyList<StoredUpload> product, IReadOnlyList<StoredUpload> defect,
+        StoredUpload? evidenceFile, IncomingEvidence? evidence, DateTime now, CancellationToken cancellationToken)
+    {
+        ApplyDetails(listing, details, now);
+
+        var variants = listing.Variants.ToList();
+        var quantity = Math.Max(0, submission.Quantity);
+        if (variants.Count == 0)
+        {
+            listing.AddVariant(GenerateSku(), [], quantity, now);
+        }
+        else if (variants.Count == 1)
+        {
+            listing.SetVariantStock(variants[0].Id, quantity, now);
+        }
+
+        var removedKeys = new List<string>();
+        if (submission.RemovedPhotoIds.Count > 0)
+        {
+            var (gradeCode, reasonCodes) = await listing.LoadDisclosureCodesAsync(db, cancellationToken);
+            foreach (var photoId in submission.RemovedPhotoIds)
+            {
+                removedKeys.Add(listing.RemoveMedia(photoId, gradeCode, reasonCodes, now));
+            }
+        }
+
+        AddPhotos(listing, product, defect, now);
+        AddEvidence(listing, evidenceFile, evidence, now);
+
+        var (blockers, published, gateMessage) = await FinalizeSubmissionAsync(listing, now, cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        foreach (var key in removedKeys)
+        {
+            await TryDeleteAsync(key, CancellationToken.None);
+        }
+
+        logger.LogInformation("Merchant saved listing {ListingId} (published: {Published})", listing.Id, published);
+        return Result<SaveListingOutcome>.Success(
+            new SaveListingOutcome(listing.Id, listing.Status, published, blockers, gateMessage));
+    }
+
+    /// <summary>
+    /// Resolves the condition card to its stored grade id and discount-reason ids
+    /// (<see cref="ConditionPresets"/>), then unions in any reasons the merchant added through
+    /// the optional "Add another reason" link.
+    /// </summary>
+    private async Task<Result<(Guid ConditionGradeId, List<Guid> ReasonIds)>> ResolveConditionAsync(
+        ListingFormSubmission submission, CancellationToken cancellationToken)
+    {
+        if (!Enum.IsDefined(submission.Condition))
+        {
+            return Result<(Guid, List<Guid>)>.Validation("Choose the item's condition.");
+        }
+
+        var preset = ConditionPresets.For(submission.Condition);
+
+        var gradeId = await db.ConditionGrades.AsNoTracking()
+            .Where(g => g.Code == preset.GradeCode && g.IsActive)
+            .Select(g => (Guid?)g.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (gradeId is null)
+        {
+            return Result<(Guid, List<Guid>)>.Validation("That condition is not available right now.");
+        }
+
+        var presetReasonIds = await db.DiscountReasons.AsNoTracking()
+            .Where(r => preset.ReasonCodes.Contains(r.Code) && r.IsActive)
+            .Select(r => r.Id)
+            .ToListAsync(cancellationToken);
+        if (presetReasonIds.Count != preset.ReasonCodes.Count)
+        {
+            return Result<(Guid, List<Guid>)>.Validation("That condition is not available right now.");
+        }
+
+        var reasonIds = presetReasonIds
+            .Concat(submission.AdditionalDiscountReasonIds)
+            .Distinct()
+            .ToList();
+
+        return Result<(Guid, List<Guid>)>.Success((gradeId.Value, reasonIds));
+    }
+
+    private static void AddPhotos(
+        Listing listing, IReadOnlyList<StoredUpload> product, IReadOnlyList<StoredUpload> defect, DateTime now)
+    {
+        foreach (var upload in product)
+        {
+            listing.AddMedia(ListingMediaType.Product, upload.ObjectKey, upload.FileName,
+                upload.ContentType, upload.SizeBytes, null, now);
+        }
+
+        foreach (var upload in defect)
+        {
+            listing.AddMedia(ListingMediaType.Defect, upload.ObjectKey, upload.FileName,
+                upload.ContentType, upload.SizeBytes, null, now);
+        }
+    }
+
+    private static void AddEvidence(
+        Listing listing, StoredUpload? evidenceFile, IncomingEvidence? evidence, DateTime now)
+    {
+        if (evidence is null || (evidenceFile is null && string.IsNullOrWhiteSpace(evidence.ReferenceUrl)))
+        {
+            return;
+        }
+
+        listing.AddReferencePriceEvidence(
+            evidence.EvidenceType,
+            evidence.ReferenceUrl,
+            evidenceFile?.ObjectKey,
+            evidenceFile?.FileName,
+            evidenceFile?.ContentType,
+            note: null,
+            now);
+    }
+
+    /// <summary>
+    /// The publish decision for one save: report per-field blockers (leaving the listing a
+    /// draft), or run the publish gate and submit for review. A material edit to an
+    /// already-published listing has already moved it to PendingReview inside the aggregate,
+    /// so the gate is only enforced on the true Draft/Rejected -> review transition.
+    /// </summary>
+    private async Task<(IReadOnlyList<SubmissionBlocker> Blockers, bool Published, string? GateMessage)>
+        FinalizeSubmissionAsync(Listing listing, DateTime now, CancellationToken cancellationToken)
+    {
+        var (gradeCode, reasonCodes) = await listing.LoadDisclosureCodesAsync(db, cancellationToken);
+
+        var blockers = listing.DescribeSubmissionBlockers(gradeCode, reasonCodes);
+        if (blockers.Count > 0)
+        {
+            return (blockers, false, null);
+        }
+
+        if (listing.Status is ListingStatus.Draft or ListingStatus.Rejected)
+        {
+            var gate = await subscriptions.CheckPublishGateAsync(listing.MerchantProfileId, cancellationToken);
+            if (!gate.CanPublish)
+            {
+                return (Array.Empty<SubmissionBlocker>(), false, gate.Message);
+            }
+
+            listing.SubmitForReview(gradeCode, reasonCodes, now);
+        }
+
+        var published = listing.Status
+            is ListingStatus.PendingReview or ListingStatus.Live or ListingStatus.SoldOut;
+        return (Array.Empty<SubmissionBlocker>(), published, null);
+    }
+
+    /// <summary>
+    /// A unique stock-keeping code for the single auto-created variant. The merchant never
+    /// sees it — the one-page form asks only for a quantity — so it carries no meaning.
+    /// </summary>
+    private static string GenerateSku() => $"SKU-{Guid.NewGuid():N}"[..16].ToUpperInvariant();
 
     public Task<Result> UpdateDetailsAsync(
         string userId, Guid listingId, ListingDetailsInput input, CancellationToken cancellationToken = default) =>
@@ -427,7 +753,7 @@ public sealed class MerchantListingService(
             var blockers = listing.DescribeSubmissionBlockers(conditionGradeCode, discountReasonCodes);
             if (blockers.Count > 0)
             {
-                return Result.Validation(blockers[0]);
+                return Result.Validation(blockers[0].Message);
             }
 
             listing.SubmitForReview(conditionGradeCode, discountReasonCodes, now);
