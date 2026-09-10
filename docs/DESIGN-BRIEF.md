@@ -106,6 +106,13 @@ platform exists for.
 So: **one hue, four levels of fill** — like a battery meter. Information, not alarm. §5.4
 below fixes which hue and where it appears.
 
+### 4.1 The general case
+
+The condition indicator is the sharpest instance of a rule that holds everywhere: **the
+written label carries the meaning.** Colour and icons reinforce a status; they never carry it
+alone. Any state a user must read — an order status, an approval, a validation error — is
+legible in plain text with the colour and the icon removed.
+
 ---
 
 ## 5. Visual identity — final
@@ -164,6 +171,12 @@ not a violation — as long as it's a data-URI and nothing else.
 
 If a new component needs an accent color and the designer reaches for rust, that is the signal
 the component is disclosure-related, not action-related — check the assumption before coding.
+
+**One primary action per task group.** Every button is ink, so weight and wording do the work
+colour cannot: one action reads as dominant, the rest step back, and same-weight buttons never
+compete. A destructive action — the merchant's **Delete** sitting beside **Pause** — is set
+apart by its wording and its treatment, never by an icon alone, and never wears the plain
+primary style.
 
 ### 5.4 Condition indicator — one location, no duplicates
 
@@ -246,7 +259,20 @@ circular avatar before this was written down) and is now fixed as a single rule:
 belongs to Direction B's soft-shelf language, not this one. Applies everywhere a merchant
 identity renders — order page, listing detail, storefront header, admin merchant list.
 
+### 5.10 Motion budget
 
+Direction A is nearly still. The whole allowance is a 2–4px lift on a card and soft colour,
+shadow and border transitions. No parallax, no bouncing CTAs, no entrance animations, no
+element that moves when nothing has been touched.
+
+### 5.11 Feedback and empty states
+
+Every success, error and empty state says two things: **what happened, and what the person can
+do next.** An empty screen names what would fill it and points at the action that starts;
+an error names the cause and the way forward. Never a bare "No results" or "Something went
+wrong".
+
+### 5.12 Surface map
 
 | Surface | Treatment | Status |
 |---|---|---|
@@ -255,6 +281,7 @@ identity renders — order page, listing detail, storefront header, admin mercha
 | **Reserve** | Full redesign | Mocked (this session) |
 | **Shop (browse/filter grid)** | Full redesign | Mocked (this session) — see §5.7 |
 | **Merchant storefront** | Full redesign | Mocked (this session) — see §5.8 |
+| **Identity (Login · Register · password flows)** | Token pass — conventional `label` above input, no floating-label duplication, Faed form system not scaffold defaults | Tokens defined (§5.2), not applied |
 | Merchant workspace · Admin workspace | Token pass only — colours, spacing, type. Do not rebuild them | Tokens defined (§5.2), not applied |
 | `faed.css` (8,165 lines) | Do not audit or refactor. Invisible to the panel, and it works | — |
 
@@ -292,6 +319,11 @@ CC BY / CC BY-SA attribution lives there, not in the UI.
 2. **Stock has no defect photos.** Six phone photos of any scuffed appliance or damaged box are
    enough for the whole demo, and need not match the products.
 
+**Format and encoding.** Photographic assets ship as WebP where practical, sized for where
+they actually render. No embedded text, logos or watermarks in any image; crops keep the
+subject's focal point safe across breakpoints. Every image declares fixed dimensions or an
+aspect ratio so the layout does not shift while it loads.
+
 ---
 
 ## 9. The remaining phases
@@ -316,6 +348,25 @@ with the goal, **the goal wins** — say so and fix the doc rather than working 
 **Code carries undocumented decisions.** A rule that exists only as a comment on a file being
 deleted disappears with it. Before removing anything with explanatory comments, ask whether it
 holds a business rule the docs do not.
+
+---
+
+## 11. Accessibility baseline — recorded, not audited
+
+§1 de-prioritises mobile and code hygiene; this is the small set that stays because a
+panellist may keyboard through the demo. New or rebuilt screens are expected to keep:
+
+- a working skip link,
+- a visible keyboard focus ring,
+- every input associated with its `label`,
+- a sensible heading order,
+- meaningful `alt` text on content images,
+- `prefers-reduced-motion` respected,
+- no critical information available on hover alone.
+
+This records a standard; it does not authorise an accessibility audit. Do not sweep the
+codebase against it. A violation noticed in passing is logged in `AUDIT-PHASE-14.md` and
+fixed only if the fix is one line.
 
 ---
 

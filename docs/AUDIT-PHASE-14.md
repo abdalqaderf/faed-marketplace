@@ -453,6 +453,36 @@ Static pre-checks (in place of driving every screen):
 
 ---
 
+## Rules preserved from `plan.md` before deletion
+
+`plan.md` (the pre-`faed-core` "Final UI/UX Production Polish Plan") was scanned line by line
+against `CORE.md`, `BUSINESS-MODEL.md`, `DESIGN-BRIEF.md` and `CLAUDE.md`. Its visual direction
+and interaction model are superseded (Direction A in `DESIGN-BRIEF.md` §5; Reserve-not-cart;
+no filter drawer). Eight general UI rules that no keep-doc stated were rewritten into the docs
+in their own voice before the file was removed:
+
+| From `plan.md` | Rewritten into | Rule |
+|---|---|---|
+| §13 | `CLAUDE.md` UI principles | Lists page, never infinite-scroll; a page link preserves query, filters, sort, route values, current page and total count; one shared partial |
+| §20 / §20A.8 | `DESIGN-BRIEF.md` §5.3 | One dominant primary action per task group; destructive actions set apart by wording and treatment, never an icon alone, never the plain primary style |
+| §20A.7 | `DESIGN-BRIEF.md` §4.1 | The written label carries a status; colour and icons only reinforce it |
+| §11 | `DESIGN-BRIEF.md` §5.12 (surface map) | Identity screens: token pass, `label` above input, no floating-label duplication, Faed form system not scaffold defaults |
+| §21 | `DESIGN-BRIEF.md` §5.11 | Every feedback and empty state says what happened and what to do next |
+| §27 / §29 | `DESIGN-BRIEF.md` §8 | WebP where practical; no embedded text/logos/watermarks; focal-point-safe crops; fixed dimensions so layout does not shift on load |
+| §26 (trimmed) | `DESIGN-BRIEF.md` §11 | Accessibility baseline recorded (skip link, focus ring, label association, heading order, alt text, reduced-motion, no hover-only info) — recorded, not audited |
+| §23 / §28 | `DESIGN-BRIEF.md` §5.10 | Motion budget: 2–4px lift and soft transitions; no parallax, bouncing CTAs, entrance animations or unprompted movement |
+
+**Deliberately dropped:** `plan.md` §40's "premium because it is clear, proportioned… not
+because every component is large" (voice, not a rule — Direction A already carries it) and
+§19's "one consistent form language" plus its tag-helper/anti-forgery preserve-list (generic
+engineering practice; the token system already enforces a single form language). The 44px
+touch-target item from §26 was dropped because §1 de-prioritises mobile.
+
+With this recorded, `plan.md` carries no rule the docs lack and is cleared for deletion in the
+Step 5 deletion commit.
+
+---
+
 ## State of the repo
 
 | Metric | Value |

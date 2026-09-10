@@ -123,6 +123,9 @@ Read it before touching any Razor view or `faed.css` in Phase 11 or 12.
 - The shop has four filters: category, condition, price range, text search. No advanced
   filter drawer.
 - Validation is inline and immediate, never a list of errors after the fact.
+- Every list that pages, pages — never infinite scroll. A page link preserves the search
+  query, the filters, the sort, the route values, the current page and the total count.
+  Pagination is one shared partial, not a per-page reimplementation.
 
 ## Working style
 
