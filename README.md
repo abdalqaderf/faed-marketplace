@@ -21,6 +21,7 @@ and no legal review — see `docs/BUSINESS-MODEL.md` §5 for what that means for
 | `docs/DESIGN-BRIEF.md` | Visual system — locked colour, type and screen designs |
 | `docs/DEPLOYMENT.md` | Production configuration, the R2 and Brevo infrastructure, release checklist |
 | `docs/DEMO-SCRIPT.md` | The screen-by-screen walkthrough for the defence |
+| `docs/REHEARSAL-CHECKLIST.md` | The same walkthrough, timed, one row per click, for the defence machine |
 | `docs/CREDITS.md` | Photo sources and CC-BY / CC-BY-SA attribution for the demo images |
 | `docs/COMMITS-AND-COMMENTS.md` | How commits are written and what a comment is for |
 | `docs/B2B-DESIGN.md` | The removed merchant-to-merchant module, archived for a later phase |
