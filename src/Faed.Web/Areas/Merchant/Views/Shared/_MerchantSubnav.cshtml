@@ -1,7 +1,27 @@
 @model string
+@using Faed.Web.Authorization
+@using Faed.Web.Services.Merchants
+@inject IMerchantVerificationService MerchantVerification
 @{
     var active = Model ?? string.Empty;
-    var restrictedToVerification = ViewData["MerchantWorkspaceRestricted"] is true;
+
+    // Link visibility here must mirror the ApprovedMerchant/RegisteredMerchant policies that
+    // actually gate these controllers (Authorization/FaedPolicies.cs) — otherwise a merchant
+    // whose application is still Draft/PendingReview/Rejected/Suspended sees a sidebar link that
+    // then sends them to "you are not authorized" when clicked. Verification is the one
+    // destination with no merchant-state gate (plain [Authorize]), so it always shows;
+    // Subscription and Listings need a registered, non-suspended profile (RegisteredMerchant);
+    // Orders, Reviews, Analytics and Store Settings need an approved one (ApprovedMerchant).
+    var userId = User.RequireUserId();
+    var isRegisteredMerchant = await MerchantVerification.IsRegisteredMerchantAsync(userId);
+    var isApprovedMerchant = await MerchantVerification.IsApprovedMerchantAsync(userId);
+
+    bool CanShow(string section) => section switch
+    {
+        "Verification" => true,
+        "Subscription" or "Listings" => isRegisteredMerchant,
+        _ => isApprovedMerchant,
+    };
 
     var groups = new[]
     {
@@ -56,6 +76,11 @@
         }
     };
 
+    var visibleGroups = groups
+        .Select(group => new { group.Label, Links = group.Links.Where(l => CanShow(l.Section)).ToArray() })
+        .Where(group => group.Links.Length > 0)
+        .ToArray();
+
     var activeLabel = active switch
     {
         "Verification" => "Verification",
@@ -78,13 +103,8 @@
         </div>
 
         <nav class="faed-merchant-sidebar__nav" aria-label="Merchant sections">
-            @foreach (var group in groups)
+            @foreach (var group in visibleGroups)
             {
-                if (restrictedToVerification && group.Label != "Account")
-                {
-                    continue;
-                }
-
                 <div class="faed-merchant-sidebar__group">
                     <span class="faed-merchant-sidebar__group-label">@group.Label</span>
                     @foreach (var link in group.Links)
@@ -125,13 +145,8 @@
         </div>
         <div class="offcanvas-body faed-merchant-drawer__body">
             <nav class="faed-merchant-sidebar__nav" aria-label="Merchant sections mobile">
-                @foreach (var group in groups)
+                @foreach (var group in visibleGroups)
                 {
-                    if (restrictedToVerification && group.Label != "Account")
-                    {
-                        continue;
-                    }
-
                     <div class="faed-merchant-sidebar__group">
                         <span class="faed-merchant-sidebar__group-label">@group.Label</span>
                         @foreach (var link in group.Links)
