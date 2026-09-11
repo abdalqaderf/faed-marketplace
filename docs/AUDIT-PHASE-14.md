@@ -3,9 +3,11 @@
 Branch `faed-core`. Audit performed against `CLAUDE.md`, `docs/CORE.md`, `docs/PHASE-PLAN.md`
 (Phase 14 as amended, working-tree copy).
 
-**Status: audit only. No code has been changed except where noted below under
-"Fixed immediately".** The repository is unchanged apart from the working-tree edit to
-`docs/PHASE-PLAN.md` (the Phase-14 addition) and this new file.
+**Status: fix pass complete.** Every finding below is marked fixed, accepted, or cut, each with
+its commit hash, per the approved fix prompt (`docs/Faed phase 14 fix prompt.md.txt`). Fifteen
+commits, one per numbered item, `ab6f3a3..HEAD`. The Step 9 rehearsal was re-run after the
+deletion commit landed — see the updated §Step 9 below — and
+`docs/REHEARSAL-CHECKLIST.md` is the timed human walkthrough that follows this report.
 
 ---
 
@@ -21,11 +23,10 @@ Branch `faed-core`. Audit performed against `CLAUDE.md`, `docs/CORE.md`, `docs/P
 | 6 — Tests | **46 tests, all green, none vacuous.** The five plan themes are all genuinely asserted. The 12/48/72-hour sweeps and the response-rate threshold *are* covered (the plan's Step 6 wording implies they are not). "Actually collected" is **not a test gap — the feature does not exist** (HIGH-2). |
 | 7 — Invariants | **All eight hold**, each with an enforcing file (§7). Both carried-across rules verified. Nothing from the "Do not add" list crept in. |
 | 8 — Documentation drift | **`docs/04-DOMAIN-MODEL.md` is completely stale** (still B2B/disputes/fashion). `DEPLOYMENT.md` is stale (B2B config sections, "no email sender", "storage stub throws" — all now false). `README.md` and the entity count need updates. Phases 11–13 not yet back-filled into `PHASE-PLAN.md`. |
-| 9 — Defence rehearsal | **Clone → build → DB-from-empty → demo-seed → run → unauthenticated HTTP smoke pass: all clean.** Fresh clone builds in ~40 s (0/0); `Demo data set seeded.` with no error; `/`, `/shop`, listing detail, storefronts, images, 404 page all 200/404 with no exception; auth gates redirect correctly; "New seller" vs "67% response" split is correct. **Not done:** the authenticated three-role click-through with per-step timings — needs a human run (curl + antiforgery is impractical), then a re-run after the Step 5 deletions. One demo product image is 1.97 MB (unoptimised). |
+| 9 — Defence rehearsal | **Clone → build → DB-from-empty → demo-seed (twice) → run → unauthenticated HTTP smoke pass: all clean, re-run after every fix.** Fresh clone builds in ~18 s (0/0), 48 tests in ~15 s; seeding is idempotent on a second startup with no drop; `/`, `/shop`, listing detail, storefronts, images, 404 page all 200/404 with no exception; auth gates redirect correctly; "New seller" vs response-rate split is correct; the 1.97 MB image now serves at 31 KB. **Still needs a human:** the authenticated three-role click-through with per-step timings — `docs/REHEARSAL-CHECKLIST.md`. |
 
-**Blocker before any deletion work:** BLOCKER-1 (keep-list omits three docs that `CLAUDE.md`
-and `README.md` actively depend on — needs your decision). The deletion commit must also be
-followed by a repeat of the Step 9 rehearsal.
+**Blocker resolved:** BLOCKER-1 was settled before any deletion work — see its entry below.
+The Step 9 rehearsal was repeated after the deletion commit, per plan.
 
 ---
 
@@ -41,6 +42,10 @@ where it started.
 ## Findings by severity
 
 ### BLOCKER-1 — The Step 5 keep-list omits three documents the codebase depends on
+
+**Status: fixed — `1d77cbe`.** All three docs (plus `tools/demo-images/`) added to the
+keep-list with one line of justification each; the Phase 14 acceptance bullet and a new
+"a keep-list is a proposal, not an authority" sentence added alongside them.
 
 *Files:* `docs/DESIGN-BRIEF.md`, `docs/DEMO-SCRIPT.md`, `docs/CREDITS.md`
 
@@ -73,6 +78,11 @@ spec gap, not a cleanup opportunity.
 
 ### HIGH-1 — Two-sided / B2B copy still shown to logged-out visitors
 
+**Status: fixed — `6068dd5`.** The wholesale list item became an inspect-before-you-pay fact;
+both "before you buy" instances in the shared layout became "before you reserve". A sweep of
+the rest of the shared layer (`_LoginPartial`, `_ListingCard`, `_Pagination`, `_ShopBrowse`,
+`Error.cshtml`, every area's `_ViewStart`) found no further leak.
+
 *File:* `src/Faed.Web/Views/Shared/_Layout.cshtml:226-235` (the `isAuthPage` context sidebar,
 rendered on `/Identity/Account/Login`, `/Register`, etc.)
 
@@ -97,6 +107,12 @@ reserve."*
 ---
 
 ### HIGH-2 — Phase 9 feature "Actually collected" (NoShow → Completed) is absent
+
+**Status: fixed — `f51ebe2`.** Implemented as scoped: `Order.RecordLateCollection`, a new
+`StockEffect.RecoverSale` in `OrderService` running through the same `MerchantTransitionAsync`
+path as every other transition, a merchant-only POST action, and a button on a `NoShow` order.
+No schema change. Two tests: the recovery works and unlocks the buyer's review; a buyer cannot
+invoke it.
 
 *Files:* `src/Faed.Web/Models/Entities/Order.cs` (`Complete()` accepts only `ReadyForPickup`
 / `OutForDelivery`; `MarkNoShow()` has no inverse), `Services/Ordering/OrderService.cs`
@@ -124,6 +140,10 @@ that it was cut from Phase 9 and why. Do not let it pass silently.
 
 ### HIGH-3 — `docs/04-DOMAIN-MODEL.md` is entirely stale
 
+**Status: fixed — `f3b4e67`.** Regenerated from the 16 `DbSet`s, `ApplicationUser` and the
+four owned/join types, with fields, FK delete behaviour, indexes and enums read from the
+configurations and the migration. See MEDIUM-4 for the adopted entity count.
+
 *File:* `docs/04-DOMAIN-MODEL.md`
 
 Still documents `MerchantDeliveryZone`, `Brand`, `InventoryAdjustment`, all five B2B
@@ -142,6 +162,12 @@ relationships, delete behaviour, and a truthful count (see MEDIUM-4).
 ---
 
 ### MEDIUM-1 — `DEPLOYMENT.md` describes infrastructure that no longer matches the code
+
+**Status: fixed — `a6b7357`.** Rewritten around `BrevoEmailSender` (registered in every
+environment) and `R2FileStorage` (registered outside `Development`), the two hosted sweep
+services, and the environment variables each needs; moved to `docs/DEPLOYMENT.md` to match
+the keep-list path, with the two `DEPLOYMENT.md §2` code comments in `DependencyInjection.cs`
+updated to the new path.
 
 *File:* `DEPLOYMENT.md` (repo root; keep-list calls it `docs/DEPLOYMENT.md`)
 
@@ -164,6 +190,11 @@ keep-list path (code comments reference it by basename, so they still resolve).
 
 ### MEDIUM-2 — `README.md` is behind the code
 
+**Status: fixed — `01f4ab7`** (documentation table also extended by `3c729c7`). Status text
+now names Phase 14; the documentation table lists all thirteen keep-list files; a "Demo
+accounts" block gives every seeded account and the shared password `Demo!Pass123`, marked
+Development-only.
+
 *File:* `README.md`
 
 - "13 phases from branch setup to demo readiness" / "Phases 11–12 … are in place" — Phase 13
@@ -183,6 +214,8 @@ keep-list path (code comments reference it by basename, so they still resolve).
 
 ### MEDIUM-3 — Stale reference to the deleted `Brand` entity in admin copy
 
+**Status: fixed — `fedc1da`.** "and controlled brands" dropped from the Catalog page subtitle.
+
 *File:* `src/Faed.Web/Areas/Admin/Views/Catalog/Index.cshtml:14`
 
 > "Manage the taxonomy, condition grades, discount reasons and **controlled brands**.
@@ -196,6 +229,11 @@ low visibility, but it is dead vocabulary the Step 4 grep is meant to catch.
 ---
 
 ### MEDIUM-4 — The documented entity count ("17") does not match a countable artefact
+
+**Status: fixed — `f3b4e67`.** Adopted definition: **17 aggregate roots, 21 mapped EF types**,
+stated in `04-DOMAIN-MODEL.md` §0. `CORE.md` §6 dropped `ListingDiscountReason` from its root
+list (a join type, not a root) so the list is 17 names under a title that says seventeen;
+§10 and the `PHASE-PLAN.md` result table now carry the same phrasing.
 
 *Files:* `docs/CORE.md` §6 (title "Entities — seventeen", then lists 18 bullet points),
 `docs/PHASE-PLAN.md` "Expected result" table (`Entities | 30 | 17`), `docs/CORE.md` §10.
@@ -212,6 +250,10 @@ CORE §6's own bullet list already contains 18 names, one more than its title.
 ---
 
 ### MEDIUM-5 — Dead script file `wwwroot/js/listing-detail.js`
+
+**Status: fixed — `58b0cbc`.** File and the now-empty `wwwroot/js/` directory deleted. The
+stale `PublicMarketplaceModels.cs:167` comment was corrected in the same commit; fixing it
+surfaced NEW-1 (below) — a larger dead surface behind that comment, left for a decision.
 
 *File:* `src/Faed.Web/wwwroot/js/listing-detail.js` (the only file in `wwwroot/js/`)
 
@@ -230,6 +272,9 @@ client-side logic lives "in `listing-detail.js`".
 
 ### MEDIUM-6 — Phases 11–13 not yet recorded in `PHASE-PLAN.md`
 
+**Status: fixed — `cd03222`.** Back-filled as three completed Do / Acceptance / Verify
+sections written from what the code does, followed by a Phase 14 outcome section.
+
 *File:* `docs/PHASE-PLAN.md` (§"Phases 11–13 — Visual rebuild (complete)" is a 3-row summary
 table only)
 
@@ -239,6 +284,10 @@ written from what the code does. Also record Phase 14's own outcome once the fix
 ---
 
 ### LOW-1 — Real hosting infrastructure committed for a project with "no live deployment"
+
+**Status: fixed — `58b0cbc`** (folded into the deletion commit). `Properties/PublishProfiles/`
+deleted. The corresponding local, untracked `.pubxml.user` files are gitignored and left
+alone — an untracked file is not the panel's problem.
 
 *Files:* `src/Faed.Web/Properties/PublishProfiles/abdalqaderf-001-site1 - FTP.pubxml`,
 `… - Web Deploy.pubxml`
@@ -255,6 +304,9 @@ deployment.
 
 ### LOW-2 — `Directory.Build.props` disables warnings-as-errors globally
 
+**Status: fixed — `b8e1207`.** Set to `true`; both projects still build with 0 warnings, so no
+test-project exemption was needed.
+
 *File:* `Directory.Build.props:6` — `<TreatWarningsAsErrors>false</TreatWarningsAsErrors>`
 
 The Phase 14 gate (`dotnet build -warnaserror`) passes only because the flag is passed
@@ -269,6 +321,10 @@ release checklist (`DEPLOYMENT.md` §5 already says "0 warnings").
 
 ### LOW-3 — `CanPlaceB2COrder` / "B2C" naming outlives the B2B/B2C distinction
 
+**Status: accepted, deliberately — not changed.** Renaming touches authorisation code for a
+cosmetic gain days before a defence; the risk is not worth the payoff. Recorded, not
+forgotten.
+
 *Files:* `src/Faed.Web/Authorization/FaedPolicies.cs`, `Program.cs:123`,
 `Services/Ordering/*` ("B2C ordering" comments)
 
@@ -281,6 +337,10 @@ it — it is internal and harmless.
 
 ### LOW-4 — `docs/COMMITS-AND-COMMENTS.md` teaches an attribution line that is now disallowed
 
+**Status: accepted, deliberately — not changed.** The doc's attribution convention is the
+project owner's to settle separately from this fix pass; every commit made during this pass
+carries no attribution line, per the session's own instruction, without rewriting the doc.
+
 *File:* `docs/COMMITS-AND-COMMENTS.md` (every example ends `Co-Authored-By: Claude Opus 5
 <noreply@anthropic.com>`)
 
@@ -291,6 +351,9 @@ file, so flag rather than rewrite: decide whether the doc's convention still sta
 
 ### LOW-5 — `site.css` contains Bootstrap-template leftovers
 
+**Status: accepted, deliberately — not changed.** Treated as adjacent to the
+`wwwroot/css/faed.css` "do not touch" rule (Phase 14 rule 3); noted for completeness only.
+
 *File:* `src/Faed.Web/wwwroot/css/site.css` (referenced by `_Layout.cshtml:61`, so **not**
 dead) — the `.form-floating > .form-control::placeholder` rules are default-scaffold RTL
 tweaks; Faed's forms use `faed-field`, not `form-floating`. Out of scope if you treat it as
@@ -299,6 +362,13 @@ adjacent to the `faed.css` "do not touch" rule; noting it only for completeness.
 ---
 
 ## Deletion list
+
+**Status: applied — `58b0cbc`**, one commit, D1–D6 plus `Properties/PublishProfiles/` (LOW-1)
+together so a single `git revert` undoes all of it. The two dangling references (the
+`faed.css:8050` comment and `PublicMarketplaceModels.cs:167`) were fixed in the same commit.
+`plan.md` was cleared for deletion only after its eight surviving rules were moved out (`3b06365`,
+recorded under "Rules preserved from `plan.md`" below). `tools/demo-images/` was kept, per
+BLOCKER-1. Re-run of Step 9 after this commit is in the updated §Step 9 below.
 
 Every entry is a **tracked** file (`git ls-files`), with proof it is dead. After the
 deletions, `dotnet build Faed.slnx -warnaserror && dotnet test` must pass **and the Step 9
@@ -359,8 +429,10 @@ the 12/48/72-hour sweeps (`ReservationExpiryTests`) and the response-rate below/
 `Merchant_WithEnoughOrders_ShowsRateAndBucketedTime`,
 `Merchant_BelowFiveOrders_IsNewSeller_WithNoPercentage`, plus a window-cutoff test).
 
-**Genuine test gap:** "Actually collected" recovery — but see HIGH-2, the feature itself is
-missing, so there is nothing to test yet.
+**Genuine test gap, now closed:** "Actually collected" recovery — HIGH-2 implemented it with
+two new tests (`NoShowOrder_MarkedActuallyCollected_BecomesCompleted_AndUnlocksReview`,
+`MarkActuallyCollected_ByABuyer_IsForbidden_AndLeavesTheNoShow`), bringing the suite to
+**48 `[Fact]`/`[Theory]` cases, all green.**
 
 ---
 
@@ -433,17 +505,36 @@ below was run via the full path.
 No unhandled exception, no developer exception page, no `Internal Server Error` string in any
 response body. The rehearsal database was dropped and the app stopped afterwards.
 
-### Still to do (human run, then again after the Step 5 deletions)
+### Re-run after the full fix pass
 
-1. Log in as each seeded account (`Demo!Pass123`) and **time**: merchant publishes an item ·
-   admin approves verification + listing · buyer reserves · merchant confirms · contact
-   reveal · pickup completes · buyer reviews.
-2. Watch for console errors and slow pages during that walk.
-3. Re-seed twice in one process lifetime to confirm idempotency beyond the reference-data
-   guard already observed (the seeder reads `ConditionGrades`/`DiscountReasons`/`Categories`
-   before inserting).
-4. Diff the live screens against `docs/DEMO-SCRIPT.md` (seeded order references such as
-   `#Z3ZVKV`, the lifecycle-state orders).
+Repeated in full from a fresh local clone of `faed-core` at `cd03222` (before the final two
+commits, which touched no runtime code) — `dotnet` resolved on `PATH` this time, no full-path
+workaround needed.
+
+| Step | Command | Result |
+|---|---|---|
+| Fresh clone | `git clone` (local) → `faed-core` | 372 tracked files (was 385 — the deletion commit) |
+| Build | `dotnet build Faed.slnx -warnaserror` | **0 warnings, 0 errors — 17.9 s** |
+| Tests | `dotnet test` | **48 passed, 0 failed — 14.8 s total** |
+| DB from empty | `dotnet ef database drop -f` → `dotnet ef database update` (throwaway `FaedRehearsal14` catalog) | Created in one command, **8.3 s** |
+| Seed (1st run) | `Faed__DemoSeed__Enabled=true`, app startup | `Seeded 19 catalog reference row(s).` → `Seeded development Admin …` → `Demo data set seeded.` — no error |
+| Seed (2nd run, same DB, fresh process) | app restarted, no drop | `Development Admin … already present` → `Demo data already present; skipping demo seed.` — **idempotent, no duplicate rows, no exception** |
+| App start | `dotnet run --no-launch-profile` | `Now listening on: http://localhost:5298` · `Application started.` |
+
+HTTP smoke pass repeated against this run: `/`, `/shop`, `/shop?condition=D`,
+`/listing/upright-vacuum-cleaner`, `/store/petra-power-tools`, `/store/amman-kitchen-co`,
+`/Identity/Account/Login`, `/Register`, `/Home/Privacy` all 200; `/status/404` and an unknown
+path both 404; `/Merchant/Listings`, `/Admin`, `/Buyer/Orders` all 302 to login. No
+`unhandled exception`, `stack trace`, or `Internal Server Error` string in any response body.
+Content markers confirmed present: `GRADE D` stamp and `DEFECT` tag on the vacuum listing,
+a response-rate line for Amman Kitchen Co. (≥5 orders), a **New seller** badge with no
+percentage for Petra Power Tools. The demo image that was 1.97 MB now serves at **31 KB**
+(item 10). Rehearsal database dropped afterward.
+
+**Still not driven by this session:** the authenticated three-role click-through with
+per-step timings — curl-plus-antiforgery is impractical for a real session walk, so this
+needs a human. `docs/REHEARSAL-CHECKLIST.md` is that walkthrough, written from
+`docs/DEMO-SCRIPT.md`, with the "Actually collected" recovery added as its own section.
 
 Static pre-checks (in place of driving every screen):
 - Every controller action named in the demo script resolves to a route.
@@ -509,34 +600,43 @@ Step 5 deletion commit.
 
 ---
 
-## State of the repo
+## State of the repo (after the fix pass)
 
-| Metric | Value |
-|---|---|
-| Tracked files (`git ls-files`) | 385 |
-| Proposed for deletion | 6 paths / ~14 files (see Deletion list); +3 docs pending your decision |
-| Entity types | 16 `DbSet`s + `ApplicationUser` = 17 aggregate roots; 21 mapped EF types; 20 files in `Models/Entities/` |
-| C# lines (`src/`, `.cs`) | 21,230 |
-| Razor views (`src/`, `.cshtml`) | 51 |
-| Migrations | 1 (`20260909112228_InitialCreate`) + model snapshot |
-| Tests | 46 `[Fact]`/`[Theory]` across 7 files — all green |
-| Build warnings (`-warnaserror`) | 0 |
-| Secrets tracked | 0 |
+| Metric | Before | After |
+|---|---|---|
+| Tracked files (`git ls-files`) | 385 | **373** |
+| Entity types | 16 `DbSet`s + `ApplicationUser` = 17 aggregate roots; 21 mapped EF types; 20 files in `Models/Entities/` | unchanged — no schema change this phase |
+| C# lines (`src/`, `.cs`) | 21,230 | 21,204 |
+| Razor views (`src/`, `.cshtml`) | 51 | 51 |
+| Migrations | 1 (`20260909112228_InitialCreate`) + model snapshot | unchanged |
+| Tests | 46 `[Fact]`/`[Theory]` across 7 files — all green | **48**, all green (HIGH-2's two new tests) |
+| Build warnings, plain `dotnet build` | not enforced (`TreatWarningsAsErrors=false`) | **0, enforced by default** (LOW-2) |
+| Build warnings (`-warnaserror`) | 0 | 0 |
+| Secrets tracked | 0 | 0 |
+| Demo seed photography | ~19 MB, one file 1.97 MB | **~1.4 MB, largest file 279 KB** |
 
 ---
 
-## Recommended order of work (after your review)
+## Order of work as executed
 
-1. **BLOCKER-1** — amend the keep-list (or decide otherwise). Nothing else in Step 5 should
-   move until this is settled.
-2. **HIGH-2** — decide: implement "Actually collected", or document it as cut.
-3. **HIGH-1**, **HIGH-3**, **MEDIUM-1/2/3** — copy + doc fixes, one commit each, each ending
-   `dotnet build Faed.slnx && dotnet test`.
-4. **Deletion commit** (D1–D6) — its own commit; decision-scan `plan.md` first.
-5. **MEDIUM-4/6**, **Step 8** doc regeneration (`04-DOMAIN-MODEL.md`, Phases 11–13 back-fill,
-   `README.md`).
-6. **LOW-1** (fold into the deletion commit), **LOW-2/3/4/5** — optional.
-7. **Step 9 authenticated walk-through** (with timings) — then the whole rehearsal again
-   after the deletion commit.
+Matched the approved fix prompt (`docs/Faed phase 14 fix prompt.md.txt`), one commit per
+item, `dotnet build Faed.slnx -warnaserror && dotnet test` green after each:
 
-*End of audit. Awaiting approval before any code change.*
+1. Keep-list amendment — `1d77cbe`
+2. `plan.md` decision-scan, presented and approved, then moved — `3b06365`
+3. HIGH-1 — `6068dd5`
+4. MEDIUM-3 — `fedc1da`
+5. Deletion commit (D1–D6, LOW-1) — `58b0cbc`, plus `69a910f` recording NEW-1
+6. HIGH-3 + MEDIUM-4 — `f3b4e67`
+7. MEDIUM-1 — `a6b7357`
+8. MEDIUM-2 — `01f4ab7`
+9. HIGH-2 — `f51ebe2`
+10. Images — `4827ad1`
+11. MEDIUM-6 + Step 8 — `cd03222`
+
+Plus the two items the fix prompt approved but left off the numbered list: LOW-2
+(`b8e1207`) and `docs/REHEARSAL-CHECKLIST.md` (`3c729c7`). LOW-3, LOW-4 and LOW-5 are
+recorded above as accepted, deliberately. NEW-1 is the one open item, awaiting a decision
+beyond this pass's scope.
+
+*Fix pass complete. `docs/REHEARSAL-CHECKLIST.md` is the human walkthrough that follows.*
