@@ -11,24 +11,66 @@
     };
 }
 
+@* 2026-09-11 revision — a real hero: headline, subtext, two CTAs and a trust strip, plus a
+   decorative showcase built from the same photo-tile + condition-stamp components used on a
+   real listing card, so the intro ties to the disclosure premise instead of a generic banner
+   photo. The visual half is presentational only (aria-hidden).
+   Phase 15 (11 Sept 2026) — the showcase is now a single hung tag (a hole + a length of
+   string) over a faint blueprint-grid ground, replacing the earlier blob + two overlapping
+   cards, which read as a generic SaaS/AI-generated collage on review.
+   Phase 17 (11 Sept 2026, same day) — that hung tag was itself a photo tile for ONE listing.
+   Feedback was that the hero visual should show the marketplace's whole idea — several kinds
+   of graded, open-box goods — not a single product, so the showcase is now a wider "trade
+   counter" scene panel.
+   Phase 20 (11 Sept 2026) — the product owner supplied the real photo
+   (wwwroot/images/home/home-hero.png); the CategoryGlyph fallback is replaced with the actual
+   <img class="fx-hero__scene-photo">. *@
 <section class="fx-hero">
-    <div class="fx-wrap">
-        <div class="fx-hero__mark">Faed</div>
-        <p class="fx-hero__tag">
-            Open-box and ex-display appliances and power tools in Amman. Every listing shows its
-            condition and why the price dropped. Reserve online, inspect and pay cash at pickup.
-        </p>
+    <div class="fx-wrap fx-hero__grid">
+        <div class="fx-hero__content">
+            <span class="fx-hero__eyebrow">Amman &middot; Open-box &amp; ex-display</span>
+            <h1 class="fx-hero__title">Appliances and power tools that show their whole story.</h1>
+            <p class="fx-hero__tag">
+                Open-box and ex-display appliances and power tools in Amman. Every listing shows its
+                condition and why the price dropped. Reserve online, inspect and pay cash at pickup.
+            </p>
+            <div class="fx-hero__actions">
+                <a class="fx-btn" asp-controller="Shop" asp-action="Index">Browse the shop</a>
+                <a class="fx-btn fx-btn--ghost" asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Sell on Faed</a>
+            </div>
+            <ul class="fx-hero__facts">
+                <li>@FaedIcon.Render("shield-check") <span>Verified Amman merchants only</span></li>
+                <li>@FaedIcon.Render("tag") <span>Condition and discount reason disclosed on every listing</span></li>
+                <li>@FaedIcon.Render("eye") <span>Inspect in person, pay cash at pickup</span></li>
+            </ul>
+        </div>
+        <div class="fx-hero__visual" aria-hidden="true">
+            <figure class="fx-hero__scene">
+                <div class="fx-hero__scene-frame">
+                    <img class="fx-hero__scene-photo" src="~/images/home/home-hero.png" alt="" />
+                </div>
+                <span class="fx-hero__scene-tag">
+                    <span class="fx-hero__scene-hole"></span>
+                    Every item, graded &amp; disclosed
+                </span>
+            </figure>
+        </div>
     </div>
 </section>
 
 <div class="fx-wrap fx-main">
     @if (Model.Categories.Count > 0)
     {
+        <div class="fx-section-head">
+            <h2>Shop by category</h2>
+        </div>
         <div class="fx-cat-grid">
             @foreach (var category in Model.Categories)
             {
                 <a class="fx-cat-card" asp-controller="Shop" asp-action="Index" asp-route-Category="@category.Slug">
-                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@Html.Raw(CategoryGlyph(category.Slug))</svg>
+                    <span class="fx-cat-card__icon">
+                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@Html.Raw(CategoryGlyph(category.Slug))</svg>
+                    </span>
                     <span class="fx-cat-card__name">@category.Name</span>
                     <span class="fx-cat-card__count">@category.LiveListingCount item@(category.LiveListingCount == 1 ? "" : "s")</span>
                 </a>

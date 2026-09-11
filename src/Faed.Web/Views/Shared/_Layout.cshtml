@@ -46,6 +46,11 @@
     var isSignedIn = User.Identity?.IsAuthenticated == true;
     var isAdmin = User.IsInRole(FaedRoles.Admin);
     var isMerchant = User.IsInRole(FaedRoles.Merchant);
+
+    // Phase 15 — unified navbar. "Sell on Faed" is a top-level destination for everyone who
+    // does not already have a workspace link in its place (a signed-in merchant gets Merchant
+    // Center instead, an admin gets Admin Workspace instead).
+    var showSellOnFaed = !isAdmin && !isMerchant;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -65,31 +70,14 @@
 <body class="@bodyClass">
     <a class="faed-skip-link" href="#main-content">Skip to main content</a>
 
-@if (isPublicSurface)
-{
-    <header class="fx-site-header">
-        <div class="fx-wrap fx-site-header__inner">
-            <a class="fx-wordmark" asp-area="" asp-controller="Home" asp-action="Index">Faed</a>
-            <nav class="fx-site-nav" aria-label="Main navigation">
-                <a asp-area="" asp-controller="Shop" asp-action="Index">Shop</a>
-                <a asp-area="Merchant" asp-controller="Verification" asp-action="Apply">Sell on Faed</a>
-                @if (isSignedIn)
-                {
-                    <form method="post" asp-area="Identity" asp-page="/Account/Logout"
-                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                        <button type="submit">Sign out</button>
-                    </form>
-                }
-                else
-                {
-                    <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
-                }
-            </nav>
-        </div>
-    </header>
-}
-else
-{
+@* Phase 15 (11 Sept 2026) — one navbar component for every page. Previously this branched
+   between a plain fx-site-header (public pages only: wordmark + three text links, no search,
+   no account state) and this richer faed-navbar (everywhere else). Clicking from Home into
+   Sign in was visibly a different site. Now every route renders this header; only its content
+   — primary links, search visibility, account cluster — still varies by auth state/role,
+   never by which area of the app the visitor is in. See docs/DESIGN-BRIEF.md for the dated
+   revision entry. The public-surface footer below is intentionally left as-is — the review
+   that asked for this was about the navbar specifically, not the footer. *@
     <header class="faed-site-header">
         <nav class="navbar navbar-expand-lg faed-navbar" aria-label="Main navigation">
             <div class="faed-shell faed-navbar__inner">
@@ -116,6 +104,18 @@ else
                                 <span>Shop</span>
                             </a>
                         </li>
+
+                        @* Top-level "Sell on Faed" — the unified navbar's plain-header
+                           predecessor showed this to every visitor; a signed-in merchant/admin
+                           gets their workspace link in its place instead (below), never both. *@
+                        @if (showSellOnFaed)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Merchant" asp-controller="Verification" asp-action="Apply">
+                                    <span>Sell on Faed</span>
+                                </a>
+                            </li>
+                        }
 
                         @* Workspace entry repeats here for the collapsed menu only. The
                            top-level control in the action cluster is hidden below lg and this
@@ -170,7 +170,6 @@ else
             </div>
         </nav>
     </header>
-}
 
     <main id="main-content" role="main" tabindex="-1">
         @{

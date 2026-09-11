@@ -5,23 +5,33 @@
     /* Phase 12 — DESIGN-BRIEF.md §5.2 token pass. The fashion-era hues (#f7f3eb paper,
        #0d6957 teal) and the 12px radius are retired here: these names now resolve to the
        ink/paper trade-counter system so the merchant and admin workspaces inherit the new
-       colour, spacing and type without being rebuilt (§6). */
-    --faed-bg: #f4f4f2;
-    --faed-surface: #fbfbfa;
-    --faed-surface-muted: #e7e5de;
-    --faed-text: #16181a;
-    --faed-text-muted: #5c5f63;
-    --faed-border: #d5d4cf;
-    --faed-border-strong: #16181a;
+       colour, spacing and type without being rebuilt (§6).
 
-    --faed-brand: #16181a;
+       Phase 16 (11 Sept 2026, DESIGN-BRIEF.md §5.14) — these SHARED values are promoted
+       sitewide to the corrected "Inspection Tag" hues that Phase 15 had scoped to the
+       public/auth pages only (body.faed-public-page / body.faed-auth-page). Promoting them
+       here, instead of leaving two palettes, is what actually closes the "workspace looks
+       like a different, older site" gap — every screen now shares one ink/paper/border
+       identity. This is a token-value change only: no workspace/admin/merchant/buyer
+       component rule, class, radius, or the many hand-tuned literal hex values already
+       inside those component rules were touched — DESIGN-BRIEF.md §5.12 still says not to
+       audit or rebuild that CSS, and this doesn't. */
+    --faed-bg: #f4f0e5;
+    --faed-surface: #fbfbfa;
+    --faed-surface-muted: #e7dfc9;
+    --faed-text: #1e2b28;
+    --faed-text-muted: #5a635f;
+    --faed-border: #d9d0b8;
+    --faed-border-strong: #1e2b28;
+
+    --faed-brand: #1e2b28;
     --faed-brand-strong: #000000;
     --faed-brand-deep: #000000;
-    --faed-brand-tint: #e7e5de;
+    --faed-brand-tint: #e7dfc9;
     --faed-brand-soft: #efeeea;
-    --faed-ink: #16181a;
+    --faed-ink: #1e2b28;
     --faed-interactive: #efeeea;
-    --faed-focus: rgba(22, 24, 26, 0.28);
+    --faed-focus: rgba(30, 43, 40, 0.28);
 
     --faed-success: #25754a;
     --faed-success-tint: #e7f2ea;
@@ -54,9 +64,16 @@
    DESIGN-BRIEF.md §5.2 tokens (final, locked 2026-09-10). Activated in Phase 12.
    ------------------------------------------------------------------------------------- */
 :root {
-    --faed-paper: #f4f4f2;    /* page background */
-    --faed-card-bg: #e7e5de;  /* product-photo card background — never pure white (§5.6) */
-    --faed-rust: #b23a00;     /* disclosure only: the condition stamp and the DEFECT tag. Never a button (§5.3) */
+    /* Phase 16 (11 Sept 2026, §5.14): corrected "Inspection Tag" hues, promoted sitewide —
+       see the note above the first :root block. */
+    --faed-paper: #f4f0e5;      /* page background — was #f4f4f2 */
+    --faed-card-bg: #e7dfc9;    /* product-photo card background — never pure white (§5.6) — was #e7e5de */
+    --faed-rust: #a67425;       /* disclosure only: the condition stamp and the DEFECT tag. Never a button (§5.3).
+                                    Icons/borders/fills ONLY — at 12px/10px text sizes this clears only ~3:1,
+                                    below the 4.5:1 AA minimum for text. Was #b23a00. See --faed-rust-text. */
+    --faed-rust-text: #815a1d;  /* the one place rust is actual small text (.fx-price__off) or a
+                                    text-bearing background (.fx-defect__tag) — clears 4.5:1+ everywhere
+                                    it's used; --faed-rust does not. */
 
     --faed-font-display: "Archivo", "Segoe UI", system-ui, sans-serif;      /* headings, wordmark — weight 600 */
     --faed-font-price: "Archivo Narrow", "Archivo", "Segoe UI", sans-serif; /* prices only — weight 600 */
@@ -712,7 +729,7 @@ video {
     align-items: center;
     gap: 0.3rem;
     padding: 0.2rem 0.4rem;
-    border-radius: 6px;
+    border-radius: var(--faed-radius);
     background: rgba(27, 27, 24, 0.72);
     color: #fff;
     font-size: 0.72rem;
@@ -2298,7 +2315,11 @@ video {
 }
 
 .faed-navbar .nav-link:hover {
-    background: rgba(13, 105, 87, 0.055);
+    /* Phase 18 (11 Sept 2026): was rgba(13,105,87,…) — a leftover fashion-era teal wash
+       (see the retired #0d6957 token at the top of this file) that never followed the
+       ink/paper/rust rename. Ink-tinted now, so hovering a nav link tints toward the same
+       identity as everything else instead of an unrelated green. */
+    background: rgba(30, 43, 40, 0.055);
     color: var(--faed-brand-strong);
 }
 
@@ -2428,7 +2449,7 @@ video {
 }
 
 .faed-navbar-action:hover {
-    background: rgba(13, 105, 87, 0.06);
+    background: rgba(30, 43, 40, 0.06); /* Phase 18: was the same leftover teal wash */
     color: var(--faed-brand-strong);
 }
 
@@ -2506,7 +2527,7 @@ video {
 
 .faed-account-menu__trigger:hover,
 .faed-account-menu__trigger[aria-expanded="true"] {
-    background: rgba(13, 105, 87, 0.06);
+    background: rgba(30, 43, 40, 0.06); /* Phase 18: was the same leftover teal wash */
 }
 
 .faed-account-menu__caret {
@@ -2758,7 +2779,7 @@ video {
 
 .faed-btn:hover { transform: translateY(-1px); }
 .faed-btn:active { transform: translateY(0); }
-.faed-btn--primary { box-shadow: 0 5px 13px rgba(13, 105, 87, 0.17); }
+.faed-btn--primary { box-shadow: 0 5px 13px rgba(30, 43, 40, 0.17); } /* Phase 18: was the same leftover teal (#0D6957) glow */
 .faed-btn--light { background: #fff; color: var(--faed-brand-strong); }
 .faed-btn--light:hover { background: #eff8f5; color: var(--faed-brand-deep); }
 .faed-btn--ghost:hover { border-color: var(--faed-brand); background: var(--faed-interactive); }
@@ -3164,7 +3185,7 @@ video {
     background-image:
         linear-gradient(90deg, var(--faed-brand-deep) 0%, rgba(7,59,50,.50) 11%, rgba(7,59,50,.10) 33%, rgba(7,59,50,0) 58%),
         linear-gradient(145deg, rgba(239,231,218,.82), rgba(111,128,119,.30)),
-        url('/images/home/faed-home-hero.webp');
+        url('/images/home/home-hero.png');
     background-position: center;
     background-size: cover;
 }
@@ -3178,19 +3199,7 @@ video {
     pointer-events: none;
 }
 
-.faed-hero__discovery {
-    position: absolute;
-    z-index: 2;
-    top: 14%;
-    right: clamp(1rem, 3.2vw, 2.7rem);
-    width: min(22rem, calc(100% - 2rem));
-    padding: 1.05rem 1.1rem 1rem;
-    border: 1px solid rgba(255,255,255,.42);
-    border-radius: 1.05rem;
-    background: rgba(6,54,46,.78);
-    box-shadow: 0 24px 60px rgba(3,28,24,.20);
-    backdrop-filter: blur(10px);
-}
+/* .faed-hero__discovery removed, Phase 19 (11 Sep 2026): unreferenced by any view (superseded by .fx-hero__*) — see DESIGN-BRIEF §5.17. */
 
 .faed-hero__discovery-label {
     margin: 0 0 .45rem;
@@ -3282,15 +3291,7 @@ video {
     text-transform: uppercase;
 }
 
-/* Category bridge intentionally overlaps the hero, matching the public reference direction. */
-.faed-home-category-shell {
-    position: relative;
-    z-index: 3;
-    margin-top: -2.15rem;
-    padding: 2.15rem 0 .35rem;
-    border-radius: 2rem 2rem 0 0;
-    background: var(--faed-bg);
-}
+/* .faed-home-category-shell removed, Phase 19 (11 Sep 2026): unreferenced by any view — see DESIGN-BRIEF §5.17. */
 
 .faed-home-categories {
     margin-bottom: 1.3rem;
@@ -3440,26 +3441,7 @@ video {
     pointer-events: none;
 }
 
-.faed-product-card__media-label {
-    position: absolute;
-    z-index: 1;
-    inset: .65rem auto auto .65rem;
-    padding: .25rem .5rem;
-    border-radius: .35rem;
-    background: rgba(255,255,255,.92);
-    color: var(--faed-brand-strong);
-    font-size: .64rem;
-    font-weight: 760;
-    letter-spacing: .055em;
-    text-transform: uppercase;
-}
-
-.faed-product-card__discount {
-    z-index: 1;
-    inset: .65rem .65rem auto auto;
-    border-radius: .35rem;
-    background: var(--faed-brand-deep);
-}
+/* .faed-product-card__media-label and this .faed-product-card__discount override removed, Phase 19 (11 Sep 2026): unreferenced by any view (superseded by .fx-card) — see DESIGN-BRIEF §5.17. */
 
 .faed-product-card__stock {
     z-index: 1;
@@ -3513,16 +3495,7 @@ video {
     align-content: center;
 }
 
-.faed-home-empty__icon {
-    display: grid;
-    place-items: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: .75rem;
-    background: var(--faed-brand-tint);
-    color: var(--faed-brand-strong);
-    font-weight: 800;
-}
+/* .faed-home-empty__icon removed, Phase 19 (11 Sep 2026): unreferenced by any view (superseded by .fx-empty) — see DESIGN-BRIEF §5.17. */
 
 .faed-how-it-works {
     display: grid;
@@ -3767,18 +3740,12 @@ video {
         background-image:
             linear-gradient(180deg, var(--faed-brand-deep) 0%, rgba(7,59,50,.10) 17%, rgba(7,59,50,.04) 80%),
             linear-gradient(145deg, rgba(239,231,218,.82), rgba(111,128,119,.30)),
-            url('/images/home/faed-home-hero.webp');
+            url('/images/home/home-hero.png');
     }
 
     .faed-hero__discovery {
         top: 1.2rem;
         right: max(1rem, calc((100vw - min(100% - 2rem, var(--faed-content))) / 2));
-    }
-
-    .faed-home-category-shell {
-        margin-top: -1.4rem;
-        padding-top: 1.75rem;
-        border-radius: 1.5rem 1.5rem 0 0;
     }
 
     .faed-category-grid {
@@ -3948,20 +3915,7 @@ video {
     min-width: 0;
 }
 
-/* Search remains independent from filters so the primary discovery action is always obvious. */
-.faed-shop-search {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    align-items: center;
-    min-height: 3.75rem;
-    margin-bottom: .8rem;
-    padding: .42rem .48rem .42rem .9rem;
-    border: 1px solid var(--faed-border-strong);
-    border-radius: calc(var(--faed-radius) + 2px);
-    background: var(--faed-surface);
-    box-shadow: 0 1px 2px rgba(20,34,29,.025);
-    transition: border-color var(--faed-transition), box-shadow var(--faed-transition);
-}
+/* .faed-shop-search removed, Phase 19 (11 Sep 2026): unreferenced by any view (superseded by .fx-search) — see DESIGN-BRIEF §5.17. */
 
 .faed-shop-search:focus-within {
     border-color: var(--faed-brand);
@@ -4427,21 +4381,7 @@ button.faed-quick-filter {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.faed-product-card__condition-badge {
-    position: absolute;
-    z-index: 2;
-    right: .65rem;
-    bottom: .65rem;
-    max-width: calc(100% - 1.3rem);
-    padding: .28rem .5rem;
-    border-radius: .42rem;
-    background: rgba(255,253,249,.94);
-    color: var(--faed-brand-strong);
-    font-size: .66rem;
-    font-weight: 730;
-    line-height: 1.2;
-    backdrop-filter: blur(7px);
-}
+/* .faed-product-card__condition-badge removed, Phase 19 (11 Sep 2026): unreferenced by any view (superseded by .fx-card) — see DESIGN-BRIEF §5.17. */
 
 .faed-product-card__merchant {
     order: initial;
@@ -5530,7 +5470,7 @@ button.faed-quick-filter {
     min-height: 33rem;
     overflow: hidden;
     border: 1px solid var(--faed-border);
-    border-radius: clamp(1rem, 2vw, 1.5rem);
+    border-radius: clamp(var(--fx-radius), 2vw, var(--fx-radius-lg));
     background: var(--faed-surface);
     box-shadow: var(--faed-shadow-elevated);
 }
@@ -5829,7 +5769,7 @@ button.faed-quick-filter {
     border-radius: var(--faed-radius-sm);
     font-size: .94rem;
     font-weight: 720;
-    box-shadow: 0 6px 16px rgba(13, 105, 87, .16);
+    box-shadow: 0 6px 16px rgba(30, 43, 40, .16); /* Phase 18: was the same leftover teal (#0D6957) glow */
 }
 
 .faed-auth-content .btn-primary:hover {
@@ -5882,8 +5822,16 @@ button.faed-quick-filter {
     font-weight: 620;
 }
 
-/* The supporting panel uses only CSS geometry: it avoids adding a sector-specific static
-   image to a permanent account surface while keeping the visual language recognisably Faed. */
+/* Phase 15 (11 Sept 2026): was a radial-gradient-blobs-on-a-dark-panel treatment — reviewed
+   feedback named this exact pattern as looking generic/AI-made. Replaced with the same
+   ink + faint blueprint-grid ground used behind the home hero's hung tag, so the account
+   pages read as the same considered piece of work as the rest of the public-facing site
+   rather than a separate decorative language.
+   Phase 20 (11 Sept 2026): the product owner supplied the real photo
+   (wwwroot/images/home/login.png) this rule's own comment had left as an open slot. The photo
+   sits under an ink scrim (kept dark enough for the white text/icons above to stay legible)
+   with the same blueprint-grid texture layered on top, so the panel keeps its established
+   look instead of becoming a plain product shot. */
 .faed-auth-context {
     position: relative;
     isolation: isolate;
@@ -5892,32 +5840,11 @@ button.faed-quick-filter {
     overflow: hidden;
     color: #fff;
     background:
-        radial-gradient(circle at 86% 14%, rgba(242, 222, 177, .18), transparent 24rem),
-        radial-gradient(circle at 13% 86%, rgba(255, 255, 255, .10), transparent 20rem),
-        var(--faed-brand-deep);
-}
-
-.faed-auth-context::before,
-.faed-auth-context::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    border: 1px solid rgba(255,255,255,.12);
-    border-radius: 999px;
-}
-
-.faed-auth-context::before {
-    width: 22rem;
-    height: 22rem;
-    top: -8rem;
-    right: -9rem;
-}
-
-.faed-auth-context::after {
-    width: 15rem;
-    height: 15rem;
-    right: 4rem;
-    bottom: -8rem;
+        linear-gradient(rgba(244, 240, 229, .07) 1px, transparent 1px) 0 0 / 26px 26px,
+        linear-gradient(90deg, rgba(244, 240, 229, .07) 1px, transparent 1px) 0 0 / 26px 26px,
+        linear-gradient(180deg, rgba(30, 43, 40, .55), rgba(30, 43, 40, .92)),
+        url('/images/home/login.png') center / cover no-repeat,
+        var(--faed-ink);
 }
 
 .faed-auth-context__inner {
@@ -7382,7 +7309,7 @@ button.faed-quick-filter {
 .faed-admin-page .faed-admin-filterbar a {
     min-height: 2.2rem;
     padding: .45rem .7rem;
-    border-radius: calc(var(--faed-radius-sm) - 2px);
+    border-radius: var(--faed-radius-sm);
     color: #5d6964;
     font-size: .76rem;
     font-weight: 680;
@@ -7898,11 +7825,6 @@ button.faed-quick-filter {
     transform: translateX(2px);
 }
 
-.faed-home-empty__icon .faed-icon {
-    width: 1.35rem;
-    height: 1.35rem;
-}
-
 .faed-buyer-empty__mark .faed-icon,
 .faed-shop-empty__mark .faed-icon {
     width: 1.5rem;
@@ -8045,12 +7967,17 @@ button.faed-quick-filter {
 }
 
 /* =====================================================================================
-   PHASE 12 - public surface (DESIGN-BRIEF.md section 5). The five public screens (Home,
-   Shop, Listing detail, Reserve, Merchant storefront) plus the section 5.11 site chrome are
-   built from the fx- components below, following DESIGN-BRIEF.md section 5. Legacy
-   public classes above are left in place but unreferenced by these screens (section 9 -
-   faed.css is not audited or refactored). Ink is for acting, rust is for disclosing,
-   they never swap (section 5.3).
+   PHASE 12 - public surface (DESIGN-BRIEF.md section 5), revised 2026-09-11. The five
+   public screens (Home, Shop, Listing detail, Reserve, Merchant storefront) plus the
+   section 5.11 site chrome are built from the fx- components below. This revision moves
+   the public surface from Direction A's flat/square/zero-shadow treatment to a warmer,
+   rounded, softly-shadowed system with a real home hero — the flat version read as
+   unfinished and dated without one, per feedback on the first build. Ink is still for
+   acting and rust is still for disclosing; that rule does not change, only the shapes and
+   depth around it. The new --fx-* tokens below are scoped to this section only and never
+   redefine the shared --faed-* tokens above, so the workspace/admin/identity screens keep
+   their existing flat look untouched (section 9 rule — faed.css is not otherwise audited
+   or refactored).
    ===================================================================================== */
 
 .faed-workspace-page h1,
@@ -8076,27 +8003,55 @@ button.faed-quick-filter {
 
 .faed-wordmark:hover { color: var(--faed-ink); }
 
+:root {
+    /* Public-surface-only tokens. Rounded, soft-shadow system for the five fx- screens —
+       deliberately separate from --faed-radius / --faed-radius-sm / --faed-radius-lg above,
+       which stay at 2px for the workspace/admin/identity screens. */
+    --fx-radius-sm: 10px;
+    --fx-radius: 16px;
+    --fx-radius-lg: 24px;
+    --fx-radius-pill: 999px;
+    --fx-border-soft: rgba(30, 43, 40, 0.11);
+    --fx-surface: #ffffff;
+    --fx-tint: #fbf0e8;
+    --fx-shadow-xs: 0 1px 2px rgba(30, 43, 40, 0.06);
+    --fx-shadow-sm: 0 2px 8px rgba(30, 43, 40, 0.07);
+    --fx-shadow-md: 0 12px 28px -8px rgba(30, 43, 40, 0.16);
+    --fx-shadow-lg: 0 28px 56px -16px rgba(30, 43, 40, 0.22);
+}
+
+/* =====================================================================================
+   PHASE 15 (11 Sept 2026) — "Inspection Tag" palette. The Round-1 tokens (near-black ink,
+   plain cream paper, red-orange rust) read as a generic, templated look on review and were
+   rejected for exactly that reason. This replacement is built from the object the whole
+   marketplace is about: a kraft inspection tag, punched and tied to an opened, graded box.
+   It first shipped scoped to body.faed-public-page/body.faed-auth-page only, because
+   --faed-ink/--faed-paper/--faed-card-bg/--faed-rust/--faed-text-muted are shared tokens
+   consumed by hundreds of workspace/merchant/admin/buyer/identity-management rules too, and
+   redeclaring them at :root would have repainted the whole application in one step.
+
+   PHASE 16 (11 Sept 2026, same day, §5.14) — that scoping is exactly what then made the
+   public/auth pages visibly a different, newer site from everything behind login. The
+   corrected values are promoted to the shared :root declarations at the top of this file
+   instead (search "Phase 16" there), so every screen now inherits the same ink/paper/
+   border/rust identity — this block is retired rather than deleted, so the history and the
+   WCAG contrast rationale stay attached to the values that now live at :root. No workspace/
+   admin/merchant/buyer COMPONENT rule was touched — DESIGN-BRIEF.md §5.12 still says not to
+   audit or rebuild that CSS, only the shared color tokens it inherits changed value. */
+
 .fx-wrap {
     max-width: 1200px;
     margin-inline: auto;
     padding-inline: 24px;
 }
 
-.fx-main { padding-block: 40px 0; }
+.fx-main { padding-block: 48px 0; }
 
 body { font-weight: 400; }
 
-.fx-site-header {
-    border-bottom: 1px solid var(--faed-ink);
-    background: var(--faed-paper);
-}
-
-.fx-site-header__inner {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-    min-height: 64px;
-}
+/* .fx-site-header / .fx-site-nav removed (Phase 15) — the unified faed-navbar now renders on
+   every page, including the five that used this plain header. .fx-wordmark stays: the public
+   footer below still uses it. */
 
 .fx-wordmark {
     font-family: var(--faed-font-display);
@@ -8107,32 +8062,9 @@ body { font-weight: 400; }
     color: var(--faed-ink);
 }
 
-.fx-site-nav {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 22px;
-}
-
-.fx-site-nav a,
-.fx-site-nav form button {
-    text-decoration: none;
-    color: var(--faed-ink);
-    font-family: var(--faed-font-body);
-    font-size: 14px;
-    font-weight: 500;
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
-}
-
-.fx-site-nav a:hover,
-.fx-site-nav form button:hover { text-decoration: underline; }
-
 .fx-site-footer {
-    margin-top: 72px;
-    border-top: 1px solid var(--faed-ink);
+    margin-top: 88px;
+    border-top: 1px solid var(--fx-border-soft);
     background: var(--faed-paper);
 }
 
@@ -8153,10 +8085,10 @@ body { font-weight: 400; }
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 44px;
-    padding: 10px 22px;
+    min-height: 46px;
+    padding: 11px 24px;
     border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
+    border-radius: var(--fx-radius-pill);
     background: var(--faed-ink);
     color: var(--faed-paper);
     font-family: var(--faed-font-body);
@@ -8164,13 +8096,15 @@ body { font-weight: 400; }
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
+    box-shadow: var(--fx-shadow-xs);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.fx-btn:hover { background: #000; color: var(--faed-paper); }
+.fx-btn:hover { background: #000; color: var(--faed-paper); transform: translateY(-1px); box-shadow: var(--fx-shadow-sm); }
 .fx-btn--block { width: 100%; }
 
-.fx-btn--ghost { background: transparent; color: var(--faed-ink); }
-.fx-btn--ghost:hover { background: rgba(22, 24, 26, 0.06); color: var(--faed-ink); }
+.fx-btn--ghost { background: transparent; color: var(--faed-ink); box-shadow: none; }
+.fx-btn--ghost:hover { background: rgba(30, 43, 40, 0.06); color: var(--faed-ink); }
 
 .fx-btn[disabled],
 .fx-btn.is-disabled {
@@ -8184,9 +8118,9 @@ body { font-weight: 400; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 9px;
+    padding: 3px 10px;
     border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
+    border-radius: var(--fx-radius-pill);
     background: transparent;
     color: var(--faed-ink);
     font-size: 11px;
@@ -8196,13 +8130,14 @@ body { font-weight: 400; }
     white-space: nowrap;
 }
 
-/* ---- Identity avatar (section 5.9 - square, 2px, ink fill, paper initials) ------ */
+/* ---- Identity avatar (section 5.9, revised: a circle reads friendlier for a modern
+   marketplace than a hard square; still ink fill, paper initials) ---------------- */
 
 .fx-avatar {
     display: grid;
     place-items: center;
     flex: none;
-    border-radius: var(--faed-radius);
+    border-radius: var(--fx-radius-pill);
     background: var(--faed-ink);
     color: var(--faed-paper);
     font-family: var(--faed-font-display);
@@ -8218,10 +8153,11 @@ body { font-weight: 400; }
 
 .fx-photo {
     position: relative;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 3; /* Phase 15: was 1/1 — this, not a narrower column, is what shortens
+                             the card. The complaint was about height, not width. */
     background: var(--faed-card-bg);
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
     overflow: hidden;
 }
 
@@ -8239,6 +8175,9 @@ body { font-weight: 400; }
     font-size: 12px;
 }
 
+/* Phase 15: an actual tag silhouette (clip-path notch + a punched-hole dot) instead of a
+   generic rounded pill — the condition stamp IS the inspection tag the whole palette is
+   named for, so its own shape should say so. */
 .fx-stamp {
     position: absolute;
     top: 10px;
@@ -8246,10 +8185,24 @@ body { font-weight: 400; }
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 5px 9px;
+    padding: 5px 10px 5px 16px;
     background: var(--faed-paper);
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    clip-path: polygon(11px 0, 100% 0, 100% 100%, 11px 100%, 0 50%);
+    box-shadow: var(--fx-shadow-xs);
+}
+
+.fx-stamp::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    width: 3px;
+    height: 3px;
+    margin-top: -1.5px;
+    border-radius: 50%;
+    background: var(--faed-ink);
+    opacity: .6;
 }
 
 .fx-stamp__meter { display: inline-flex; gap: 2px; align-items: center; }
@@ -8259,6 +8212,7 @@ body { font-weight: 400; }
     height: 13px;
     border: 1px solid var(--faed-rust);
     background: transparent;
+    border-radius: 1px;
 }
 
 .fx-stamp__bar.is-on { background: var(--faed-rust); }
@@ -8271,7 +8225,8 @@ body { font-weight: 400; }
     white-space: nowrap;
 }
 
-.fx-stamp--lg { top: 14px; left: 14px; padding: 7px 11px; }
+.fx-stamp--lg { top: 14px; left: 14px; padding: 7px 14px 7px 20px; clip-path: polygon(13px 0, 100% 0, 100% 100%, 13px 100%, 0 50%); }
+.fx-stamp--lg::before { left: 6px; width: 3.5px; height: 3.5px; margin-top: -1.75px; }
 .fx-stamp--lg .fx-stamp__bar { width: 5px; height: 16px; }
 .fx-stamp--lg .fx-stamp__grade { font-size: 11px; }
 
@@ -8282,19 +8237,23 @@ body { font-weight: 400; }
 .fx-card {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
-    background: var(--faed-paper);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius);
+    background: var(--fx-surface);
     overflow: hidden;
+    box-shadow: var(--fx-shadow-xs);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
+
+.fx-card:hover { transform: translateY(-4px); box-shadow: var(--fx-shadow-md); }
 
 .fx-card .fx-photo {
     border: 0;
-    border-bottom: 1px solid var(--faed-border);
+    border-bottom: 1px solid var(--fx-border-soft);
     border-radius: 0;
 }
 
-.fx-card__body { display: flex; flex-direction: column; gap: 6px; padding: 14px; }
+.fx-card__body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 13px; } /* Phase 15: was gap 7px / padding 16px */
 
 .fx-card__title {
     font-family: var(--faed-font-body);
@@ -8319,7 +8278,7 @@ body { font-weight: 400; }
     gap: 8px;
 }
 
-.fx-price__now { font-size: 18px; }
+.fx-price__now { font-size: 19px; }
 
 .fx-price__was {
     font-family: var(--faed-font-body);
@@ -8333,20 +8292,24 @@ body { font-weight: 400; }
     font-family: var(--faed-font-body);
     font-weight: 500;
     font-size: 12px;
-    color: var(--faed-text-muted);
+    color: var(--faed-rust-text); /* Phase 15: --faed-rust alone is ~2.5-3:1 here, below the
+                                      4.5:1 AA minimum for 12px text against paper/card-bg. */
 }
 
 .fx-card__stock { font-size: 12px; color: var(--faed-text-muted); }
 
-.fx-card--sm .fx-card__body { padding: 11px; gap: 5px; }
+.fx-card--sm .fx-card__body { padding: 12px; gap: 5px; }
 .fx-card--sm .fx-card__title { font-size: 14px; }
 .fx-card--sm .fx-price__now { font-size: 16px; }
 
 /* ---- Grids ------------------------------------------------------------------- */
 
-.fx-grid { display: grid; gap: 20px; }
-.fx-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.fx-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fx-grid { display: grid; gap: 24px; }
+/* Phase 15: was a fixed 3 (Home/Shop) / 4 (Storefront) columns — one card size across all
+   three grids now, at a comfortable width (not narrower — see .fx-photo above for how the
+   height actually comes down), with however many columns of that width fit the container.
+   The 900px/560px overrides below still apply and were left as-is (verified separately). */
+.fx-grid--3, .fx-grid--4 { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .fx-grid > * { min-width: 0; }
 .fx-card { min-width: 0; }
 .fx-photo img { max-width: 100%; }
@@ -8356,48 +8319,221 @@ body { font-weight: 400; }
     align-items: baseline;
     justify-content: space-between;
     gap: 16px;
-    margin: 44px 0 18px;
+    margin: 56px 0 22px;
 }
 
 .fx-section-head h1,
-.fx-section-head h2 { font-size: 20px; font-family: var(--faed-font-display); font-weight: 600; margin: 0; }
+.fx-section-head h2 { font-size: 21px; font-family: var(--faed-font-display); font-weight: 600; margin: 0; }
 
-.fx-section-head__link { font-size: 13px; color: var(--faed-ink); text-decoration: none; }
+.fx-section-head__link { font-size: 13px; color: var(--faed-ink); text-decoration: none; font-weight: 500; }
 .fx-section-head__link:hover { text-decoration: underline; }
 
 .fx-page-title { font-family: var(--faed-font-display); font-weight: 600; font-size: 26px; margin: 0 0 20px; }
 
-/* ---- Home: wordmark band + category cards ---------------------------------- */
+/* ---- Home hero (2026-09-11 revision) — headline, CTAs, trust facts, and a decorative
+   showcase collage built from the same components as a real listing card (photo tile +
+   condition stamp), so the hero ties to the disclosure premise instead of a generic banner
+   photo. Purely decorative — aria-hidden in the markup. --------------------------------- */
 
-.fx-hero { padding: 56px 0 44px; border-bottom: 1px solid var(--faed-border); }
-
-.fx-hero__mark {
-    font-family: var(--faed-font-display);
-    font-weight: 600;
-    font-size: clamp(40px, 7vw, 68px);
-    letter-spacing: -0.03em;
-    line-height: 1;
+.fx-hero {
+    padding: 40px 0 48px; /* Phase 15: was 56px 0 64px */
+    background: linear-gradient(180deg, var(--fx-tint) 0%, var(--faed-paper) 78%);
+    border-bottom: 1px solid var(--fx-border-soft);
+    overflow: hidden;
 }
 
-.fx-hero__tag { margin-top: 16px; max-width: 46ch; color: var(--faed-text-muted); font-size: 16px; }
+.fx-hero__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+    gap: 48px;
+    align-items: center;
+}
 
-.fx-cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 32px; }
+.fx-hero__content { min-width: 0; }
+
+.fx-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-pill);
+    background: var(--fx-surface);
+    color: var(--faed-ink);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.fx-hero__title {
+    margin: 14px 0 0;
+    font-family: var(--faed-font-display);
+    font-weight: 600;
+    font-size: clamp(28px, 3.6vw, 40px); /* Phase 15: was clamp(32px, 4.4vw, 50px) */
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 16ch;
+}
+
+.fx-hero__tag { margin-top: 14px; max-width: 46ch; color: var(--faed-text-muted); font-size: 16px; line-height: 1.5; } /* was margin-top 18px */
+
+.fx-hero__actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; } /* was 28px */
+
+.fx-hero__facts {
+    list-style: none;
+    margin: 24px 0 0; /* was 32px */
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fx-hero__facts li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--faed-ink);
+}
+
+.fx-hero__facts .faed-icon { width: 18px; height: 18px; flex: none; color: var(--faed-rust); }
+
+/* Phase 15: the blob + two overlapping rotated cards was a generic SaaS/AI-generated
+   collage pattern (product-review feedback named it explicitly). Replaced with a single
+   object — a tag hung by a punched hole and a length of string — over a faint blueprint-grid
+   ground, tying the decoration to the same "inspection tag" premise as the condition stamp.
+
+   Phase 17 (11 Sept 2026): that single object was itself a photo tile for ONE listing (an
+   "ex-display air fryer" card). Feedback was that the hero visual should read as the
+   marketplace's whole idea — several kinds of graded, open-box goods — not one product, even
+   at the cost of restructuring this section. `.fx-hero__tagcard`/`__hole`/`__string`/
+   `__card-photo`/`__card-info`/`__card-title`/`__card-price` (the single-listing tag card)
+   are retired; `.fx-hero__scene*` below is a wider "trade counter" panel meant to hold one
+   real photo of several tagged items together (see the image prompt in DESIGN-BRIEF.md's
+   Phase 17 entry). Until that photo exists, it falls back to three of the same category
+   glyphs used in the grid below, spread out rather than boxed into a single icon — still
+   "several categories, all disclosed," not a placeholder that reads as unfinished. */
+.fx-hero__visual {
+    position: relative;
+    min-height: 240px; /* was 340px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--fx-radius-lg);
+    background-image:
+        linear-gradient(var(--fx-border-soft) 1px, transparent 1px),
+        linear-gradient(90deg, var(--fx-border-soft) 1px, transparent 1px);
+    background-size: 26px 26px;
+    background-position: center;
+}
+
+.fx-hero__scene {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+}
+
+.fx-hero__scene-frame {
+    position: relative;
+    aspect-ratio: 5 / 4;
+    background: var(--faed-card-bg);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-lg);
+    box-shadow: var(--fx-shadow-lg);
+    overflow: hidden;
+}
+
+.fx-hero__scene-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.fx-hero__scene-glyphs {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10%;
+    padding: 15%;
+}
+
+.fx-hero__scene-glyphs svg {
+    width: 100%;
+    height: 100%;
+    color: var(--faed-ink);
+    opacity: .5;
+}
+
+/* The one remaining "tag" accent — pinned to the frame's corner rather than being the whole
+   visual, so the inspection-tag motif still ties this scene to the condition stamp and the
+   auth-page identity without competing with a real photo for attention. Sits on the outer
+   .fx-hero__scene (not the clipped .fx-hero__scene-frame) so it can overhang the corner. */
+.fx-hero__scene-tag {
+    position: absolute;
+    top: 18px;
+    right: -12px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 22px;
+    background: var(--fx-surface);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
+    box-shadow: var(--fx-shadow-sm);
+    transform: rotate(3deg);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--faed-ink);
+    white-space: nowrap;
+}
+
+.fx-hero__scene-hole {
+    position: absolute;
+    top: 9px;
+    left: 8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2px solid var(--faed-ink);
+    background: var(--faed-paper);
+}
+
+/* ---- Home: category cards ---------------------------------------------------- */
+
+.fx-cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 28px; }
 
 .fx-cat-card {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 22px;
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
-    background: var(--faed-paper);
+    gap: 16px;
+    padding: 26px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-lg);
+    background: var(--fx-surface);
     text-decoration: none;
     color: var(--faed-ink);
-    min-height: 190px;
+    min-height: 200px;
+    box-shadow: var(--fx-shadow-xs);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-.fx-cat-card:hover { background: var(--faed-card-bg); }
-.fx-cat-card svg { width: 40px; height: 40px; }
+.fx-cat-card:hover { transform: translateY(-4px); box-shadow: var(--fx-shadow-md); border-color: transparent; }
+
+.fx-cat-card__icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--fx-radius-pill);
+    background: var(--fx-tint);
+    color: var(--faed-rust);
+}
+
+.fx-cat-card__icon svg { width: 28px; height: 28px; }
 
 .fx-cat-card__name { font-family: var(--faed-font-display); font-weight: 600; font-size: 17px; margin-top: auto; }
 .fx-cat-card__count { font-size: 12px; color: var(--faed-text-muted); }
@@ -8414,12 +8550,13 @@ body { font-weight: 400; }
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 12px;
-    height: 42px;
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
-    background: var(--faed-paper);
+    padding: 0 14px;
+    height: 44px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-pill);
+    background: var(--fx-surface);
     color: var(--faed-ink);
+    box-shadow: var(--fx-shadow-xs);
 }
 
 .fx-search input {
@@ -8432,25 +8569,26 @@ body { font-weight: 400; }
 }
 
 .fx-select {
-    height: 42px;
-    padding: 0 34px 0 12px;
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
-    background-color: var(--faed-paper);
+    height: 44px;
+    padding: 0 34px 0 14px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-pill);
+    background-color: var(--fx-surface);
     color: var(--faed-ink);
     font: inherit;
     font-size: 14px;
     appearance: none;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2316181A' stroke-width='1.5'/></svg>");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 14px center;
     cursor: pointer;
+    box-shadow: var(--fx-shadow-xs);
 }
 
 .fx-sort {
     margin-left: auto;
     padding-left: 16px;
-    border-left: 1px solid var(--faed-border);
+    border-left: 1px solid var(--fx-border-soft);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -8458,7 +8596,7 @@ body { font-weight: 400; }
 
 .fx-sort__label { font-size: 12px; color: var(--faed-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-.fx-result-count { margin-top: 8px; font-size: 11px; color: var(--faed-text-muted); }
+.fx-result-count { margin-top: 10px; font-size: 11px; color: var(--faed-text-muted); }
 
 /* ---- Merchant storefront header (section 5.8) ------------------------- */
 
@@ -8467,8 +8605,8 @@ body { font-weight: 400; }
     grid-template-columns: 1fr auto;
     gap: 16px 24px;
     align-items: start;
-    padding-bottom: 22px;
-    border-bottom: 1px solid var(--faed-ink);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--fx-border-soft);
 }
 
 .fx-store-head__identity { display: flex; gap: 16px; }
@@ -8514,8 +8652,8 @@ body { font-weight: 400; }
     height: 68px;
     flex: none;
     background: var(--faed-card-bg);
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
     padding: 0;
     overflow: hidden;
     cursor: pointer;
@@ -8533,14 +8671,16 @@ body { font-weight: 400; }
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
+    padding: 14px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius);
     text-decoration: none;
     color: var(--faed-ink);
+    box-shadow: var(--fx-shadow-xs);
+    transition: box-shadow 0.15s ease;
 }
 
-.fx-merchant-card:hover { background: var(--faed-card-bg); }
+.fx-merchant-card:hover { box-shadow: var(--fx-shadow-sm); }
 .fx-merchant-card__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .fx-merchant-card__name {
@@ -8563,8 +8703,8 @@ body { font-weight: 400; }
 
 .fx-reveal-note {
     padding: 12px 14px;
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius);
     background: var(--faed-card-bg);
     font-size: 13px;
     color: var(--faed-ink);
@@ -8574,17 +8714,17 @@ body { font-weight: 400; }
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1px;
-    border: 1px solid var(--faed-border);
-    background: var(--faed-border);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    background: var(--fx-border-soft);
+    border-radius: var(--fx-radius);
     overflow: hidden;
 }
 
-.fx-facts > div { background: var(--faed-paper); padding: 12px 14px; }
+.fx-facts > div { background: var(--fx-surface); padding: 12px 14px; }
 .fx-facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faed-text-muted); }
 .fx-facts dd { margin: 3px 0 0; font-size: 14px; }
 
-.fx-detail-section { border-top: 1px solid var(--faed-ink); margin-top: 40px; padding-top: 28px; }
+.fx-detail-section { border-top: 1px solid var(--fx-border-soft); margin-top: 40px; padding-top: 28px; }
 .fx-detail-section h2 { font-size: 20px; margin-bottom: 14px; font-family: var(--faed-font-display); font-weight: 600; }
 .fx-detail-section__prose { max-width: 72ch; white-space: pre-line; font-size: 15px; }
 
@@ -8595,7 +8735,7 @@ body { font-weight: 400; }
     max-width: 720px;
 }
 
-.fx-defect { margin: 0; border: 1px solid var(--faed-border); border-radius: var(--faed-radius); overflow: hidden; background: var(--faed-paper); }
+.fx-defect { margin: 0; border: 1px solid var(--fx-border-soft); border-radius: var(--fx-radius); overflow: hidden; background: var(--fx-surface); }
 
 .fx-defect__frame { position: relative; aspect-ratio: 4 / 3; background: var(--faed-card-bg); }
 .fx-defect__frame img { width: 100%; height: 100%; object-fit: cover; }
@@ -8605,9 +8745,10 @@ body { font-weight: 400; }
     top: 8px;
     left: 8px;
     padding: 3px 8px;
-    background: var(--faed-rust);
+    background: var(--faed-rust-text); /* Phase 15: light text on --faed-rust alone was only
+                                           ~3.6:1 here; --faed-rust-text clears 5.4:1+. */
     color: var(--faed-paper);
-    border-radius: var(--faed-radius);
+    border-radius: var(--fx-radius-pill);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -8624,7 +8765,7 @@ body { font-weight: 400; }
     gap: 14px;
     align-items: center;
     padding-bottom: 18px;
-    border-bottom: 1px solid var(--faed-border);
+    border-bottom: 1px solid var(--fx-border-soft);
     margin-bottom: 22px;
 }
 
@@ -8633,8 +8774,8 @@ body { font-weight: 400; }
     height: 64px;
     flex: none;
     background: var(--faed-card-bg);
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
     overflow: hidden;
 }
 
@@ -8662,6 +8803,7 @@ body { font-weight: 400; }
     top: 9px;
     width: 6px;
     height: 6px;
+    border-radius: 50%;
     background: var(--faed-ink);
 }
 
@@ -8671,12 +8813,12 @@ body { font-weight: 400; }
 .fx-field__label { font-size: 13px; font-weight: 500; }
 .fx-field__error { color: var(--faed-danger); font-size: 12px; }
 .fx-input {
-    border: 1px solid var(--faed-ink);
-    border-radius: var(--faed-radius);
-    background: var(--faed-paper);
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
+    background: var(--fx-surface);
     color: var(--faed-ink);
     font: inherit;
-    padding: 10px 12px;
+    padding: 11px 13px;
     width: 100%;
 }
 .fx-optional { color: var(--faed-text-muted); font-weight: 400; font-size: 12px; }
@@ -8685,9 +8827,9 @@ body { font-weight: 400; }
     display: flex;
     gap: 10px;
     align-items: baseline;
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
-    padding: 10px 12px;
+    border: 1px solid var(--fx-border-soft);
+    border-radius: var(--fx-radius-sm);
+    padding: 11px 13px;
     margin-bottom: 8px;
     cursor: pointer;
 }
@@ -8696,10 +8838,10 @@ body { font-weight: 400; }
 /* ---- Empty states (one per screen) -------------------------------- */
 
 .fx-empty {
-    border: 1px solid var(--faed-border);
-    border-radius: var(--faed-radius);
-    background: var(--faed-paper);
-    padding: 40px 24px;
+    border: 1px dashed var(--fx-border-soft);
+    border-radius: var(--fx-radius);
+    background: var(--fx-surface);
+    padding: 44px 24px;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -8720,13 +8862,16 @@ body { font-weight: 400; }
     .fx-store-head { grid-template-columns: 1fr; }
     .fx-store-head__meta { text-align: left; }
     .fx-defect-grid { grid-template-columns: repeat(2, 1fr); }
+    .fx-hero__grid { grid-template-columns: 1fr; }
+    .fx-hero__visual { margin-top: 24px; min-height: 260px; }
+    .fx-hero__title { max-width: none; }
 }
 
 @media (max-width: 560px) {
     .fx-wrap { padding-inline: 16px; }
     .fx-grid--3, .fx-grid--4 { grid-template-columns: 1fr; }
-    .fx-site-nav { gap: 14px; flex-wrap: wrap; }
     .fx-sort { margin-left: 0; border-left: 0; padding-left: 0; width: 100%; }
     .fx-facts { grid-template-columns: 1fr; }
     .fx-section-head { flex-direction: column; gap: 4px; }
+    .fx-hero { padding: 40px 0 48px; }
 }

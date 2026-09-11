@@ -84,15 +84,9 @@
 
             <hr class="dropdown-divider" />
 
-            @if (!isAdmin && !isMerchant)
-            {
-                @* Buyers without the Merchant role still need the onboarding route; merchants
-                   already have Merchant Center as a top-level control and do not see it twice. *@
-                <a class="dropdown-item" asp-area="Merchant" asp-controller="Verification" asp-action="Index">
-                    @FaedIcon.Render("storefront", "faed-icon faed-account-menu__icon")
-                    <span>Sell on Faed</span>
-                </a>
-            }
+            @* Phase 15: "Sell on Faed" is now a top-level primary link in the unified navbar
+               for every buyer (see _Layout.cshtml's showSellOnFaed), so it no longer needs a
+               duplicate entry here. Admins/merchants already have their workspace link. *@
 
             <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
                 @FaedIcon.Render("gear", "faed-icon faed-account-menu__icon")
