@@ -667,6 +667,71 @@ tree (40 `.cshtml` files) that every deleted selector has zero references, and b
 balance check on the edited `faed.css` (1603 open, 1603 close). Not verified: visual
 rendering — no `dotnet build`/`dotnet run` was possible in this session.
 
+### 5.18 Revision — Phase 20, 12 September 2026 (colour fix: retire pink-leaning tones, lift
+the §5.13 scope guard, sitewide pink audit)
+
+**What triggered this:** direct feedback that `--faed-paper` and `--faed-card-bg` read as
+pink/rosy on screen rather than the intended kraft/cardboard tan, and an explicit
+product-owner decision to lift §5.13's scoping restriction — the "Inspection Tag" palette
+now applies to the entire site (public, Merchant, Admin, Identity/auth), not only the
+public-surface selector Phase 15 started with. §5.14 had already promoted the *scoping* to
+`:root`; this pass corrects the *values* the scoping was still carrying and re-audits the
+now-wider blast radius.
+
+**What changed — the two tokens:**
+
+| Token | Old | New | Why |
+|---|---|---|---|
+| `--faed-paper` | `#f4f0e5` | `#f0efe3` | Old value's hue sat close enough to the pink/rose band to read as rosy against the site's other warm-neutral surfaces; the new value shifts hue toward olive-tan (kraft) at the same lightness |
+| `--faed-card-bg` | `#e7dfc9` | `#dde0d0` | Same correction, applied to the product-photo card background |
+
+Re-verified WCAG AA against both new backgrounds: `--faed-ink` 12.7:1 / 10.9:1,
+`--faed-rust-text` 5.3:1 / 4.6:1, `--faed-text-muted` 5.4:1 / 4.6:1, `--faed-success`
+5.4:1 / 4.7:1 — all ≥ 4.5:1, so no other §5.13/§5.14 token value needed to move.
+
+**What the audit found beyond those two tokens:** lifting the scope guard makes every other
+leftover pink-leaning colour in the codebase visible next to the corrected kraft surfaces, so
+the whole file was swept (every `#hex` and `rgba()` literal in `faed.css`, `Views/`, `wwwroot/js/`,
+filtered to the pink/rose/magenta hue band, then triaged by hand rather than batch-replaced):
+
+- `--faed-bg` (a Phase 12 legacy token, feeds `body`'s own `background-color` directly) still
+  held its own literal copy of the pre-fix paper hex (`#f4f0e5`). Aliased to
+  `var(--faed-paper)` instead of duplicating the literal, so the page background and the
+  component paper colour cannot drift apart again.
+- `--faed-surface-muted` and `--faed-brand-tint` (also Phase 12; 23 usages combined across
+  badges and muted panels sitewide) held their own literal copy of the pre-fix card-bg hex
+  (`#e7dfc9`). Both aliased to `var(--faed-card-bg)`.
+- Six hardcoded danger/error borders (`.faed-buyer-blocked`, the auth validation-summary
+  panel, two `.faed-admin-decision-panel`/`.faed-decision-row` danger variants, and
+  `.faed-order-danger`) were pale-pink tints (saturation 0.38–0.50) of the danger red — well
+  above the site's usual mutedness (`--faed-border`'s own saturation is 0.30). Each was
+  desaturated to ~0.30 while keeping its hue in the red/error band, so they still read as
+  "error" without carrying a pink cast.
+- `--faed-danger-tint` itself was the same kind of oversaturated pale-pink alert background
+  (`#f6e6e4`, saturation 0.50); desaturated the same way, to `#f2e9e7`.
+
+**Left alone:** `--faed-danger` (`#ad352d`) — the base semantic error red already sits in the
+same saturation range as `--faed-rust`/`--faed-success`, so it's a legitimate signal colour,
+not a pale tint, and needed no change. The near-white backgrounds paired with the danger
+borders above (`#fffaf9`, `#fff9f8`, lightness ≈ 0.99) were also left alone — imperceptibly
+tinted at that lightness, and excluded by the same near-white threshold §5.13's own audit
+language anticipated. No inline hex value exists in any `.cshtml` view. No `.fx-*`
+public-surface component rule was touched — this pass is colour-token values only, per
+§5.12's standing lock on this file.
+
+**Verification note:** `dotnet build Faed.slnx -warnaserror` and `dotnet test` both green
+after each commit. Full-site visual regression walked with a scripted browser session
+covering every `_Layout`-rendered route: Home, Shop, Listing detail, Reserve, Merchant
+storefront, Login, Register, forgot-password, Identity/Account/Manage, the 404 status page,
+the Privacy page, and every Merchant workspace (Verification, Store Settings, Subscription,
+Listings index/create/edit, Orders, Analytics) and Admin workspace screen (Merchant
+Verification, Subscriptions, Catalog, Listing Moderation, Reviews, Transactions) reachable by
+running the actual approve-verification → activate-subscription → publish-listing →
+reserve → confirm order flow end to end with throwaway test accounts. Every route read as
+warm kraft-green/stone, not pink; the danger-panel borders read as muted taupe rather than
+pink; no layout or structural regression from the token promotion. See
+`docs/faed-phase-15-color-fix-prompt.md` for the full task list this phase executed against.
+
 ---
 
 ## 7. Technical constraints
@@ -824,3 +889,14 @@ fixed only if the fix is one line.
 | 40 | 9 literal-radius selectors found to be dead code | Deleted rather than re-tokenised, since fixing a value nothing renders is cosmetic only — each replaced with a one-line comment pointing to §5.17 |
 | 41 | 3 literal-radius selectors found to be live | Tokenised: `.faed-thumb__remove` → `var(--faed-radius)`, `.faed-admin-filterbar a` → `var(--faed-radius-sm)` (calc() removed), `.faed-auth-layout` → `clamp(var(--fx-radius), 2vw, var(--fx-radius-lg))` |
 | 42 | Wider dead-code footprint (`.faed-product-card` base block, `.faed-category-card*`, `.faed-hero__category-*`/`__promise-*`, etc.) | Left in place — none of it had a border-radius problem, so removing it was out of scope for this pass |
+
+## Appendix — decision log, Phase 20 revision (12 September 2026, §5.18)
+
+| # | Decision | Resolution |
+|---|---|---|
+| 43 | `--faed-paper`/`--faed-card-bg` corrected values | `#f4f0e5`→`#f0efe3`, `#e7dfc9`→`#dde0d0` — hue shifted toward olive-tan (kraft), lightness unchanged, re-verified ≥4.5:1 AA against every text token that reads on them |
+| 44 | `--faed-bg`, `--faed-surface-muted`, `--faed-brand-tint` (Phase 12 legacy tokens duplicating the pre-fix paper/card-bg literals) | Aliased to `var(--faed-paper)` / `var(--faed-card-bg)` instead of hand-correcting three more literals, so they can't drift from the canonical value again |
+| 45 | Six hardcoded pale-pink danger/error borders + `--faed-danger-tint` | Desaturated to ~0.30 saturation (matching `--faed-border`'s own mutedness), hue kept in the red band so they still read as "error" |
+| 46 | `--faed-danger` base semantic red | Left unchanged — already in the same saturation range as `--faed-rust`/`--faed-success`, not a pale tint |
+| 47 | Near-white danger-panel backgrounds (`#fffaf9`, `#fff9f8`, lightness ≈0.99) | Left unchanged — imperceptibly tinted at that lightness, consistent with §5.13's own near-white exclusion |
+| 48 | §5.13 scope guard | Confirmed already lifted (committed as Phase 16/§5.14, before this fix-prompt existed) — this phase only corrected the two token *values* Phase 16 had promoted, plus the wider pink audit the promotion made necessary |
