@@ -66,8 +66,8 @@
 :root {
     /* Phase 16 (11 Sept 2026, §5.14): corrected "Inspection Tag" hues, promoted sitewide —
        see the note above the first :root block. */
-    --faed-paper: #f4f0e5;      /* page background — was #f4f4f2 */
-    --faed-card-bg: #e7dfc9;    /* product-photo card background — never pure white (§5.6) — was #e7e5de */
+    --faed-paper: #f0efe3;      /* page background — read as pink/rosy; corrected to Kraft Green — was #f4f0e5 */
+    --faed-card-bg: #dde0d0;    /* product-photo card background — never pure white (§5.6) — read as pink/rosy; corrected to Kraft Green — was #e7dfc9 */
     --faed-rust: #a67425;       /* disclosure only: the condition stamp and the DEFECT tag. Never a button (§5.3).
                                     Icons/borders/fills ONLY — at 12px/10px text sizes this clears only ~3:1,
                                     below the 4.5:1 AA minimum for text. Was #b23a00. See --faed-rust-text. */
