@@ -748,7 +748,11 @@ magnifying glass or crosshair, power-tools' rectangle-plus-handle read as a spra
 small-kitchen-appliances fallback's trapezoid-with-handle read as a shopping basket. Replaced
 with literal silhouettes — an upright vacuum, a power drill, a blender on a motor base — built
 from the same stroke-path conventions (round caps/joins on the shared `<svg>` element) as the
-rest of the icon set.
+rest of the icon set. Rendered in the browser at the chip's actual 28×28 size per the
+addendum's own instruction to compare before shipping: the blender and drill read clearly on
+the first draft, but the vacuum's wheeled-canister-plus-overhead-hose-arm composition read as a
+hook or golf club at that size and was redrawn as a simpler canister-plus-diagonal-handle
+shape, which reads clearly next to the other two.
 
 ---
 
@@ -921,3 +925,4 @@ fixed only if the fix is one line.
 | 49 | `--fx-tint` (`#fbf0e8`) | Missed by decision #43-45's hue-band audit (hue ≈25°, outside its ≤20° cutoff). Hero's top gradient stop moved to a literal `#f5f3ea`; `--fx-tint` itself redefined as `rgba(166, 116, 37, 0.14)`, a tint of `--faed-rust`, for its remaining consumer (the category-icon chip) |
 | 50 | Hero gradient direction/stop positions | Unchanged — only the top stop's colour moved |
 | 51 | `CategoryGlyph` icon artwork (Home/Index.cshtml) | Redesigned as literal silhouettes (vacuum, drill, blender) — the previous shapes read as a crosshair, a spray can and a basket, not their categories |
+| 52 | Vacuum-cleaner glyph, first draft | Redrawn after rendering at actual size — the wheeled-canister-plus-hose-arm draft read as a hook/golf club at 28×28; a simpler canister-plus-diagonal-handle shape replaced it |
