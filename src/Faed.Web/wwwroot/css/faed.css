@@ -15,10 +15,17 @@
        identity. This is a token-value change only: no workspace/admin/merchant/buyer
        component rule, class, radius, or the many hand-tuned literal hex values already
        inside those component rules were touched — DESIGN-BRIEF.md §5.12 still says not to
-       audit or rebuild that CSS, and this doesn't. */
-    --faed-bg: #f4f0e5;
+       audit or rebuild that CSS, and this doesn't.
+
+       Phase 15 color-fix audit: --faed-bg still carried its own literal copy of the
+       pre-fix pink-leaning paper hex (#f4f0e5) and feeds body's own background-color
+       directly, so lifting the Phase 16 scope guard would have left the corrected
+       --faed-paper value on components while the page background underneath it stayed
+       the old pink tone. Aliased to var(--faed-paper) instead of duplicating the literal,
+       so the two can't drift apart again. */
+    --faed-bg: var(--faed-paper);
     --faed-surface: #fbfbfa;
-    --faed-surface-muted: #e7dfc9;
+    --faed-surface-muted: var(--faed-card-bg); /* Phase 15 color-fix audit: same pre-fix pink-leaning literal (#e7dfc9) card-bg had; used 9x for badge/panel backgrounds sitewide. Aliased instead of duplicating. */
     --faed-text: #1e2b28;
     --faed-text-muted: #5a635f;
     --faed-border: #d9d0b8;
@@ -27,7 +34,7 @@
     --faed-brand: #1e2b28;
     --faed-brand-strong: #000000;
     --faed-brand-deep: #000000;
-    --faed-brand-tint: #e7dfc9;
+    --faed-brand-tint: var(--faed-card-bg); /* Phase 15 color-fix audit: same pre-fix pink-leaning literal (#e7dfc9) card-bg had; used 14x sitewide. Aliased instead of duplicating. */
     --faed-brand-soft: #efeeea;
     --faed-ink: #1e2b28;
     --faed-interactive: #efeeea;
@@ -38,7 +45,7 @@
     --faed-warning: #94610c;
     --faed-warning-tint: #f7eddc;
     --faed-danger: #ad352d;
-    --faed-danger-tint: #f6e6e4;
+    --faed-danger-tint: #f2e9e7; /* Phase 15 color-fix audit: was a saturated pale-pink tint (s=.50) -- desaturated to the site's muted look, hue kept in the error-red band. Was #f6e6e4. */
     --faed-info: #2a637d;
     --faed-info-tint: #e8f0f4;
 
@@ -5415,7 +5422,7 @@ button.faed-quick-filter {
 }
 
 .faed-admin-page .faed-decision-row > form:has(.faed-btn--danger) {
-    border-color: #ead0cd;
+    border-color: #e6d3d1; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #ead0cd. */
     background: #fff9f8;
 }
 
@@ -5791,7 +5798,7 @@ button.faed-quick-filter {
 .faed-auth-content .validation-summary-errors {
     margin-bottom: 1rem;
     padding: .8rem .9rem;
-    border: 1px solid #e7bbb7;
+    border: 1px solid #ddc3c1; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #e7bbb7. */
     border-radius: var(--faed-radius-sm);
     background: var(--faed-danger-tint);
 }
@@ -6309,7 +6316,7 @@ button.faed-quick-filter {
     gap: 1.1rem;
     max-width: 48rem;
     padding: clamp(1.4rem, 4vw, 2.4rem);
-    border: 1px solid #e5bbb7;
+    border: 1px solid #ddc2bf; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #e5bbb7. */
     border-radius: var(--faed-radius-lg);
     background: var(--faed-danger-tint);
 }
@@ -6727,7 +6734,7 @@ button.faed-quick-filter {
 
 .faed-order-danger {
     overflow: hidden;
-    border: 1px solid #ead1ce;
+    border: 1px solid #e7d4d2; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #ead1ce. */
     border-radius: var(--faed-radius);
     background: #fffaf9;
 }
@@ -7448,7 +7455,7 @@ button.faed-quick-filter {
 }
 
 .faed-admin-decision-panel--danger {
-    border-color: #e6c8c5 !important;
+    border-color: #e2cbc9 !important; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #e6c8c5. */
     background: #fff9f8;
 }
 
@@ -7466,7 +7473,7 @@ button.faed-quick-filter {
 }
 
 .faed-admin-page .faed-decision-row > form:has(.faed-btn--danger) {
-    border-color: #e7cdca;
+    border-color: #e4cfcd; /* Phase 15 color-fix audit: pale-pink border desaturated, hue kept in error-red band. Was #e7cdca. */
     background: #fffafa;
 }
 
