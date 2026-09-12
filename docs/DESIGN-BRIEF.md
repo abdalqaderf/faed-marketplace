@@ -732,6 +732,24 @@ warm kraft-green/stone, not pink; the danger-panel borders read as muted taupe r
 pink; no layout or structural regression from the token promotion. See
 `docs/faed-phase-15-color-fix-prompt.md` for the full task list this phase executed against.
 
+**Addendum, same day — two more pink spots plus an icon redesign.** Product-owner review of
+the live Home page after the above landed caught `--fx-tint` (`#fbf0e8`): it feeds both the
+hero section's top gradient stop and the category-icon chip background, and it sat at hue
+≈25°, just outside the ≤20° cutoff the hue-band audit script used above — so it read as a
+pale peach next to the corrected kraft surfaces without ever being flagged. The hero's top
+gradient stop is now a literal kraft-neutral tone (`#f5f3ea`, R/G/B kept close together)
+rather than `var(--fx-tint)`; the gradient's direction and stop positions are unchanged.
+`--fx-tint` itself becomes `rgba(166, 116, 37, 0.14)` — a low-opacity tint of `--faed-rust` —
+so its one remaining consumer, the category-icon chip, reads as warm brass instead of pink.
+
+Separately, the same review flagged that the three `CategoryGlyph` icons (Home/Index.cshtml)
+did not read as their categories: home-cleaning's circle-plus-diagonal-line read as a
+magnifying glass or crosshair, power-tools' rectangle-plus-handle read as a spray can, and the
+small-kitchen-appliances fallback's trapezoid-with-handle read as a shopping basket. Replaced
+with literal silhouettes — an upright vacuum, a power drill, a blender on a motor base — built
+from the same stroke-path conventions (round caps/joins on the shared `<svg>` element) as the
+rest of the icon set.
+
 ---
 
 ## 7. Technical constraints
@@ -900,3 +918,6 @@ fixed only if the fix is one line.
 | 46 | `--faed-danger` base semantic red | Left unchanged — already in the same saturation range as `--faed-rust`/`--faed-success`, not a pale tint |
 | 47 | Near-white danger-panel backgrounds (`#fffaf9`, `#fff9f8`, lightness ≈0.99) | Left unchanged — imperceptibly tinted at that lightness, consistent with §5.13's own near-white exclusion |
 | 48 | §5.13 scope guard | Confirmed already lifted (committed as Phase 16/§5.14, before this fix-prompt existed) — this phase only corrected the two token *values* Phase 16 had promoted, plus the wider pink audit the promotion made necessary |
+| 49 | `--fx-tint` (`#fbf0e8`) | Missed by decision #43-45's hue-band audit (hue ≈25°, outside its ≤20° cutoff). Hero's top gradient stop moved to a literal `#f5f3ea`; `--fx-tint` itself redefined as `rgba(166, 116, 37, 0.14)`, a tint of `--faed-rust`, for its remaining consumer (the category-icon chip) |
+| 50 | Hero gradient direction/stop positions | Unchanged — only the top stop's colour moved |
+| 51 | `CategoryGlyph` icon artwork (Home/Index.cshtml) | Redesigned as literal silhouettes (vacuum, drill, blender) — the previous shapes read as a crosshair, a spray can and a basket, not their categories |
