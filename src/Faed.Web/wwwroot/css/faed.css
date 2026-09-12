@@ -8020,7 +8020,12 @@ button.faed-quick-filter {
     --fx-radius-pill: 999px;
     --fx-border-soft: rgba(30, 43, 40, 0.11);
     --fx-surface: #ffffff;
-    --fx-tint: #fbf0e8;
+    /* Phase 20 addendum (12 Sept 2026): was #fbf0e8, a pale peach that reads pink next to the
+       corrected kraft paper/card-bg — it survived §5.18's hue-band audit because its hue
+       (~25°) fell just outside the ≤20° cutoff. Now a low-opacity tint of --faed-rust
+       (#a67425) so the one remaining consumer (the category-icon chip) reads as warm
+       brass, not pink. */
+    --fx-tint: rgba(166, 116, 37, 0.14);
     --fx-shadow-xs: 0 1px 2px rgba(30, 43, 40, 0.06);
     --fx-shadow-sm: 0 2px 8px rgba(30, 43, 40, 0.07);
     --fx-shadow-md: 0 12px 28px -8px rgba(30, 43, 40, 0.16);
@@ -8344,7 +8349,11 @@ body { font-weight: 400; }
 
 .fx-hero {
     padding: 40px 0 48px; /* Phase 15: was 56px 0 64px */
-    background: linear-gradient(180deg, var(--fx-tint) 0%, var(--faed-paper) 78%);
+    /* Phase 20 addendum (12 Sept 2026): top stop was var(--fx-tint), a pale peach that read
+       pink against the corrected kraft surfaces below it. Replaced with a kraft-neutral stop
+       that keeps R/G/B close together (olive-tan) instead of drifting warm-pink; direction
+       and stop positions unchanged. */
+    background: linear-gradient(180deg, #f5f3ea 0%, var(--faed-paper) 78%);
     border-bottom: 1px solid var(--fx-border-soft);
     overflow: hidden;
 }
