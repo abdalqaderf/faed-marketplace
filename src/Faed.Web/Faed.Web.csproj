@@ -29,4 +29,16 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- LocalFileStorage (Services/Storage/LocalFileStorage.cs) writes merchant verification
+         documents and listing images to App_Data/private-storage at runtime, under the content
+         root. The SDK's default item globs would otherwise pick up each new file as a project
+         Content/None item; Visual Studio's file watcher then treats the running app's own
+         upload as an external project change and reloads the project, killing the debug
+         session mid-request. App_Data is already git-ignored — exclude it from MSBuild's
+         globs too so writing to it is never mistaken for an edit to the project. -->
+    <Content Remove="App_Data\**" />
+    <None Remove="App_Data\**" />
+  </ItemGroup>
+
 </Project>
