@@ -5,14 +5,20 @@
     // §5.11 zero-decoration: stroke-SVG category glyphs, one consistent style, never emoji.
     // Phase 20 addendum (12 Sept 2026): the previous shapes (a magnifying-glass-like glyph, a
     // squat body-plus-handle, a basket) read as a crosshair, a spray can and a basket rather
-    // than their categories on review. Replaced with literal silhouettes — vacuum cleaner,
-    // power drill, blender/jug — matching the site's existing stroke-icon system (round caps
-    // and joins set on the <svg> element below).
+    // than their categories on review.
+    // Phase 21 (12 Sept 2026, §5.19): redrawn again on a 24x24/1.6-stroke canvas — the
+    // convention FaedIcon.cs already uses sitewide — as part of the "Shop by category" card
+    // redesign, closing the gap between this page-local glyph set and the shared icon system.
+    // Phase 21 addendum (12 Sept 2026): direct feedback that none of the three read clearly at
+    // the chip's actual size. All three redrawn again, rendered at the real 28x28 size before
+    // shipping (same discipline as the earlier vacuum-icon fix) — home-cleaning in particular
+    // went from a diagonal-stick silhouette that read as a golf club to an upright body with a
+    // curved handle and wheeled foot, which reads as a vacuum cleaner. See §5.19 addendum.
     Func<string, string> CategoryGlyph = slug => slug switch
     {
-        "home-cleaning" => "<path d='M22 34h20l-2 16a3 3 0 0 1 -3 3H27a3 3 0 0 1 -3 -3z'/><circle cx='26' cy='50' r='2.5'/><circle cx='38' cy='50' r='2.5'/><path d='M36 34l10-18'/><path d='M42 15h8'/>",
-        "power-tools" => "<path d='M8 29h24v11H8z'/><path d='M32 33h11l8 -4v13l-8 -4h-11'/><path d='M19 40v8a3 3 0 0 1 -3 3h-3a3 3 0 0 1 -3 -3v-8'/><path d='M51 31v8'/>",
-        _ => "<path d='M25 14h14l-2 14H27z'/><path d='M23 28h18l-2 20a3 3 0 0 1 -3 3H28a3 3 0 0 1 -3 -3z'/><path d='M28 14v-4M36 14v-4'/><rect x='21' y='49' width='22' height='5' rx='1.5'/>",
+        "home-cleaning" => "<rect x='9.6' y='4.2' width='4' height='11.4' rx='2'/><path d='M11.6 4.4c1.3-1.9 3.3-2.9 5.7-3'/><path d='M16.3 1.1 18.8 1.6'/><rect x='6.3' y='15.6' width='11.4' height='2.6' rx='1.3'/><circle cx='8.4' cy='19.4' r='1'/><circle cx='15.6' cy='19.4' r='1'/>",
+        "power-tools" => "<rect x='3' y='9.5' width='10.5' height='5' rx='1.4'/><path d='M6.2 14.5v5a1.3 1.3 0 0 1-1.3 1.3h-.8A1.3 1.3 0 0 1 2.8 19.5v-3.6'/><path d='M13.5 10.6h2.2l4-2v7l-4-2h-2.2'/><path d='M19.7 12.3v2.4'/>",
+        _ => "<path d='M8 3.6h8l1 5.8H7L8 3.6Z'/><path d='M6.6 9.4h10.8l-1.3 9.4a2.3 2.3 0 0 1-2.3 2H10.2a2.3 2.3 0 0 1-2.3-2L6.6 9.4Z'/><path d='M9 13h6M9.6 16h4.8'/><rect x='5.5' y='20.4' width='13' height='2' rx='0.6'/>",
     };
 }
 
@@ -73,11 +79,19 @@
             @foreach (var category in Model.Categories)
             {
                 <a class="fx-cat-card" asp-controller="Shop" asp-action="Index" asp-route-Category="@category.Slug">
-                    <span class="fx-cat-card__icon">
-                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@Html.Raw(CategoryGlyph(category.Slug))</svg>
+                    <span class="fx-cat-card__top">
+                        <span class="fx-cat-card__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@Html.Raw(CategoryGlyph(category.Slug))</svg>
+                        </span>
+                        @* Visual affordance only, not a separate control — the whole tile is the link. *@
+                        <span class="fx-cat-card__arrow" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </span>
                     </span>
-                    <span class="fx-cat-card__name">@category.Name</span>
-                    <span class="fx-cat-card__count">@category.LiveListingCount item@(category.LiveListingCount == 1 ? "" : "s")</span>
+                    <span>
+                        <span class="fx-cat-card__name">@category.Name</span>
+                        <span class="fx-cat-card__count">@category.LiveListingCount item@(category.LiveListingCount == 1 ? "" : "s")</span>
+                    </span>
                 </a>
             }
         </div>

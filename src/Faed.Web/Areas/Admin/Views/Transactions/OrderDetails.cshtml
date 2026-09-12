@@ -7,18 +7,23 @@
 <div class="faed-page faed-page--wide faed-admin-detail-page">
     <partial name="_AdminSubnav" model="@("Orders")" />
 
-    <div class="faed-page__header faed-admin-page-header">
+    <nav class="faed-breadcrumb" aria-label="Breadcrumb">
+        <a asp-action="Orders">Orders</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Order @o.Id.ToString()[..8]</span>
+    </nav>
+
+    <header class="faed-order-detail-hero">
         <div>
-            <h1 class="faed-page__title">Order @o.Id.ToString()[..8]</h1>
-            <p class="faed-page__subtitle">
-                <span class="@OrderStatusDisplay.BadgeClass(o.Status)">@OrderStatusDisplay.Label(o.Status)</span>
-                &middot; placed @AmmanTime.FormatDateTime(o.CreatedAtUtc)
-            </p>
+            <p class="faed-kicker">Order @o.Id.ToString()[..8]</p>
+            <h1>Reserved from @o.MerchantBusinessName</h1>
+            <p>Placed @AmmanTime.FormatDateTime(o.CreatedAtUtc)</p>
         </div>
-        <div class="faed-page__actions">
-            <a class="faed-btn faed-btn--ghost" asp-action="Orders">@FaedIcon.Render("arrow-left", "faed-icon")<span>Back to orders</span></a>
+        <div class="faed-order-detail-hero__status">
+            <span>Status</span>
+            <span class="@OrderStatusDisplay.BadgeClass(o.Status)">@OrderStatusDisplay.Label(o.Status)</span>
         </div>
-    </div>
+    </header>
 
     @if (!string.IsNullOrWhiteSpace(o.StatusReason))
     {

@@ -8023,9 +8023,15 @@ button.faed-quick-filter {
     /* Phase 20 addendum (12 Sept 2026): was #fbf0e8, a pale peach that reads pink next to the
        corrected kraft paper/card-bg — it survived §5.18's hue-band audit because its hue
        (~25°) fell just outside the ≤20° cutoff. Now a low-opacity tint of --faed-rust
-       (#a67425) so the one remaining consumer (the category-icon chip) reads as warm
-       brass, not pink. */
+       (#a67425). Phase 21 (12 Sept 2026, §5.19) gave the category card an arrow indicator
+       that also tints with this on hover, so this token now has two consumers: the
+       icon chip's resting background, and the arrow indicator's hover background. */
     --fx-tint: rgba(166, 116, 37, 0.14);
+    /* Phase 21 (12 Sept 2026, §5.19): a stronger tint of --faed-rust for the category card's
+       icon-chip ring, its hover fill and the card's own hover border — see the ink/rust
+       exception recorded in §5.19, since none of these are disclosure content under §5.3's
+       own test. */
+    --fx-rust-ring: rgba(166, 116, 37, 0.32);
     --fx-shadow-xs: 0 1px 2px rgba(30, 43, 40, 0.06);
     --fx-shadow-sm: 0 2px 8px rgba(30, 43, 40, 0.07);
     --fx-shadow-md: 0 12px 28px -8px rgba(30, 43, 40, 0.16);
@@ -8519,40 +8525,105 @@ body { font-weight: 400; }
 }
 
 /* ---- Home: category cards ---------------------------------------------------- */
+/* Phase 21 (12 Sept 2026, §5.19): full redesign of the card + icon-chip treatment, replacing
+   the flat-circle icon and unclear click affordance with the "Inspection Tag" chip language
+   (a ringed, punched icon holder) already used for the condition stamp elsewhere on Faed, plus
+   an explicit arrow indicator so the tile reads as a link before the visitor reads the count.
+   Grid column count and gap are unchanged — only the tile's internal design moved. */
 
 .fx-cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 28px; }
 
 .fx-cat-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 26px;
+    gap: 14px;
+    padding: 20px 20px 18px;
     border: 1px solid var(--fx-border-soft);
     border-radius: var(--fx-radius-lg);
     background: var(--fx-surface);
     text-decoration: none;
     color: var(--faed-ink);
-    min-height: 200px;
     box-shadow: var(--fx-shadow-xs);
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-.fx-cat-card:hover { transform: translateY(-4px); box-shadow: var(--fx-shadow-md); border-color: transparent; }
-
-.fx-cat-card__icon {
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    border-radius: var(--fx-radius-pill);
-    background: var(--fx-tint);
-    color: var(--faed-rust);
+.fx-cat-card:hover,
+.fx-cat-card:focus-visible {
+    transform: translateY(-3px);
+    /* Rust glow, not the shared --fx-shadow-md: the lift on this tile leans on the same
+       brass accent as its icon chip and arrow rather than the site's neutral card shadow. */
+    box-shadow: 0 2px 4px rgba(30, 43, 40, 0.08), 0 16px 32px -14px rgba(166, 116, 37, 0.28);
+    border-color: var(--fx-rust-ring);
+    outline: none;
 }
 
-.fx-cat-card__icon svg { width: 28px; height: 28px; }
+.fx-cat-card__top { display: flex; align-items: flex-start; justify-content: space-between; }
 
-.fx-cat-card__name { font-family: var(--faed-font-display); font-weight: 600; font-size: 17px; margin-top: auto; }
-.fx-cat-card__count { font-size: 12px; color: var(--faed-text-muted); }
+.fx-cat-card__icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--fx-tint);
+    border: 1px solid var(--fx-rust-ring);
+    flex-shrink: 0;
+    transition: background 0.18s ease;
+}
+
+.fx-cat-card:hover .fx-cat-card__icon,
+.fx-cat-card:focus-visible .fx-cat-card__icon { background: var(--fx-rust-ring); }
+
+.fx-cat-card__icon svg { width: 28px; height: 28px; color: var(--faed-rust-text); }
+
+.fx-cat-card__icon::before {
+    /* Punch-hole detail, echoing the condition stamp's own punched-hole tag motif (§5.13). */
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--fx-surface);
+    border: 1px solid var(--fx-rust-ring);
+}
+
+.fx-cat-card__arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--fx-radius-pill);
+    color: var(--faed-text-muted);
+    transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.fx-cat-card:hover .fx-cat-card__arrow,
+.fx-cat-card:focus-visible .fx-cat-card__arrow {
+    transform: translateX(2px);
+    color: var(--faed-rust-text);
+    background: var(--fx-tint);
+}
+
+.fx-cat-card__arrow svg { width: 15px; height: 15px; }
+
+.fx-cat-card__name { display: block; font-family: var(--faed-font-display); font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+
+.fx-cat-card__count { font-size: 12px; color: var(--faed-text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+.fx-cat-card__count::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--faed-rust);
+    flex-shrink: 0;
+}
 
 /* ---- Shop / storefront filter row (section 5.7, 5.8) --------------------- */
 

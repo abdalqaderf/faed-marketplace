@@ -24,15 +24,17 @@
         <span>#@order.Reference</span>
     </nav>
 
-    <div class="faed-page__header">
+    <header class="faed-order-detail-hero">
         <div>
-            <h1 class="faed-page__title">Order #@order.Reference</h1>
-            <p class="faed-page__subtitle">Reserved @AmmanTime.FormatDateTime(order.CreatedAtUtc) · pickup, cash on collection</p>
+            <p class="faed-kicker">Order #@order.Reference</p>
+            <h1>Reserved by @order.ContactName</h1>
+            <p>Placed @AmmanTime.FormatDateTime(order.CreatedAtUtc) · pickup, cash on collection</p>
         </div>
-        <div class="faed-page__actions">
+        <div class="faed-order-detail-hero__status">
+            <span>Status</span>
             <span class="@OrderStatusDisplay.BadgeClass(order.Status)">@OrderStatusDisplay.Label(order.Status)</span>
         </div>
-    </div>
+    </header>
 
     <ol class="faed-order-progress" aria-label="Order progress">
         @{ var stepNumber = 0; }
